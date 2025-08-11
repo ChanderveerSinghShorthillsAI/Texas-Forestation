@@ -459,4 +459,21 @@ path.leaflet-interactive:hover {
 .grid-popup .leaflet-popup-content em {
   font-style: italic;
   opacity: 0.8;
+}
+
+/* Non-cultivable grid styling */
+.non-cultivable-grid {
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+.non-cultivable-grid:hover {
+  cursor: not-allowed !important;
+  opacity: 0.8 !important;
+}
+
+/* Visual feedback for non-interactive grids */
+.leaflet-interactive.non-cultivable-grid {
+  cursor: not-allowed !important;
+  filter: brightness(0.9);
 } 

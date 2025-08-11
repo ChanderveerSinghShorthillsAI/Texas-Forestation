@@ -11,6 +11,7 @@ import SpatialQueryProgress from '../UI/SpatialQueryProgress';
 import { useMapLayers } from '../../hooks/useMapLayers';
 import { TEXAS_BOUNDS, GEOJSON_LAYERS } from '../../constants/geoJsonLayers';
 import { gridService } from '../../services/gridService';
+import { yoloResultsService } from '../../services/yoloResultsService';
 import { backendSpatialQueryService } from '../../services/backendSpatialQuery';
 import './TexasMap.css';
 
@@ -100,6 +101,7 @@ const TexasMap = () => {
   const [gridData, setGridData] = useState(null);
   const [isGridVisible, setIsGridVisible] = useState(true);
   const [gridStats, setGridStats] = useState(null);
+  const [yoloStats, setYoloStats] = useState(null);
   const [queryResults, setQueryResults] = useState(null);
   const [showQueryResults, setShowQueryResults] = useState(false);
   const [isQuerying, setIsQuerying] = useState(false);
@@ -150,6 +152,16 @@ const TexasMap = () => {
         setGridStats(stats);
         
         console.log('📊 Grid statistics:', stats);
+        
+        // Also load YOLO results for statistics
+        try {
+          await yoloResultsService.loadYoloResults();
+          const yoloStatistics = yoloResultsService.getStats();
+          setYoloStats(yoloStatistics);
+          console.log('✅ YOLO statistics loaded successfully');
+        } catch (error) {
+          console.warn('⚠️ Could not load YOLO statistics:', error);
+        }
       } catch (error) {
         console.error('❌ Failed to load grid data:', error);
       }
@@ -347,6 +359,55 @@ const TexasMap = () => {
                   {gridStats.cellSize.widthKm.toFixed(2)} × {gridStats.cellSize.heightKm.toFixed(2)} km
                 </span>
               </div>
+              
+              {/* YOLO Classification Statistics */}
+              {yoloStats && (
+                <div className="yolo-stats" style={{
+                  marginTop: '8px',
+                  padding: '8px',
+                  background: '#f0f9ff',
+                  borderRadius: '6px',
+                  border: '1px solid #bae6fd'
+                }}>
+                  <div style={{ 
+                    fontSize: '11px', 
+                    fontWeight: '600', 
+                    color: '#0369a1', 
+                    marginBottom: '4px' 
+                  }}>
+                    🤖 YOLO Classification Results:
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#0369a1' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2px' }}>
+                      <span style={{ marginRight: '4px' }}>🌱</span>
+                      <span style={{ flex: 1 }}>Cultivable:</span>
+                      <span style={{ fontWeight: '600' }}>
+                        {yoloStats.cultivable.toLocaleString()} ({yoloStats.cultivablePercentage.toFixed(1)}%)
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                      <span style={{ marginRight: '4px' }}>🖤</span>
+                      <span style={{ flex: 1 }}>Non-cultivable:</span>
+                      <span style={{ fontWeight: '600' }}>
+                        {yoloStats.nonCultivable.toLocaleString()} ({yoloStats.nonCultivablePercentage.toFixed(1)}%)
+                      </span>
+                                         </div>
+                   </div>
+                   
+                   {/* Interaction Legend */}
+                   <div style={{
+                     marginTop: '6px',
+                     padding: '4px 6px',
+                     background: '#fefce8',
+                     borderRadius: '4px',
+                     border: '1px solid #fde047',
+                     fontSize: '9px',
+                     color: '#854d0e'
+                   }}>
+                     💡 <strong>Interaction:</strong> 🌱 Green grids are clickable, 🖤 Black grids are non-interactive
+                   </div>
+                 </div>
+               )}
             </div>
           </div>
         )}

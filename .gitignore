@@ -4,6 +4,12 @@ backend/backend.log
 frontend/node_modules
 frontend/public/Texas_Geojsons
 frontend/public/Texas_geotiffs
+backend/runs
+backend/myenv
+backend/testing
+backend/Texas_satellite_images/
+backend/Texas_satellite_images/*
+backend/Texas_satellite_images/**/*
 backend/rag_texas_knowledge_base_detailed
 backend/.env
 backend/gen_10_year_plan_rag/kb_chunks.jsonl
