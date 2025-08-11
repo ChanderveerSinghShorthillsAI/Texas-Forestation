@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { GeoJSON, useMap, useMapEvents } from 'react-leaflet';
+import { yoloResultsService } from '../../services/yoloResultsService';
 
 /**
- * Component for rendering Texas grid cells with performance optimizations
+ * Component for rendering Texas grid cells with performance optimizations and YOLO-based coloring
  */
 const GridLayer = ({ gridData, isVisible = true }) => {
   const map = useMap();
@@ -10,6 +11,8 @@ const GridLayer = ({ gridData, isVisible = true }) => {
   const renderStartTimeRef = useRef(null);
   const [currentZoom, setCurrentZoom] = useState(map.getZoom());
   const [mapBounds, setMapBounds] = useState(map.getBounds());
+  const [yoloResults, setYoloResults] = useState(null);
+  const [yoloLoading, setYoloLoading] = useState(false);
 
   // Performance thresholds
   const PERFORMANCE_CONFIG = {
@@ -28,6 +31,32 @@ const GridLayer = ({ gridData, isVisible = true }) => {
       setMapBounds(map.getBounds());
     }
   });
+
+  // Load YOLO results on component mount
+  useEffect(() => {
+    const loadYoloData = async () => {
+      if (yoloResults || yoloLoading) return;
+      
+      setYoloLoading(true);
+      try {
+        console.log('🔄 Loading YOLO results for grid coloring...');
+        const results = await yoloResultsService.loadYoloResults();
+        setYoloResults(results);
+        
+        const stats = yoloResultsService.getStats();
+        if (stats) {
+          console.log(`🎨 Grid coloring enabled: ${stats.cultivable.toLocaleString()} cultivable (green), ${stats.nonCultivable.toLocaleString()} non-cultivable (black)`);
+        }
+      } catch (error) {
+        console.error('❌ Failed to load YOLO results for grid coloring:', error);
+        // Continue without YOLO results - grids will show in default color
+      } finally {
+        setYoloLoading(false);
+      }
+    };
+
+    loadYoloData();
+  }, []);
 
   // Optimized grid data based on zoom level and viewport
   const optimizedGridData = useMemo(() => {
@@ -160,20 +189,50 @@ const GridLayer = ({ gridData, isVisible = true }) => {
   }
 
   /**
-   * Optimized style function for grid cells
+   * Optimized style function for grid cells with YOLO-based coloring
    */
   const getGridCellStyle = (feature) => {
-    // Adjust style based on zoom level for performance - with more visible styling
+    // Adjust style based on zoom level for performance
     const weight = currentZoom >= 12 ? 2 : 1.5;
     const opacity = currentZoom >= 10 ? 0.8 : 0.7;
     
+    // Get grid index from feature properties
+    const gridIndex = feature.properties.index;
+    
+    // Determine colors based on YOLO results
+    let fillColor = 'transparent';
+    let fillOpacity = 0;
+    let borderColor = '#1e40af'; // Default blue border
+    
+    if (yoloResults && gridIndex !== undefined) {
+      const cultivability = yoloResultsService.getCultivability(gridIndex);
+      
+      if (cultivability === 1) {
+        // Cultivable - Green
+        fillColor = '#22c55e';  // Green-500
+        fillOpacity = 0.6;
+        borderColor = '#16a34a'; // Green-600
+      } else if (cultivability === 0) {
+        // Non-cultivable - Black/Dark
+        fillColor = '#1f2937';   // Gray-800 (dark)
+        fillOpacity = 0.7;
+        borderColor = '#374151'; // Gray-700
+      }
+      // If no YOLO data for this grid, keep transparent (default)
+    }
+    
+    // Disable interactions for non-cultivable (black) grids
+    const isNonCultivable = yoloResults && gridIndex !== undefined && yoloResultsService.getCultivability(gridIndex) === 0;
+    const isInteractive = currentZoom >= 10 && !isNonCultivable; // Disable interaction for black grids
+    
     return {
-      color: '#1e40af',           // Darker blue for better visibility
+      color: borderColor,
       weight: weight,
       opacity: opacity,
-      fillColor: 'transparent',
-      fillOpacity: 0,
-      interactive: currentZoom >= 10 // Only interactive at higher zoom levels
+      fillColor: fillColor,
+      fillOpacity: fillOpacity,
+      interactive: isInteractive,
+      className: isNonCultivable ? 'non-cultivable-grid' : '' // Add CSS class for styling
     };
   };
 
@@ -186,10 +245,54 @@ const GridLayer = ({ gridData, isVisible = true }) => {
       return;
     }
 
+    // Skip interactions for non-cultivable (black) grids
+    const gridIndex = feature.properties.index;
+    const isNonCultivable = yoloResults && gridIndex !== undefined && yoloResultsService.getCultivability(gridIndex) === 0;
+    
+    if (isNonCultivable) {
+      // Add a visual indicator that this grid is non-interactive
+      layer.setStyle({
+        ...layer.options,
+        cursor: 'not-allowed'
+      });
+      
+      // Optional: Log non-interactive grids (uncomment for debugging)
+      // console.log(`🖤 Grid ${gridIndex} is non-cultivable - interactions disabled`);
+      
+      return; // Skip adding any event handlers
+    }
+
     let clickCoords = null;
 
     layer.on('click', (e) => {
       clickCoords = e.latlng;
+      
+      // Get YOLO classification data for this grid (gridIndex already defined above)
+      const yoloData = yoloResultsService.getResultData(gridIndex);
+      
+      let classificationInfo = '';
+      if (yoloData) {
+        const cultivableIcon = yoloData.cultivable === 1 ? '🌱' : '🖤';
+        const cultivableText = yoloData.cultivable === 1 ? 'Cultivable' : 'Non-cultivable';
+        const confidencePercent = (yoloData.confidence * 100).toFixed(1);
+        
+        classificationInfo = `
+          <div style="margin-bottom: 8px; padding: 8px; background: ${yoloData.cultivable === 1 ? '#f0fdf4' : '#f9fafb'}; border-radius: 6px; border: 1px solid ${yoloData.cultivable === 1 ? '#bbf7d0' : '#e5e7eb'};">
+            <div style="color: #374151; font-weight: 600; font-size: 12px; margin-bottom: 4px;">${cultivableIcon} YOLO Classification:</div>
+            <div style="font-size: 11px; color: #1f2937;">
+              <div><strong>Type:</strong> ${cultivableText}</div>
+              <div><strong>Confidence:</strong> ${confidencePercent}%</div>
+              <div><strong>Class:</strong> ${yoloData.predictedClass}</div>
+            </div>
+          </div>
+        `;
+      } else {
+        classificationInfo = `
+          <div style="margin-bottom: 8px; padding: 8px; background: #fef3c7; border-radius: 6px; border: 1px solid #fde68a;">
+            <div style="color: #92400e; font-size: 11px;">⚠️ No YOLO classification data available</div>
+          </div>
+        `;
+      }
       
       const popupContent = `
         <div style="font-family: 'Segoe UI', sans-serif; min-width: 200px;">
@@ -197,6 +300,8 @@ const GridLayer = ({ gridData, isVisible = true }) => {
             <strong style="color: #1f2937; font-size: 14px;">Grid Cell ${feature.properties.index}</strong><br/>
             <small style="color: #6b7280;">ID: ${feature.properties.grid_id}</small>
           </div>
+          
+          ${classificationInfo}
           
           <div style="margin-bottom: 8px;">
             <div style="color: #374151; font-weight: 600; font-size: 12px; margin-bottom: 4px;">📍 Click Location:</div>
@@ -237,15 +342,17 @@ const GridLayer = ({ gridData, isVisible = true }) => {
       className: 'grid-popup'
     });
 
-    // Simplified hover effects for performance
+    // Simplified hover effects for performance with YOLO coloring preservation
+    // Note: Hover effects are only added for interactive (non-black) grids
     layer.on({
       mouseover: (e) => {
         if (currentZoom >= 10) {
+          const currentStyle = getGridCellStyle(feature);
           e.target.setStyle({
             weight: 3,
             opacity: 1,
-            fillColor: '#1e40af',
-            fillOpacity: 0.15
+            fillColor: currentStyle.fillColor === 'transparent' ? '#1e40af' : currentStyle.fillColor,
+            fillOpacity: currentStyle.fillOpacity === 0 ? 0.15 : Math.min(currentStyle.fillOpacity + 0.2, 1)
           });
         }
       },
