@@ -4,6 +4,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
 import os
+import sys
+import argparse
 from pathlib import Path
 import logging
 from contextlib import asynccontextmanager
@@ -18,14 +20,31 @@ logger = logging.getLogger(__name__)
 # Global spatial service instance
 spatial_service = None
 
+def parse_arguments():
+    """Parse command line arguments"""
+    parser = argparse.ArgumentParser(description='Texas Spatial Query API Server')
+    parser.add_argument('--rebuild-db', action='store_true', 
+                       help='Force rebuild of spatial database')
+    parser.add_argument('--port', type=int, default=8000,
+                       help='Port to run the server on (default: 8000)')
+    return parser.parse_args()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
     global spatial_service
     
+    # Parse command line arguments
+    args = parse_arguments()
+    
     # Startup
     logger.info("🚀 Starting FastAPI Spatial Query Service")
     spatial_service = SpatialQueryService()
+    
+    # Force rebuild if requested
+    if args.rebuild_db:
+        logger.info("🔄 Forcing database rebuild...")
+        spatial_service.force_rebuild = True
     
     # Load GeoJSON data into spatial database
     geojson_dir = Path("../frontend/public/Texas_Geojsons")
@@ -158,10 +177,11 @@ async def get_layer_stats(layer_id: str):
 
 if __name__ == "__main__":
     import uvicorn
+    args = parse_arguments()
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=args.port,
         reload=True,
         log_level="info"
     ) 

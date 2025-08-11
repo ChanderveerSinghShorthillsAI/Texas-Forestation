@@ -10,3 +10,7 @@ backend/testing
 backend/Texas_satellite_images/
 backend/Texas_satellite_images/*
 backend/Texas_satellite_images/**/*
+backend/rag_texas_knowledge_base_detailed
+backend/.env
+backend/gen_10_year_plan_rag/kb_chunks.jsonl
+backend/spatial_data.db
