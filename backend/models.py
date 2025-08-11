@@ -7,7 +7,7 @@ class SpatialQueryRequest(BaseModel):
     longitude: float = Field(..., description="Longitude of the query point", ge=-180, le=180)
     latitude: float = Field(..., description="Latitude of the query point", ge=-90, le=90)
     max_distance_km: float = Field(100, description="Maximum distance in kilometers for nearest point search", gt=0, le=200)
-    max_nearest_points: int = Field(10, description="Maximum number of nearest points to return", gt=0, le=100)
+    max_nearest_points: int = Field(10, description="Maximum number of nearest points to return", gt=0, le=1000)
 
 class FeatureProperties(BaseModel):
     """Properties of a GeoJSON feature"""

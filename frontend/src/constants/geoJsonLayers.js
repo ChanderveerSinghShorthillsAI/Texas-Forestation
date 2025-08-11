@@ -96,7 +96,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'cities',
     name: 'Major Cities',
-    file: 'cities.geojson',
+    file: 'Texas_cities.geojson',
     category: LAYER_CATEGORIES.ADMINISTRATION,
     type: 'point',
     color: '#ffffff',
@@ -632,7 +632,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'schools-2012',
     name: 'Schools (2012)',
-    file: 'schools_2012.geojson',
+    file: 'Texas_schools_2012.geojson',
     category: LAYER_CATEGORIES.EDUCATION,
     type: 'point',
     color: '#7c2d12',
@@ -643,7 +643,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'school-districts',
     name: 'School Districts',
-    file: 'schooldistricts_2012_2013.geojson',
+    file: 'Texas_schooldistricts_2012_2013.geojson',
     category: LAYER_CATEGORIES.EDUCATION,
     type: 'polygon',
     color: '#7c2d12',
@@ -655,7 +655,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'tea-regions',
     name: 'TEA Regions (2007)',
-    file: 'tea_regions_2007.geojson',
+    file: 'Texas_tea_regions_2007.geojson',
     category: LAYER_CATEGORIES.EDUCATION,
     type: 'polygon',
     color: '#7c2d12',
@@ -669,7 +669,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'state-parks-points',
     name: 'State Parks (Points)',
-    file: 'state_parks_points.geojson',
+    file: 'Texas_state_parks_points.geojson',
     category: LAYER_CATEGORIES.RECREATION,
     type: 'point',
     color: '#15803d',
@@ -680,7 +680,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'state-parks-polygon',
     name: 'State Parks (Areas)',
-    file: 'state_parks_polygon.geojson',
+    file: 'Texas_state_parks_polygon.geojson',
     category: LAYER_CATEGORIES.RECREATION,
     type: 'polygon',
     color: '#15803d',
@@ -839,7 +839,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'tracts-2010',
     name: 'Tracts (2010)',
-    file: 'tracts_2010.geojson',
+    file: 'Texas_tracts_2010.geojson',
     category: LAYER_CATEGORIES.DEMOGRAPHICS,
     type: 'polygon',
     color: '#7c3aed',

@@ -70,8 +70,8 @@ class BackendSpatialQueryService {
         body: JSON.stringify({
           longitude: longitude,
           latitude: latitude,
-          max_distance_km: 50,
-          max_nearest_points: 20
+          max_distance_km: 10,
+          max_nearest_points: 1000
         })
       });
 

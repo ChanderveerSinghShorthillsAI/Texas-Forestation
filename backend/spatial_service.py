@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime
 import logging
+import hashlib
+import os
 
 from shapely.geometry import Point, Polygon, MultiPolygon, shape
 from shapely.ops import nearest_points
@@ -26,9 +28,10 @@ class SpatialQueryService:
     """High-performance spatial query service using SQLite with spatial functions"""
     
     def __init__(self):
-        self.db_path = ":memory:"  # In-memory database for speed
+        self.db_path = "spatial_data.db"  # Persistent database file
         self.conn = None
         self.layer_metadata = {}
+        self.force_rebuild = False  # Flag to force database rebuild
         
     async def initialize_spatial_data(self, geojson_dir: Path):
         """Initialize spatial database with GeoJSON data"""
@@ -45,6 +48,18 @@ class SpatialQueryService:
         except Exception:
             logger.warning("⚠️ SpatiaLite not available, using custom spatial functions")
         
+        # Check if database already has data and is up to date (unless force rebuild)
+        if not self.force_rebuild and await self._is_database_current(geojson_dir):
+            logger.info("✅ Database is current, skipping data reload")
+            await self._load_layer_metadata()
+            return
+        
+        logger.info("🔄 Database needs updating, loading fresh data...")
+        
+        # Clear existing data if rebuilding
+        if self.force_rebuild:
+            await self._clear_database()
+        
         # Create tables
         await self._create_tables()
         
@@ -54,11 +69,14 @@ class SpatialQueryService:
         # Create spatial indexes
         await self._create_spatial_indexes()
         
+        # Store database checksum for future comparisons
+        await self._store_database_checksum(geojson_dir)
+        
         logger.info("✅ Spatial database initialization complete")
     
     async def _create_tables(self):
         """Create database tables for spatial data"""
-        cursor = self.conn.cursor()
+        cursor = self.conn.cursor() # it is a cursor object that allows us to execute SQL commands on the database 
         
         # Polygon features table
         cursor.execute("""
@@ -127,9 +145,9 @@ class SpatialQueryService:
             return
         
         features = data['features']
-        layer_id = geojson_file.stem.lower().replace('texas_', '').replace('_', '-')
-        layer_name = geojson_file.stem.replace('_', ' ').replace('Texas ', '').title()
-        
+        layer_id = geojson_file.stem.lower().replace('texas_', '').replace('_', '-') # it is a unique identifier for the layer , it is the name of the file without the extension , eg texas_parks.geojson -> parks
+        layer_name = geojson_file.stem.replace('_', ' ').replace('Texas ', '').title() # it is the name of the layer , eg texas_parks.geojson -> Parks
+        print(f"layer_id: {layer_id}, layer_name: {layer_name}") # debug print
         cursor = self.conn.cursor()
         
         polygon_count = 0
@@ -147,7 +165,7 @@ class SpatialQueryService:
                 
                 if geom_type in ['Polygon', 'MultiPolygon']:
                     # Convert to Shapely geometry
-                    geom = shape(geometry)
+                    geom = shape(geometry) # it is a shapely geometry object that represents the geometry of the feature 
                     bounds = geom.bounds  # (min_lon, min_lat, max_lon, max_lat)
                     
                     cursor.execute("""
@@ -221,24 +239,24 @@ class SpatialQueryService:
         layer_type = 'polygon' if polygon_count > point_count else 'point'
         
         # Calculate bounds
-        if polygon_count > 0:
+        if polygon_count > 0: # if there are any polygons in the layer , we need to calculate the bounds of the layer 
             cursor.execute("""
                 SELECT MIN(min_lon), MIN(min_lat), MAX(max_lon), MAX(max_lat)
                 FROM polygon_features WHERE layer_id = ?
             """, (layer_id,))
-            bounds_result = cursor.fetchone()
+            bounds_result = cursor.fetchone() # it is a tuple that contains the bounds of the layer 
             bounds = {
                 'min_lon': bounds_result[0],
                 'min_lat': bounds_result[1], 
                 'max_lon': bounds_result[2],
                 'max_lat': bounds_result[3]
             }
-        elif point_count > 0:
+        elif point_count > 0: # if there are any points in the layer , we need to calculate the bounds of the layer 
             cursor.execute("""
                 SELECT MIN(longitude), MIN(latitude), MAX(longitude), MAX(latitude)
                 FROM point_features WHERE layer_id = ?
             """, (layer_id,))
-            bounds_result = cursor.fetchone()
+            bounds_result = cursor.fetchone() # it is a tuple that contains the bounds of the layer 
             bounds = {
                 'min_lon': bounds_result[0],
                 'min_lat': bounds_result[1],
@@ -279,6 +297,105 @@ class SpatialQueryService:
         
         self.conn.commit()
         logger.info("✅ Spatial indexes created")
+    
+    async def _is_database_current(self, geojson_dir: Path) -> bool:
+        """Check if database exists and is current with GeoJSON files"""
+        if not os.path.exists(self.db_path):
+            return False
+        
+        try:
+            cursor = self.conn.cursor()
+            
+            # Check if tables exist
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='layer_metadata'")
+            if not cursor.fetchone():
+                return False
+            
+            # Check if we have any data
+            cursor.execute("SELECT COUNT(*) FROM layer_metadata")
+            if cursor.fetchone()[0] == 0:
+                return False
+            
+            # Check if checksum table exists and matches current files
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='database_checksum'")
+            if not cursor.fetchone():
+                return False
+            
+            # Get stored checksum
+            cursor.execute("SELECT checksum FROM database_checksum LIMIT 1")
+            stored_checksum = cursor.fetchone()
+            if not stored_checksum:
+                return False
+            
+            # Calculate current checksum
+            current_checksum = await self._calculate_directory_checksum(geojson_dir)
+            
+            return stored_checksum[0] == current_checksum
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Error checking database currency: {e}")
+            return False
+    
+    async def _calculate_directory_checksum(self, geojson_dir: Path) -> str:
+        """Calculate checksum of all GeoJSON files in directory"""
+        hash_md5 = hashlib.md5()
+        
+        geojson_files = sorted(geojson_dir.glob("*.geojson"))
+        for geojson_file in geojson_files:
+            # Include filename and modification time in checksum
+            file_info = f"{geojson_file.name}:{geojson_file.stat().st_mtime}:{geojson_file.stat().st_size}"
+            hash_md5.update(file_info.encode())
+        
+        return hash_md5.hexdigest()
+    
+    async def _store_database_checksum(self, geojson_dir: Path):
+        """Store current directory checksum in database"""
+        cursor = self.conn.cursor()
+        
+        # Create checksum table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS database_checksum (
+                id INTEGER PRIMARY KEY,
+                checksum TEXT,
+                created_at TEXT
+            )
+        """)
+        
+        # Clear old checksums and store new one
+        checksum = await self._calculate_directory_checksum(geojson_dir)
+        cursor.execute("DELETE FROM database_checksum")
+        cursor.execute("""
+            INSERT INTO database_checksum (checksum, created_at)
+            VALUES (?, ?)
+        """, (checksum, datetime.now().isoformat()))
+        
+        self.conn.commit()
+    
+    async def _load_layer_metadata(self):
+        """Load layer metadata from existing database"""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT layer_id, layer_name FROM layer_metadata")
+        
+        for layer_id, layer_name in cursor.fetchall():
+            self.layer_metadata[layer_id] = layer_name
+        
+        logger.info(f"📋 Loaded metadata for {len(self.layer_metadata)} layers")
+    
+    async def _clear_database(self):
+        """Clear all existing data from database"""
+        cursor = self.conn.cursor()
+        
+        # Get all table names
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        tables = cursor.fetchall()
+        
+        # Drop all tables
+        for table in tables:
+            if table[0] != 'sqlite_sequence':  # Don't drop SQLite system table
+                cursor.execute(f"DROP TABLE IF EXISTS {table[0]}")
+        
+        self.conn.commit()
+        logger.info("🗑️ Cleared existing database tables")
     
     def _clean_properties(self, properties: Dict[str, Any]) -> Dict[str, Any]:
         """Clean feature properties by removing technical fields"""
