@@ -1,5 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi import Request
+from fastapi import Response
+import asyncio
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -12,6 +16,7 @@ from contextlib import asynccontextmanager
 
 from spatial_service import SpatialQueryService
 from models import SpatialQueryRequest, SpatialQueryResponse
+from plantation_plan_service import plantation_service
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +24,32 @@ logger = logging.getLogger(__name__)
 
 # Global spatial service instance
 spatial_service = None
+
+# Pydantic models for plantation plan API
+class PlantationPlanRequest(BaseModel):
+    spatial_data: Dict[str, Any]
+    additional_context: Optional[str] = None
+    request_id: Optional[str] = None
+
+class PlantationPlanResponse(BaseModel):
+    plan_id: str
+    title: str
+    content: str
+    pdf_url: Optional[str] = None
+    preview_url: Optional[str] = None
+    coordinates: Dict[str, Any]
+    generated_at: str
+    status: str
+
+class PlantationPlanPreview(BaseModel):
+    plan_id: str
+    title: str
+    content: str
+    coordinates: Dict[str, Any]
+    generated_at: str
+    status: str
+    spatial_data_summary: Dict[str, Any]
+    knowledge_chunks_used: int
 
 def parse_arguments():
     """Parse command line arguments"""
@@ -41,6 +72,10 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 Starting FastAPI Spatial Query Service")
     spatial_service = SpatialQueryService()
     
+    # Initialize plantation service
+    logger.info("🌱 Initializing Plantation Plan Service")
+    await plantation_service.initialize()
+    
     # Force rebuild if requested
     if args.rebuild_db:
         logger.info("🔄 Forcing database rebuild...")
@@ -57,13 +92,14 @@ async def lifespan(app: FastAPI):
     yield
     
     # Shutdown
-    logger.info("🛑 Shutting down spatial service")
+    logger.info("🛑 Shutting down services")
     await spatial_service.cleanup()
+    await plantation_service.cleanup()
 
 # Create FastAPI app
 app = FastAPI(
-    title="Texas Spatial Query API",
-    description="High-performance spatial queries for Texas GeoJSON data",
+    title="Texas Spatial Query & Plantation Planning API",
+    description="High-performance spatial queries and AI-powered plantation planning for Texas",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -81,10 +117,12 @@ app.add_middleware(
 async def root():
     """Health check endpoint"""
     return {
-        "message": "Texas Spatial Query API",
+        "message": "Texas Spatial Query & Plantation Planning API",
         "status": "running",
         "endpoints": {
             "spatial_query": "/api/spatial-query",
+            "generate_plan": "/api/generate-plantation-plan",
+            "download_plan": "/api/download-plan/{plan_id}",
             "layers": "/api/layers",
             "health": "/api/health"
         }
@@ -99,9 +137,12 @@ async def health_check():
         raise HTTPException(status_code=503, detail="Spatial service not initialized")
     
     stats = await spatial_service.get_stats()
+    plantation_status = "ready" if plantation_service.is_initialized else "initializing"
+    
     return {
         "status": "healthy",
         "spatial_service": "ready",
+        "plantation_service": plantation_status,
         "database_layers": stats.get("total_layers", 0),
         "total_features": stats.get("total_features", 0),
         "indexed_layers": stats.get("indexed_layers", 0)
@@ -136,6 +177,145 @@ async def spatial_query(request: SpatialQueryRequest):
     except Exception as e:
         logger.error(f"❌ Spatial query failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Spatial query failed: {str(e)}")
+
+@app.post("/api/generate-plantation-plan", response_model=PlantationPlanResponse)
+async def generate_plantation_plan(request: PlantationPlanRequest, http_request: Request):
+    """
+    Generate a comprehensive 10-year plantation plan based on spatial data
+    """
+    try:
+        logger.info("🌱 Starting plantation plan generation request")
+        
+        if not plantation_service.is_initialized:
+            raise HTTPException(status_code=503, detail="Plantation service not initialized")
+        
+        # Generate the plan
+        plan_data = await plantation_service.generate_plantation_plan(
+            request.spatial_data,
+            request_id=request.request_id,
+            http_request=http_request,
+        )
+        
+        # Store plan data for preview (PDF generation will be on-demand)
+        logger.info("💾 Storing plan data for preview...")
+        await plantation_service.store_plan_for_preview(plan_data)
+        
+        # Create response
+        response = PlantationPlanResponse(
+            plan_id=plan_data['id'],
+            title=plan_data['title'],
+            content=plan_data['content'],
+            pdf_url=f"/api/download-plan/{plan_data['id']}",
+            preview_url=f"/api/preview-plan/{plan_data['id']}",
+            coordinates=plan_data['coordinates'],
+            generated_at=plan_data['generated_at'],
+            status=plan_data['status']
+        )
+        
+        logger.info(f"✅ Plantation plan generated successfully: {plan_data['id']}")
+        return response
+    except asyncio.CancelledError:
+        # Client cancelled or disconnected; return 499 Client Closed Request
+        logger.info("🛑 Request cancelled by client; stopping plan generation")
+        # Starlette/FastAPI does not have a built-in 499; use Response directly
+        return Response(status_code=499)
+    except Exception as e:
+        logger.error(f"❌ Plantation plan generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Plan generation failed: {str(e)}")
+
+@app.get("/api/preview-plan/{plan_id}", response_model=PlantationPlanPreview)
+async def preview_plantation_plan(plan_id: str):
+    """
+    Get plan preview data for display before download
+    """
+    try:
+        plan_data = await plantation_service.get_stored_plan(plan_id)
+        if not plan_data:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        
+        # Create spatial data summary
+        spatial_data = plan_data.get('spatial_data', {})
+        spatial_summary = {}
+        
+        # Count coverage layers
+        polygons = spatial_data.get('polygonData') or spatial_data.get('polygon_matches') or []
+        spatial_summary['coverage_layers'] = len(polygons)
+        
+        # Count nearby features
+        nearest = spatial_data.get('nearestPoints') or spatial_data.get('nearest_points') or []
+        spatial_summary['nearby_features'] = len(nearest)
+        
+        # Extract location info
+        coords = spatial_data.get('clickCoordinates') or spatial_data.get('click_coordinates') or {}
+        spatial_summary['location'] = coords.get('formatted', 'Unknown location')
+        
+        preview = PlantationPlanPreview(
+            plan_id=plan_data['id'],
+            title=plan_data['title'],
+            content=plan_data['content'],
+            coordinates=plan_data['coordinates'],
+            generated_at=plan_data['generated_at'],
+            status=plan_data['status'],
+            spatial_data_summary=spatial_summary,
+            knowledge_chunks_used=plan_data['knowledge_chunks_used']
+        )
+        
+        return preview
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to get plan preview: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Preview failed: {str(e)}")
+
+@app.post("/api/cancel-plantation-plan/{request_id}")
+async def cancel_plantation_plan(request_id: str):
+    """Signal server-side cancellation for an in-flight plan generation."""
+    try:
+        if not request_id:
+            raise HTTPException(status_code=400, detail="request_id is required")
+        cancelled = await plantation_service.cancel_job(request_id)
+        return {"success": cancelled, "request_id": request_id}
+    except Exception as e:
+        logger.error(f"❌ Failed to cancel plan: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Cancel failed: {str(e)}")
+
+@app.get("/api/download-plan/{plan_id}")
+async def download_plantation_plan(plan_id: str):
+    """
+    Generate and download the plantation plan PDF
+    """
+    try:
+        # Get stored plan data
+        plan_data = await plantation_service.get_stored_plan(plan_id)
+        if not plan_data:
+            raise HTTPException(status_code=404, detail="Plan not found")
+        
+        # Generate PDF on-demand
+        logger.info("📄 Generating PDF document on-demand...")
+        pdf_path = await plantation_service.generate_pdf_plan(plan_data)
+        
+        # Extract timestamp from plan_id for filename
+        timestamp = plan_id.split('_')[-1] if '_' in plan_id else plan_id
+        pdf_filename = f"texas_plantation_plan_{timestamp}.pdf"
+        pdf_path = Path("generated_plans") / pdf_filename
+         
+        if not pdf_path.exists():
+            raise HTTPException(status_code=404, detail="PDF generation failed")
+         
+        return FileResponse(
+            path=str(pdf_path),
+            filename=pdf_filename,
+            media_type="application/pdf"
+        )
+         
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Plan file not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to download plan: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Download failed: {str(e)}")
 
 @app.get("/api/layers")
 async def get_layers():

@@ -7,7 +7,7 @@ import GeoJsonLayer from './GeoJsonLayer';
 import GridLayer from './GridLayer';
 import LayerSelector from '../UI/LayerSelector';
 import SpatialQueryResults from '../UI/SpatialQueryResults';
-import SpatialQueryProgress from '../UI/SpatialQueryProgress';
+
 import { useMapLayers } from '../../hooks/useMapLayers';
 import { TEXAS_BOUNDS, GEOJSON_LAYERS } from '../../constants/geoJsonLayers';
 import { gridService } from '../../services/gridService';
@@ -453,13 +453,27 @@ const TexasMap = () => {
         <p>Data sources: Texas state government & Esri satellite imagery</p>
       </div>
 
-      {/* Spatial Query Progress */}
-      <SpatialQueryProgress
-        isVisible={isQuerying}
-        progress={queryProgress}
-        onAbort={handleAbortQuery}
-        currentQuery={currentQueryId}
-      />
+      {/* Loading Indicator */}
+      {isQuerying && (
+        <div className="spatial-query-loading">
+          <div className="loading-content">
+            <div className="loading-spinner"></div>
+            <div className="loading-text">
+              <div className="loading-title">Loading Location Data...</div>
+              <div className="loading-subtitle">
+                {queryProgress ? queryProgress.processed : 0} of {queryProgress ? queryProgress.total : 0} layers processed
+              </div>
+            </div>
+            <button 
+              className="abort-button"
+              onClick={handleAbortQuery}
+              title="Cancel query"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Spatial Query Results Modal */}
       <SpatialQueryResults

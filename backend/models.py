@@ -56,3 +56,57 @@ class LayerStats(BaseModel):
     geometry_types: List[str]
     bounds: Optional[Dict[str, float]]  # min_lon, min_lat, max_lon, max_lat
     properties_sample: Optional[Dict[str, Any]] 
+
+# === NEW MODELS FOR PLANTATION PLAN GENERATION ===
+
+class PlanGenerationRequest(BaseModel):
+    """Request model for generating plantation plans"""
+    longitude: float = Field(..., description="Longitude of the location", ge=-180, le=180)
+    latitude: float = Field(..., description="Latitude of the location", ge=-90, le=90)
+    include_pdf: bool = Field(True, description="Whether to generate PDF along with plan data")
+    plan_focus: Optional[str] = Field(None, description="Optional focus: 'agriculture', 'forestry', or 'mixed'")
+
+class PlanGenerationSummary(BaseModel):
+    """Summary of plan generation process"""
+    knowledge_sources_used: int
+    spatial_regions_analyzed: int
+    nearby_features_considered: int
+    estimated_plan_length: int
+    plan_focus: str
+
+class ImplementationReadiness(BaseModel):
+    """Implementation readiness assessment"""
+    total_score: int
+    max_score: int
+    percentage: float
+    readiness_level: str
+    factor_scores: Dict[str, int]
+    recommendations: List[str]
+
+class PlanUISummary(BaseModel):
+    """Summary for UI display"""
+    title: str
+    location_summary: str
+    plan_type: str
+    estimated_pages: int
+    readiness_score: float
+    key_highlights: List[str]
+    generated_at: str
+    plan_id: str
+
+class PlanGenerationResponse(BaseModel):
+    """Response model for plan generation"""
+    success: bool
+    plan_data: Optional[Dict[str, Any]] = None
+    pdf_path: Optional[str] = None
+    error: Optional[str] = None
+    generation_summary: Optional[PlanGenerationSummary] = None
+    ui_summary: Optional[PlanUISummary] = None
+    implementation_readiness: Optional[ImplementationReadiness] = None
+
+class PlanStatusResponse(BaseModel):
+    """Response model for plan status check"""
+    plan_id: str
+    status: str  # 'pending', 'processing', 'completed', 'failed'
+    estimated_completion: Optional[datetime] = None
+    progress_percentage: Optional[int] = None 

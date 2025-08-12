@@ -1,0 +1,605 @@
+/* Plantation Plan Generator Styles */
+
+.plantation-plan-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.plantation-plan-modal {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 800px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideInUp 0.4s ease-out;
+  overflow: hidden;
+}
+
+/* Header */
+.plan-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border-radius: 16px 16px 0 0;
+}
+
+.plan-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.plan-header .close-button {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 20px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.plan-header .close-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.05);
+}
+
+/* Content */
+.plan-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+  max-height: calc(90vh - 200px);
+}
+
+/* Location Summary */
+.location-summary {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.location-summary h3 {
+  margin: 0 0 16px 0;
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-item .label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-item .value {
+  font-size: 16px;
+  font-weight: 500;
+  color: #1e293b;
+}
+
+.value.quality-excellent {
+  color: #059669;
+  font-weight: 600;
+}
+
+.value.quality-good {
+  color: #0891b2;
+  font-weight: 600;
+}
+
+.value.quality-fair {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.value.quality-basic {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+/* Validation Section */
+.validation-section {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.warnings {
+  margin-bottom: 16px;
+}
+
+.warnings h4,
+.recommendations h4 {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.warnings ul,
+.recommendations ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #92400e;
+}
+
+.warnings li,
+.recommendations li {
+  margin-bottom: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+/* Plan Features */
+.plan-features {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.plan-features h3 {
+  margin: 0 0 20px 0;
+  color: #1e293b;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.feature-item:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+}
+
+.feature-item .icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.feature-item span:last-child {
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  line-height: 1.4;
+}
+
+/* Progress Section */
+.progress-section {
+  background: #eff6ff;
+  border: 1px solid #3b82f6;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  transition: all 0.3s ease;
+}
+
+.progress-section.error {
+  background: #fef2f2;
+  border-color: #ef4444;
+}
+
+.progress-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.progress-icon {
+  font-size: 32px;
+  animation: pulse 2s infinite;
+}
+
+.progress-text {
+  flex: 1;
+}
+
+.progress-stage {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e40af;
+  margin-bottom: 4px;
+}
+
+.progress-section.error .progress-stage {
+  color: #dc2626;
+}
+
+.progress-message {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.progress-bar {
+  height: 4px;
+  background: #e2e8f0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  animation: progressSlide 2s ease-in-out infinite;
+}
+
+/* Error Section */
+.error-section {
+  background: #fef2f2;
+  border: 1px solid #ef4444;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
+.error-section h4 {
+  margin: 0 0 12px 0;
+  color: #dc2626;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.error-section p {
+  margin: 0 0 8px 0;
+  color: #7f1d1d;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.error-suggestion {
+  font-style: italic;
+  color: #991b1b !important;
+}
+
+/* Generated Plan Summary */
+.generated-plan-summary {
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.generated-plan-summary h3 {
+  margin: 0 0 16px 0;
+  color: #064e3b;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.plan-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.plan-detail {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #a7f3d0;
+}
+
+.plan-detail:last-child {
+  border-bottom: none;
+}
+
+.plan-detail .label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #065f46;
+}
+
+.plan-detail .value {
+  font-size: 14px;
+  color: #047857;
+  font-weight: 500;
+}
+
+.plan-detail .value.plan-id {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  background: #d1fae5;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+/* Preview Hint */
+.preview-hint {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #f0f9ff;
+  border: 1px solid #7dd3fc;
+  border-radius: 8px;
+}
+
+.preview-hint p {
+  margin: 0;
+  color: #0c4a6e;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+
+/* Actions */
+.plan-actions {
+  padding: 24px 32px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+}
+
+.completed-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* Buttons */
+.plan-actions button {
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  min-width: 140px;
+  justify-content: center;
+}
+
+.primary {
+  background: linear-gradient(135deg, #2c5530, #4a7c59);
+  color: white;
+}
+
+.primary:hover {
+  background: linear-gradient(135deg, #1e3a22, #3d6b4a);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(44, 85, 48, 0.3);
+}
+
+.secondary {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.secondary:hover {
+  background: #cbd5e1;
+  color: #334155;
+}
+
+.preview-button {
+  background: linear-gradient(135deg, #1e40af, #3b82f6);
+}
+
+.preview-button:hover {
+  background: linear-gradient(135deg, #1e3a8a, #2563eb);
+}
+
+.generate-button:disabled,
+.download-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Progress bar animation */
+@keyframes progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-bar-fill {
+  animation: progress 2s ease-in-out infinite;
+}
+
+/* Disclaimer */
+.plan-disclaimer {
+  padding: 16px 32px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  text-align: center;
+}
+
+.plan-disclaimer p {
+  margin: 0;
+  color: #64748b;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(60px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes progressSlide {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .plantation-plan-overlay {
+    padding: 10px;
+  }
+  
+  .plantation-plan-modal {
+    max-width: 100%;
+    max-height: 95vh;
+  }
+  
+  .plan-header {
+    padding: 20px 24px;
+  }
+  
+  .plan-header h2 {
+    font-size: 20px;
+  }
+  
+  .plan-content {
+    padding: 24px;
+  }
+  
+  .summary-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .plan-actions {
+    padding: 20px 24px;
+    flex-direction: column;
+  }
+  
+  .completed-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .plan-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .close-button-bottom {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .plan-header {
+    padding: 16px 20px;
+  }
+  
+  .plan-header h2 {
+    font-size: 18px;
+  }
+  
+  .plan-content {
+    padding: 20px;
+  }
+  
+  .feature-item {
+    padding: 10px;
+  }
+  
+  .feature-item .icon {
+    font-size: 18px;
+  }
+  
+  .feature-item span:last-child {
+    font-size: 13px;
+  }
+} 

@@ -14,3 +14,5 @@ backend/rag_texas_knowledge_base_detailed
 backend/.env
 backend/gen_10_year_plan_rag/kb_chunks.jsonl
 backend/spatial_data.db
+backend/generated_plans
+backend/rag_sample
