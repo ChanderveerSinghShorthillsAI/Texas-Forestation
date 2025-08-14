@@ -16,3 +16,8 @@ backend/gen_10_year_plan_rag/kb_chunks.jsonl
 backend/spatial_data.db
 backend/generated_plans
 backend/rag_sample
+backend/citizen_chatbot/__pycache__
+backend/citizen_chatbot_sample
+backend/gen_10_year_plan_rag/__pycache__
+backend/login/__pycache__
+backend/texas_chatbot.db

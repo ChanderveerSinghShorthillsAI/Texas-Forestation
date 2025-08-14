@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi import Request
@@ -17,6 +17,14 @@ from contextlib import asynccontextmanager
 from spatial_service import SpatialQueryService
 from models import SpatialQueryRequest, SpatialQueryResponse
 from plantation_plan_service import plantation_service
+
+# Import citizen chatbot components
+from citizen_chatbot.citizen_chatbot_http import router as chatbot_router
+from citizen_chatbot.citizen_chatbot_websocket import handle_websocket_connection
+from citizen_chatbot.citizen_chatbot_service import chat_service
+
+# Import authentication components
+from login import auth_router, user_db_service
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -74,7 +82,40 @@ async def lifespan(app: FastAPI):
     
     # Initialize plantation service
     logger.info("🌱 Initializing Plantation Plan Service")
-    await plantation_service.initialize()
+    try:
+        await plantation_service.initialize()
+        logger.info("✅ Plantation Plan Service initialized successfully")
+    except Exception as e:
+        logger.error(f"⚠️ Plantation Plan Service failed to initialize: {e}")
+        logger.info("🔄 App will continue without plantation planning features")
+    
+    # Initialize citizen chatbot service
+    logger.info("🤖 Initializing Citizen Chatbot Service")
+    await chat_service.initialize()
+    
+    # Initialize authentication database and default user
+    logger.info("🔐 Initializing Authentication Database")
+    try:
+        # Test database connection
+        if user_db_service.health_check():
+            logger.info("✅ User database connection successful")
+            
+            # Check if default user exists, create if not
+            default_user = user_db_service.get_user_by_username("user1234")
+            if not default_user:
+                logger.info("🔧 Creating default user...")
+                default_user = user_db_service.create_user("user1234", "pass123456")
+                if default_user:
+                    logger.info("✅ Default user created successfully")
+                else:
+                    logger.error("❌ Failed to create default user")
+            else:
+                logger.info("✅ Default user already exists in database")
+        else:
+            logger.error("❌ User database health check failed")
+    except Exception as e:
+        logger.error(f"⚠️ Authentication database initialization failed: {e}")
+        logger.info("🔄 App will continue with authentication features disabled")
     
     # Force rebuild if requested
     if args.rebuild_db:
@@ -95,11 +136,12 @@ async def lifespan(app: FastAPI):
     logger.info("🛑 Shutting down services")
     await spatial_service.cleanup()
     await plantation_service.cleanup()
+    await chat_service.cleanup()
 
 # Create FastAPI app
 app = FastAPI(
     title="Texas Spatial Query & Plantation Planning API",
-    description="High-performance spatial queries and AI-powered plantation planning for Texas",
+    description="High-performance spatial queries, AI-powered plantation planning, and citizen chatbot for Texas",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -113,6 +155,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include routers
+app.include_router(chatbot_router)
+app.include_router(auth_router)
+
 @app.get("/")
 async def root():
     """Health check endpoint"""
@@ -124,7 +170,13 @@ async def root():
             "generate_plan": "/api/generate-plantation-plan",
             "download_plan": "/api/download-plan/{plan_id}",
             "layers": "/api/layers",
-            "health": "/api/health"
+            "health": "/api/health",
+            "chatbot_websocket": "/ws/citizen_chatbot/",
+            "chatbot_http": "/api/citizen_chatbot/chat/",
+            "chatbot_stream": "/api/citizen_chatbot/chat/stream/",
+            "auth_login": "/auth/login",
+            "auth_status": "/auth/status",
+            "auth_check": "/auth/check"
         }
     }
 
@@ -354,6 +406,11 @@ async def get_layer_stats(layer_id: str):
     except Exception as e:
         logger.error(f"❌ Failed to get layer stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get layer stats: {str(e)}")
+
+@app.websocket("/ws/citizen_chatbot/")
+async def websocket_chatbot_endpoint(websocket: WebSocket):
+    """WebSocket endpoint for real-time citizen chatbot"""
+    await handle_websocket_connection(websocket)
 
 if __name__ == "__main__":
     import uvicorn

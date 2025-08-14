@@ -7,7 +7,8 @@ import GeoJsonLayer from './GeoJsonLayer';
 import GridLayer from './GridLayer';
 import LayerSelector from '../UI/LayerSelector';
 import SpatialQueryResults from '../UI/SpatialQueryResults';
-
+import SpatialQueryProgress from '../UI/SpatialQueryProgress';
+import { geoJsonLayers } from '../../constants/geoJsonLayers';
 import { useMapLayers } from '../../hooks/useMapLayers';
 import { TEXAS_BOUNDS, GEOJSON_LAYERS } from '../../constants/geoJsonLayers';
 import { gridService } from '../../services/gridService';
@@ -82,14 +83,77 @@ function getMaskPolygon(texasGeoJson) {
 /**
  * Component to handle map click events for spatial queries
  */
-const MapClickHandler = ({ onMapClick }) => {
+const MapClickHandler = ({ onMapClick, gridData, yoloDataLoaded, setNonCultivableAlert }) => {
   useMapEvents({
     click: (e) => {
       const { lat, lng } = e.latlng;
-      onMapClick([lng, lat]); // Pass coordinates as [lng, lat] for GeoJSON compatibility
+      const clickCoords = [lng, lat];
+      
+      // Check if click is on a non-cultivable grid area (only if YOLO data is loaded)
+      if (gridData && yoloDataLoaded) {
+        const clickedGrid = findGridAtCoordinates(gridData, lng, lat);
+        if (clickedGrid) {
+          const gridIndex = clickedGrid.properties.index;
+          const cultivability = yoloResultsService.getCultivability(gridIndex);
+          
+          if (cultivability === 0) {
+            console.log(`🚫 Click blocked: Coordinates ${lng}, ${lat} are in non-cultivable grid ${gridIndex}`);
+            
+            // Show custom notification for non-cultivable grid
+            setNonCultivableAlert({
+              gridIndex,
+              coordinates: { lat: lat.toFixed(6), lng: lng.toFixed(6) }
+            });
+            
+            // Auto-hide the alert after 5 seconds
+            setTimeout(() => {
+              setNonCultivableAlert(null);
+            }, 5000);
+            
+            return; // Don't trigger spatial query for black grids
+          }
+          
+          console.log(`✅ Click allowed: Coordinates ${lng}, ${lat} are in cultivable grid ${gridIndex}`);
+        }
+      }
+      
+      console.log('🔍 Map clicked at:', clickCoords);
+      onMapClick(clickCoords); // Only trigger for cultivable areas or areas without grid data
     }
   });
   return null;
+};
+
+/**
+ * Helper function to find which grid contains the given coordinates
+ */
+const findGridAtCoordinates = (gridData, lng, lat) => {
+  if (!gridData || !gridData.features) return null;
+  
+  // Check each grid cell to see if it contains the point
+  for (const feature of gridData.features) {
+    if (feature.geometry && feature.geometry.type === 'Polygon') {
+      const coords = feature.geometry.coordinates[0];
+      if (isPointInPolygon(lng, lat, coords)) {
+        return feature;
+      }
+    }
+  }
+  return null;
+};
+
+/**
+ * Helper function to check if a point is inside a polygon
+ */
+const isPointInPolygon = (lng, lat, polygon) => {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    if (((polygon[i][1] > lat) !== (polygon[j][1] > lat)) &&
+        (lng < (polygon[j][0] - polygon[i][0]) * (lat - polygon[i][1]) / (polygon[j][1] - polygon[i][1]) + polygon[i][0])) {
+      inside = !inside;
+    }
+  }
+  return inside;
 };
 
 /**
@@ -107,6 +171,8 @@ const TexasMap = () => {
   const [isQuerying, setIsQuerying] = useState(false);
   const [queryProgress, setQueryProgress] = useState(null);
   const [currentQueryId, setCurrentQueryId] = useState(null);
+  const [yoloDataLoaded, setYoloDataLoaded] = useState(false);
+  const [nonCultivableAlert, setNonCultivableAlert] = useState(null); // New state for alert
   
   const {
     getActiveLayersData,
@@ -158,6 +224,7 @@ const TexasMap = () => {
           await yoloResultsService.loadYoloResults();
           const yoloStatistics = yoloResultsService.getStats();
           setYoloStats(yoloStatistics);
+          setYoloDataLoaded(true); // Set state to true when YOLO data is loaded
           console.log('✅ YOLO statistics loaded successfully');
         } catch (error) {
           console.warn('⚠️ Could not load YOLO statistics:', error);
@@ -312,7 +379,7 @@ const TexasMap = () => {
         ))}
 
         {/* Map click handler for spatial queries */}
-        <MapClickHandler onMapClick={handleMapClick} />
+        <MapClickHandler onMapClick={handleMapClick} gridData={gridData} yoloDataLoaded={yoloDataLoaded} setNonCultivableAlert={setNonCultivableAlert} />
       </MapContainer>
 
       {/* Layer control panel */}
@@ -453,23 +520,49 @@ const TexasMap = () => {
         <p>Data sources: Texas state government & Esri satellite imagery</p>
       </div>
 
-      {/* Loading Indicator */}
+      {/* Stylish Center Loading Indicator with Blurred Background */}
       {isQuerying && (
-        <div className="spatial-query-loading">
-          <div className="loading-content">
-            <div className="loading-spinner"></div>
-            <div className="loading-text">
-              <div className="loading-title">Loading Location Data...</div>
-              <div className="loading-subtitle">
-                {queryProgress ? queryProgress.processed : 0} of {queryProgress ? queryProgress.total : 0} layers processed
+        <div className="stylish-loading-overlay">
+          <div className="stylish-loading-modal">
+            <div className="stylish-loading-header">
+              <div className="stylish-loading-icon">🔍</div>
+              <h3 className="stylish-loading-title">Analyzing Location</h3>
+              <p className="stylish-loading-subtitle">Processing spatial data layers...</p>
+            </div>
+            
+            <div className="stylish-progress-container">
+              <div className="stylish-progress-info">
+                <span className="stylish-progress-text">
+                  {queryProgress ? queryProgress.processed : 0} of {queryProgress ? queryProgress.total : 0} layers
+                </span>
+                <span className="stylish-progress-percentage">
+                  {queryProgress ? Math.round((queryProgress.processed / queryProgress.total) * 100) : 0}%
+                </span>
+              </div>
+              
+              <div className="stylish-progress-bar">
+                <div 
+                  className="stylish-progress-fill"
+                  style={{
+                    width: queryProgress ? `${(queryProgress.processed / queryProgress.total) * 100}%` : '0%'
+                  }}
+                ></div>
+                <div className="stylish-progress-glow"></div>
+              </div>
+              
+              <div className="stylish-loading-dots">
+                <div className="stylish-dot"></div>
+                <div className="stylish-dot"></div>
+                <div className="stylish-dot"></div>
               </div>
             </div>
+            
             <button 
-              className="abort-button"
+              className="stylish-cancel-button"
               onClick={handleAbortQuery}
-              title="Cancel query"
+              title="Cancel Analysis"
             >
-              ✕
+              <span>Cancel</span>
             </button>
           </div>
         </div>
@@ -481,6 +574,90 @@ const TexasMap = () => {
         isVisible={showQueryResults}
         onClose={handleCloseQueryResults}
       />
+
+      {/* Non-cultivable area alert notification */}
+      {nonCultivableAlert && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 2000,
+          background: '#1f2937',
+          color: 'white',
+          padding: '16px 20px',
+          borderRadius: '8px',
+          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+          border: '2px solid #374151',
+          minWidth: '300px',
+          animation: 'slideInRight 0.3s ease-out'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '12px'
+          }}>
+            <div style={{
+              fontSize: '24px',
+              flexShrink: 0,
+              marginTop: '2px'
+            }}>
+              🖤
+            </div>
+            <div style={{
+              flex: 1
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: '700',
+                marginBottom: '8px',
+                color: '#f9fafb'
+              }}>
+                Non-Cultivable Area
+              </div>
+              <div style={{
+                fontSize: '14px',
+                lineHeight: '1.5',
+                color: '#d1d5db',
+                marginBottom: '8px'
+              }}>
+                Grid <strong>{nonCultivableAlert.gridIndex}</strong> is not suitable for cultivation.
+              </div>
+              <div style={{
+                fontSize: '12px',
+                color: '#9ca3af',
+                fontFamily: 'monospace'
+              }}>
+                📍 {nonCultivableAlert.coordinates.lat}°, {nonCultivableAlert.coordinates.lng}°
+              </div>
+              <div style={{
+                fontSize: '12px',
+                color: '#9ca3af',
+                marginTop: '4px'
+              }}>
+                Please select a 🌱 green area to perform spatial queries.
+              </div>
+            </div>
+            <button
+              onClick={() => setNonCultivableAlert(null)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#9ca3af',
+                fontSize: '18px',
+                cursor: 'pointer',
+                padding: '4px',
+                lineHeight: 1,
+                borderRadius: '4px',
+                transition: 'color 0.2s'
+              }}
+              onMouseOver={(e) => e.target.style.color = '#f9fafb'}
+              onMouseOut={(e) => e.target.style.color = '#9ca3af'}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

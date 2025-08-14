@@ -86,7 +86,7 @@ with open("kb_chunks.jsonl", "r") as f:
 print(f"Loaded {len(chunks)} chunks.")
 
 # --- Connect to Weaviate Cloud ---
-client = weaviate.connect_to_weaviate_cloud(
+client = weaviate.connect_to_wcs(
     cluster_url=weaviate_url,
     auth_credentials=Auth.api_key(weaviate_api_key),
 )

@@ -76,7 +76,7 @@ class SpatialQueryService:
     
     async def _create_tables(self):
         """Create database tables for spatial data"""
-        cursor = self.conn.cursor() # it is a cursor object that allows us to execute SQL commands on the database 
+        cursor = self.conn.cursor() # it is a cIursor object that allows us to execute SQL commands on the database 
         
         # Polygon features table
         cursor.execute("""

@@ -97,7 +97,7 @@ def check_weaviate(timeout_s: int = 15) -> Tuple[bool, str]:
             config.WEAVIATE_CLUSTER_URL,
             _mask(config.WEAVIATE_API_KEY),
         )
-        client = weaviate.connect_to_weaviate_cloud(
+        client = weaviate.connect_to_wcs(
             cluster_url=config.WEAVIATE_CLUSTER_URL,
             auth_credentials=Auth.api_key(config.WEAVIATE_API_KEY),
         )

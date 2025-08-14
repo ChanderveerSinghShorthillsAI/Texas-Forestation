@@ -360,10 +360,16 @@ class PlantationPlanService:
     async def initialize(self):
         """Initialize connections and validate setup; force 384-dim encoder."""
         try:
-            # Connect to Weaviate
-            self.weaviate_client = weaviate.connect_to_weaviate_cloud(
+            # Connect to Weaviate (with gRPC disabled to avoid connectivity issues)
+            from weaviate.config import AdditionalConfig
+            additional_config = AdditionalConfig(
+                timeout=(5, 15)  # 5s connection, 15s read timeout
+            )
+            
+            self.weaviate_client = weaviate.connect_to_wcs(
                 cluster_url=config.WEAVIATE_CLUSTER_URL,
-                auth_credentials=Auth.api_key(config.WEAVIATE_API_KEY)
+                auth_credentials=Auth.api_key(config.WEAVIATE_API_KEY),
+                additional_config=additional_config
             )
 
             # Verify connection
