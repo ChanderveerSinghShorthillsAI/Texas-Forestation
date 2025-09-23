@@ -22,6 +22,8 @@ const GridLayer = ({
     CLUSTER_ZOOM_THRESHOLD: 10,
   };
 
+  // Removed SVG hatch pattern injection to keep land visible under semi-transparent fill
+
   useMapEvents({
     zoom: () => {
       setCurrentZoom(map.getZoom());
@@ -122,22 +124,22 @@ const GridLayer = ({
     };
   }, [gridData, isVisible, currentZoom, mapBounds, yoloResults]);
 
-  // Styles
+  // Styles - Lighter opacity to show terrain underneath
   const greenGridStyle = {
     color: '#16a34a',
-    weight: 2,
-    opacity: 0.8,
+    weight: 1.5,
+    opacity: 0.7,
     fillColor: '#22c55e',
-    fillOpacity: 0.6
+    fillOpacity: 0.15  // Much lighter - was 0.6
   };
 
   const blackGridStyle = {
-    color: '#374151',
-    weight: 1.5,
-    opacity: 0.7,
-    fillColor: '#1f2937',
-    fillOpacity: 0.8,
-    interactive: false // This is key!
+    color: '#b91c1c',       // Border to indicate "restricted"
+    weight: 2,
+    opacity: 1,
+    fillColor: '#dc2626',   // Lightish dark red
+    fillOpacity: 0.2,       // Semi-transparent like green
+    interactive: false
   };
 
   // Event handler ONLY for green grids
@@ -155,16 +157,7 @@ const GridLayer = ({
       // The MapClickHandler in TexasMap.jsx will handle the spatial query
     });
 
-    // Hover effects for cultivable grids only
-    layer.on('mouseover', () => {
-      if (currentZoom >= 10) {
-        layer.setStyle({ weight: 3, opacity: 1, fillOpacity: 0.8 });
-      }
-    });
-
-    layer.on('mouseout', () => {
-      layer.setStyle(greenGridStyle);
-    });
+    // Hover effects disabled - no highlighting on mouseover
   };
 
   // No event handler for black grids - they get NOTHING!
@@ -174,6 +167,17 @@ const GridLayer = ({
     
     // Mark this layer as non-cultivable for reference
     layer._isBlackGrid = true;
+    
+    // Ensure fill stays semi-transparent red without overriding by pattern
+    if (layer.getElement) {
+      const element = layer.getElement();
+      if (element) {
+        element.removeAttribute('fill');
+        element.removeAttribute('fill-opacity');
+        element.setAttribute('stroke', '#b91c1c');
+        element.setAttribute('stroke-width', '2');
+      }
+    }
     
     // Remove all default interactivity
     layer.options.interactive = false;

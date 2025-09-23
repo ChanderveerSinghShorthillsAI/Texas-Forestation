@@ -27,7 +27,7 @@ const GeoJsonLayer = ({ layerData }) => {
     return null;
   }
 
-  const { data, type, color, fillColor, fillOpacity, weight, radius, opacity, zIndex, showLabels } = layerData;
+  const { data, type, color, fillColor, fillOpacity, weight, radius, opacity, zIndex, showLabels, showLabelsOnHover } = layerData;
 
   /**
    * Style function for GeoJSON features
@@ -78,7 +78,7 @@ const GeoJsonLayer = ({ layerData }) => {
       });
     }
 
-    // Add county labels if enabled
+    // Add county labels if enabled (always visible)
     if (showLabels && feature.properties && (feature.properties.NAME || feature.properties.name)) {
       const labelText = feature.properties.NAME || feature.properties.name;
       
@@ -104,6 +104,40 @@ const GeoJsonLayer = ({ layerData }) => {
           labelsRef.current.push(labelMarker);
         }
       }, 100);
+    }
+
+    // Add hover-based labels if enabled
+    if (showLabelsOnHover && feature.properties && (feature.properties.NAME || feature.properties.name)) {
+      const labelText = feature.properties.NAME || feature.properties.name;
+      let hoverLabel = null;
+
+      layer.on('mouseover', (e) => {
+        if (layer.getBounds) {
+          const bounds = layer.getBounds();
+          const center = bounds.getCenter();
+          
+          // Create hover label
+          hoverLabel = L.marker(center, {
+            icon: L.divIcon({
+              className: 'county-label county-label-hover',
+              html: `<span class="county-name-hover">${labelText}</span>`,
+              iconSize: [120, 20],
+              iconAnchor: [60, 10]
+            }),
+            interactive: false,
+            zIndexOffset: 2000
+          });
+          
+          hoverLabel.addTo(map);
+        }
+      });
+
+      layer.on('mouseout', (e) => {
+        if (hoverLabel) {
+          map.removeLayer(hoverLabel);
+          hoverLabel = null;
+        }
+      });
     }
 
     // Add hover effects for polygons and lines

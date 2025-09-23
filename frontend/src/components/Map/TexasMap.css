@@ -425,11 +425,98 @@
   transition: opacity 0.2s ease;
 }
 
+/* Hover-specific county labels */
+.county-label-hover {
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+  z-index: 2000 !important;
+}
+
+.county-name-hover {
+  background: rgba(31, 41, 55, 0.95);
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  white-space: nowrap;
+  text-align: center;
+  display: inline-block;
+  line-height: 1.2;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  animation: fadeInLabel 0.2s ease-out;
+}
+
+@keyframes fadeInLabel {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @media (max-width: 768px) {
   .county-name {
     font-size: 9px;
     padding: 1px 4px;
   }
+  
+  .county-name-hover {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+} 
+
+/* Uncultivable grid pattern - diagonal stripes to indicate restricted areas */
+.uncultivable-grid {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 8px,
+    rgba(185, 28, 28, 0.8) 8px,    /* Much darker red with higher opacity */
+    rgba(185, 28, 28, 0.8) 16px
+  ) !important;
+  background-size: 22.63px 22.63px !important;
+  opacity: 0.9 !important;  /* Higher overall opacity */
+}
+
+/* Alternative pattern for high zoom levels - more detailed stripes */
+@media screen and (min-resolution: 192dpi) {
+  .uncultivable-grid {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 6px,
+      rgba(185, 28, 28, 0.85) 6px,   /* Darker red for high-res displays */
+      rgba(185, 28, 28, 0.85) 12px
+    ) !important;
+    background-size: 16.97px 16.97px !important;
+  }
+}
+
+/* Fallback pattern for older browsers */
+.uncultivable-grid::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0px,
+    transparent 8px,
+    rgba(185, 28, 28, 0.75) 8px,    /* Darker red for fallback */
+    rgba(185, 28, 28, 0.75) 16px
+  );
+  pointer-events: none;
+  z-index: 1;
 } 
 
 /* Enhanced point marker styles */
