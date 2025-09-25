@@ -63,17 +63,8 @@ async def get_chat_session(request: Request) -> str:
     client_ip, user_agent = get_client_info(request)
     return await chat_service.get_or_create_session(client_ip, user_agent)
 
-@router.on_event("startup")
-async def startup_chatbot():
-    """Initialize chatbot service on startup"""
-    try:
-        init_database()
-        if not chat_service.is_initialized:
-            await chat_service.initialize()
-        logger.info("✅ Citizen chatbot HTTP endpoints initialized")
-    except Exception as e:
-        logger.error(f"❌ Failed to initialize chatbot endpoints: {e}")
-        raise
+# Note: Chatbot initialization is handled in main.py lifespan context manager
+# This avoids the deprecated @router.on_event("startup") decorator
 
 @router.post("/chat/", response_model=ChatResponse)
 async def chat_endpoint(

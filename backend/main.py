@@ -26,6 +26,13 @@ from citizen_chatbot.citizen_chatbot_service import chat_service
 # Import authentication components
 from login import auth_router, user_db_service
 
+# Import carbon estimation components  
+from carbon_api_routes import router as carbon_router
+from carbon_estimation_service import CarbonEstimationService
+
+# Import fire tracking components
+from fire_api_routes import router as fire_router
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -91,6 +98,8 @@ async def lifespan(app: FastAPI):
     
     # Initialize citizen chatbot service
     logger.info("🤖 Initializing Citizen Chatbot Service")
+    from citizen_chatbot.citizen_chatbot_models import init_database
+    init_database()
     await chat_service.initialize()
     
     # Initialize authentication database and default user
@@ -123,12 +132,21 @@ async def lifespan(app: FastAPI):
         spatial_service.force_rebuild = True
     
     # Load GeoJSON data into spatial database
-    geojson_dir = Path("../frontend/public/Texas_Geojsons")
+    geojson_dir = Path("../frontend/public/Texas_Geojsons/Texas_Geojsons")
     if geojson_dir.exists():
         await spatial_service.initialize_spatial_data(geojson_dir)
         logger.info("✅ Spatial data initialization complete")
     else:
         logger.warning("⚠️ GeoJSON directory not found, spatial queries may not work")
+
+    # Build county carbon cache once for instant frontend rendering
+    try:
+        logger.info("🧮 Building county carbon cache (one-time)...")
+        carbon_service = CarbonEstimationService()
+        written = carbon_service.build_county_carbon_cache(force_rebuild=False)
+        logger.info(f"✅ County carbon cache ready ({written} new rows)")
+    except Exception as e:
+        logger.error(f"⚠️ Failed to prepare county carbon cache: {e}")
     
     yield
     
@@ -158,6 +176,8 @@ app.add_middleware(
 # Include routers
 app.include_router(chatbot_router)
 app.include_router(auth_router)
+app.include_router(carbon_router)
+app.include_router(fire_router)
 
 @app.get("/")
 async def root():
@@ -176,7 +196,16 @@ async def root():
             "chatbot_stream": "/api/citizen_chatbot/chat/stream/",
             "auth_login": "/auth/login",
             "auth_status": "/auth/status",
-            "auth_check": "/auth/check"
+            "auth_check": "/auth/check",
+            "carbon_county": "/api/carbon/county",
+            "carbon_statewide": "/api/carbon/statewide",
+            "carbon_top_counties": "/api/carbon/counties/top",
+            "carbon_methodology": "/api/carbon/methodology",
+            "carbon_health": "/api/carbon/health",
+            "fire_texas": "/api/fire/texas",
+            "fire_statistics": "/api/fire/statistics",
+            "fire_datasets": "/api/fire/datasets",
+            "fire_health": "/api/fire/health"
         }
     }
 
@@ -188,12 +217,32 @@ async def health_check():
     if not spatial_service:
         raise HTTPException(status_code=503, detail="Spatial service not initialized")
     
-    stats = await spatial_service.get_stats()
+    # Check if spatial service connection is available
+    spatial_status = "ready"
+    stats = {}
+    
+    try:
+        if spatial_service.conn is None:
+            spatial_status = "not_initialized"
+            stats = {
+                "total_layers": 0,
+                "total_features": 0,
+                "polygon_features": 0,
+                "point_features": 0,
+                "indexed_layers": 0
+            }
+        else:
+            stats = await spatial_service.get_stats()
+    except Exception as e:
+        logger.error(f"❌ Error getting spatial stats: {e}")
+        spatial_status = "error"
+        stats = {"error": str(e)}
+    
     plantation_status = "ready" if plantation_service.is_initialized else "initializing"
     
     return {
         "status": "healthy",
-        "spatial_service": "ready",
+        "spatial_service": spatial_status,
         "plantation_service": plantation_status,
         "database_layers": stats.get("total_layers", 0),
         "total_features": stats.get("total_features", 0),

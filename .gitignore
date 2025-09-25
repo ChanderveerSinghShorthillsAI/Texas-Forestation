@@ -21,3 +21,5 @@ backend/citizen_chatbot_sample
 backend/gen_10_year_plan_rag/__pycache__
 backend/login/__pycache__
 backend/texas_chatbot.db
+frontend/build
+frontend/public/texas_fire_geojsons

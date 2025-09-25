@@ -13,7 +13,8 @@ export const LAYER_CATEGORIES = {
   TRANSPORTATION: 'transportation',
   ENVIRONMENTAL: 'environmental',
   RECREATION: 'recreation',
-  AGRICULTURE: 'agriculture'
+  AGRICULTURE: 'agriculture',
+  FIRE_MANAGEMENT: 'fire_management'
 };
 
 export const GEOJSON_LAYERS = [
@@ -99,7 +100,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'cities',
     name: 'Major Cities',
-    file: 'Texas_cities.geojson',
+    file: 'cities.geojson',
     category: LAYER_CATEGORIES.ADMINISTRATION,
     type: 'point',
     color: '#ffffff',
@@ -635,7 +636,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'schools-2012',
     name: 'Schools (2012)',
-    file: 'Texas_schools_2012.geojson',
+    file: 'schools_2012.geojson',
     category: LAYER_CATEGORIES.EDUCATION,
     type: 'point',
     color: '#7c2d12',
@@ -646,7 +647,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'school-districts',
     name: 'School Districts',
-    file: 'Texas_schooldistricts_2012_2013.geojson',
+    file: 'schooldistricts_2012_2013.geojson',
     category: LAYER_CATEGORIES.EDUCATION,
     type: 'polygon',
     color: '#7c2d12',
@@ -658,7 +659,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'tea-regions',
     name: 'TEA Regions (2007)',
-    file: 'Texas_tea_regions_2007.geojson',
+    file: 'tea_regions_2007.geojson',
     category: LAYER_CATEGORIES.EDUCATION,
     type: 'polygon',
     color: '#7c2d12',
@@ -672,7 +673,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'state-parks-points',
     name: 'State Parks (Points)',
-    file: 'Texas_state_parks_points.geojson',
+    file: 'state_parks_points.geojson',
     category: LAYER_CATEGORIES.RECREATION,
     type: 'point',
     color: '#15803d',
@@ -683,7 +684,7 @@ export const GEOJSON_LAYERS = [
   {
     id: 'state-parks-polygon',
     name: 'State Parks (Areas)',
-    file: 'Texas_state_parks_polygon.geojson',
+    file: 'state_parks_polygon.geojson',
     category: LAYER_CATEGORIES.RECREATION,
     type: 'polygon',
     color: '#15803d',
@@ -876,16 +877,262 @@ export const GEOJSON_LAYERS = [
     fillOpacity: 0.1,
     weight: 1,
     description: '1-degree grid for agricultural planning'
+  },
+
+  // ===== FIRE MANAGEMENT =====
+  {
+    id: 'dispatch-boundaries',
+    name: 'National Dispatch Boundaries',
+    file: 'DMP_National_Dispatch_Boundaries_Public_3258509177681417706.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    fillOpacity: 0.15,
+    weight: 2,
+    description: 'National dispatch boundaries for fire management',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'dispatch-locations',
+    name: 'National Dispatch Locations',
+    file: 'DMP_National_Dispatch_Locations_Public_-3272713450254236857.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    radius: 6,
+    weight: 2,
+    fillOpacity: 0.8,
+    description: 'National dispatch location points for fire management',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'gacc-boundaries',
+    name: 'National GACC Boundaries',
+    file: 'DMP_NationalGACCBoundaries_Public_-4401151441880935209.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    fillOpacity: 0.15,
+    weight: 2,
+    description: 'Geographic Area Coordination Center boundaries',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'psa-boundaries',
+    name: 'Predictive Service Area Boundaries',
+    file: 'DMP_Predictive_Service_Area__PSA_Boundaries_Public_-4302905509034642818.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    fillOpacity: 0.15,
+    weight: 2,
+    description: 'Predictive Service Area boundaries for fire weather',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'incident-locations-recent',
+    name: 'Recent Incident Locations',
+    file: 'IMSR_Incident_Locations_Most_Recent_View_-1871859486425583611.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#f59e0b',
+    fillColor: '#fbbf24',
+    radius: 8,
+    weight: 2,
+    fillOpacity: 0.9,
+    description: 'Most recent fire incident locations',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'modis-thermal-48h',
+    name: 'MODIS Thermal (Last 48 hours)',
+    file: 'MODIS_Thermal_(Last_48_hours).geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#f97316',
+    fillColor: '#fb923c',
+    radius: 4,
+    weight: 1,
+    fillOpacity: 0.8,
+    description: 'MODIS thermal anomalies from the last 48 hours',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'modis-thermal-7days',
+    name: 'MODIS Thermal (Last 7 days)',
+    file: 'MODIS_Thermal_(Last_7_days).geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#ea580c',
+    fillColor: '#f97316',
+    radius: 4,
+    weight: 1,
+    fillOpacity: 0.8,
+    description: 'MODIS thermal anomalies from the last 7 days',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'raws-stations',
+    name: 'RAWS Weather Stations',
+    file: 'PublicView_RAWS_8999088212043921592.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#0ea5e9',
+    fillColor: '#38bdf8',
+    radius: 5,
+    weight: 2,
+    fillOpacity: 0.8,
+    description: 'Remote Automated Weather Stations for fire weather monitoring',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'wfigs-incidents-24h',
+    name: 'WFIGS Incidents (Last 24h)',
+    file: 'WFIGS_Incident_Locations_Last24h_2292403563418967682.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    radius: 6,
+    weight: 2,
+    fillOpacity: 0.9,
+    description: 'Wildland Fire Information and GIS incidents from the last 24 hours',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'interagency-perimeters',
+    name: 'Interagency Fire Perimeters',
+    file: 'WFIGS_Interagency_Perimeters_6781836551080060975.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    fillOpacity: 0.25,
+    weight: 2,
+    description: 'Current interagency fire perimeters',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'interagency-perimeters-ytd',
+    name: 'Interagency Perimeters (Year to Date)',
+    file: 'WFIGS_Interagency_Perimeters_YearToDate_7244446855919551728.geojson',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#b91c1c',
+    fillColor: '#dc2626',
+    fillOpacity: 0.2,
+    weight: 2,
+    description: 'Year-to-date interagency fire perimeters',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'imsr-incident-locations-json',
+    name: 'IMSR Incident Locations (JSON)',
+    file: 'IMSR_Incident_Locations.json',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#f59e0b',
+    fillColor: '#fbbf24',
+    radius: 7,
+    weight: 2,
+    fillOpacity: 0.9,
+    description: 'IMSR incident locations data in JSON format',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'incident-location-recent-json',
+    name: 'Incident Locations Most Recent (JSON)',
+    file: 'incident_location_most_recent_view.json',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#f59e0b',
+    fillColor: '#fbbf24',
+    radius: 7,
+    weight: 2,
+    fillOpacity: 0.9,
+    description: 'Most recent incident locations in JSON format',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'incident-locations-current-json',
+    name: 'Current Incident Locations (JSON)',
+    file: 'incident_locations_current.json',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#f59e0b',
+    fillColor: '#fbbf24',
+    radius: 7,
+    weight: 2,
+    fillOpacity: 0.9,
+    description: 'Current incident locations in JSON format',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'incident-locations-current-2-json',
+    name: 'Current Incident Locations 2 (JSON)',
+    file: 'incident_locations_current_2.json',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'point',
+    color: '#f59e0b',
+    fillColor: '#fbbf24',
+    radius: 7,
+    weight: 2,
+    fillOpacity: 0.9,
+    description: 'Current incident locations dataset 2 in JSON format',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'interagency-perimeter-current-json',
+    name: 'Interagency Perimeter Current (JSON)',
+    file: 'interagency_perimeter_current.json',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    fillOpacity: 0.25,
+    weight: 2,
+    description: 'Current interagency fire perimeters in JSON format',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'interagency-perimeter-ytd-json',
+    name: 'Interagency Perimeter YTD (JSON)',
+    file: 'interagency_perimeter_year_to_date.json',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#b91c1c',
+    fillColor: '#dc2626',
+    fillOpacity: 0.2,
+    weight: 2,
+    description: 'Year-to-date interagency fire perimeters in JSON format',
+    basePath: '/texas_fire_geojsons/'
+  },
+  {
+    id: 'interagency-perimeters-current-2-json',
+    name: 'Interagency Perimeters Current 2 (JSON)',
+    file: 'interagency_perimeters_current_2.json',
+    category: LAYER_CATEGORIES.FIRE_MANAGEMENT,
+    type: 'polygon',
+    color: '#dc2626',
+    fillColor: '#ef4444',
+    fillOpacity: 0.25,
+    weight: 2,
+    description: 'Current interagency fire perimeters dataset 2 in JSON format',
+    basePath: '/texas_fire_geojsons/'
   }
 ];
 
 // Texas boundary coordinates for map centering
 export const TEXAS_BOUNDS = {
   center: [31.0, -99.0],
-  zoom: 6,
+  zoom: 5.6, // Fine-tuned to show full Texas without being too zoomed out
   maxBounds: [
-    [25.5, -106.5], // Southwest corner
-    [36.5, -93.5]   // Northeast corner
+    [25.837, -106.645], // Southwest corner (more precise)
+    [36.500, -93.508]   // Northeast corner (more precise)
   ]
 };
 

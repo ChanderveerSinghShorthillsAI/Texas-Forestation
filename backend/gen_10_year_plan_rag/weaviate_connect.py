@@ -1,12 +1,24 @@
 import weaviate
 from weaviate.classes.init import Auth
+import os
+from dotenv import load_dotenv
+
+# Load .env from parent directory (backend)
+load_dotenv("../.env")
+
+weaviate_url = os.getenv("WEAVIATE_CLUSTER_URL")
+weaviate_api_key = os.getenv("WEAVIATE_API_KEY")
+
+if not weaviate_url or not weaviate_api_key:
+    print("❌ Error: Missing Weaviate credentials!")
+    exit(1)
+
+print(f"🔗 Connecting to: {weaviate_url}")
 
 client = weaviate.connect_to_wcs(
-    # cluster_url="4bicg8dgspsjq2nkanptww.c0.asia-southeast1.gcp.weaviate.cloud",
-    cluster_url="izpf0ebbqumamknydyfbea.c0.asia-southeast1.gcp.weaviate.cloud",
-    # auth_credentials=Auth.api_key("VXZEUHZsUFFjNS9HWGQ0a18waWpxeXVjMldvaWJQS0JtbnpVNy9NeHpKVjd3S1hTdytWNkRLbU40Sms0PV92MjAw"),
-    auth_credentials=Auth.api_key("cXNDQjZ1eTI0N21MbFRNeF9RdjJ5alYyYzNtdkM5MUZ3ck1OcGVVZjl3RjJRSkF2bDRuN2N4MVZkcEFNPV92MjAw"),
-    
+    cluster_url=weaviate_url,
+    auth_credentials=Auth.api_key(weaviate_api_key),
 )
 
 print("Connected?", client.is_ready())
+client.close()

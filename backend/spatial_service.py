@@ -48,6 +48,18 @@ class SpatialQueryService:
         except Exception:
             logger.warning("⚠️ SpatiaLite not available, using custom spatial functions")
         
+        # Always create basic tables even if no GeoJSON data available
+        await self._create_tables()
+        
+        # If GeoJSON directory doesn't exist, create empty database structure
+        if not geojson_dir.exists():
+            logger.warning(f"⚠️ GeoJSON directory not found: {geojson_dir}")
+            logger.info("📁 Creating empty spatial database structure")
+            await self._create_spatial_indexes()
+            self.conn.commit()
+            logger.info("✅ Empty spatial database initialized")
+            return
+        
         # Check if database already has data and is up to date (unless force rebuild)
         if not self.force_rebuild and await self._is_database_current(geojson_dir):
             logger.info("✅ Database is current, skipping data reload")
@@ -80,7 +92,7 @@ class SpatialQueryService:
         
         # Polygon features table
         cursor.execute("""
-            CREATE TABLE polygon_features (
+            CREATE TABLE IF NOT EXISTS polygon_features (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 layer_id TEXT NOT NULL,
                 layer_name TEXT NOT NULL,
@@ -95,7 +107,7 @@ class SpatialQueryService:
         
         # Point features table
         cursor.execute("""
-            CREATE TABLE point_features (
+            CREATE TABLE IF NOT EXISTS point_features (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 layer_id TEXT NOT NULL,
                 layer_name TEXT NOT NULL,
@@ -107,7 +119,7 @@ class SpatialQueryService:
         
         # Layer metadata table
         cursor.execute("""
-            CREATE TABLE layer_metadata (
+            CREATE TABLE IF NOT EXISTS layer_metadata (
                 layer_id TEXT PRIMARY KEY,
                 layer_name TEXT,
                 layer_type TEXT,
@@ -118,7 +130,7 @@ class SpatialQueryService:
         """)
         
         self.conn.commit()
-    
+     
     async def _load_geojson_files(self, geojson_dir: Path):
         """Load all GeoJSON files into the database"""
         geojson_files = list(geojson_dir.glob("*.geojson"))
@@ -285,15 +297,15 @@ class SpatialQueryService:
         cursor = self.conn.cursor()
         
         # Indexes for polygon queries
-        cursor.execute("CREATE INDEX idx_polygon_layer ON polygon_features(layer_id)")
-        cursor.execute("CREATE INDEX idx_polygon_bounds ON polygon_features(min_lon, min_lat, max_lon, max_lat)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_polygon_layer ON polygon_features(layer_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_polygon_bounds ON polygon_features(min_lon, min_lat, max_lon, max_lat)")
         
         # Indexes for point queries  
-        cursor.execute("CREATE INDEX idx_point_layer ON point_features(layer_id)")
-        cursor.execute("CREATE INDEX idx_point_coords ON point_features(longitude, latitude)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_point_layer ON point_features(layer_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_point_coords ON point_features(longitude, latitude)")
         
         # Metadata index
-        cursor.execute("CREATE INDEX idx_layer_metadata ON layer_metadata(layer_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_layer_metadata ON layer_metadata(layer_id)")
         
         self.conn.commit()
         logger.info("✅ Spatial indexes created")

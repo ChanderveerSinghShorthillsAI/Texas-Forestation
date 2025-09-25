@@ -1,0 +1,250 @@
+/* Fire Button Styles */
+.fire-button {
+  position: fixed;
+  bottom: 130px;
+  left: 20px;
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  border: none;
+  border-radius: 16px;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 25px rgba(220, 38, 38, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px);
+  z-index: 1000;
+  overflow: hidden;
+  min-width: 160px;
+  position: relative;
+}
+
+.fire-button:hover:not(:disabled) {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 12px 35px rgba(220, 38, 38, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.fire-button:active:not(:disabled) {
+  transform: translateY(-1px) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+.fire-button.active {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4), 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
+.fire-button.active:hover:not(:disabled) {
+  box-shadow: 0 12px 35px rgba(239, 68, 68, 0.5), 0 0 0 2px rgba(239, 68, 68, 0.4);
+}
+
+.fire-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.fire-button.loading {
+  cursor: wait;
+}
+
+/* Button Content */
+.fire-button-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  position: relative;
+}
+
+.fire-button-icon {
+  font-size: 24px;
+  transition: all 0.3s ease;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+.fire-button-icon.flickering {
+  animation: fireFlicker 2s ease-in-out infinite alternate;
+}
+
+@keyframes fireFlicker {
+  0% { 
+    transform: scale(1) rotate(-1deg);
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) brightness(1);
+  }
+  25% { 
+    transform: scale(1.05) rotate(1deg);
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.4)) brightness(1.1);
+  }
+  50% { 
+    transform: scale(1.02) rotate(-0.5deg);
+    filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.35)) brightness(1.05);
+  }
+  75% { 
+    transform: scale(1.08) rotate(0.5deg);
+    filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4)) brightness(1.15);
+  }
+  100% { 
+    transform: scale(1.03) rotate(-0.8deg);
+    filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.3)) brightness(1.08);
+  }
+}
+
+.fire-button-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.fire-button-label {
+  font-size: 16px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  line-height: 1;
+}
+
+.fire-button-count {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2px 6px;
+  border-radius: 8px;
+  line-height: 1;
+  backdrop-filter: blur(10px);
+}
+
+/* Active Indicator */
+.fire-button-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+}
+
+.fire-button-pulse {
+  width: 100%;
+  height: 100%;
+  background: #fbbf24;
+  border-radius: 50%;
+  animation: firePulse 2s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+}
+
+@keyframes firePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 0.7;
+  }
+}
+
+/* Loading Spinner */
+.fire-button-spinner {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+}
+
+.fire-spinner {
+  width: 100%;
+  height: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: fireSpinnerRotate 1s linear infinite;
+}
+
+@keyframes fireSpinnerRotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Loading State Adjustments */
+.fire-button.loading .fire-button-content {
+  padding-right: 50px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .fire-button {
+    bottom: 110px;
+    left: 16px;
+    min-width: 140px;
+  }
+
+  .fire-button-content {
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .fire-button-icon {
+    font-size: 20px;
+  }
+
+  .fire-button-label {
+    font-size: 14px;
+  }
+
+  .fire-button-count {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .fire-button {
+    min-width: 120px;
+  }
+
+  .fire-button-content {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  .fire-button-icon {
+    font-size: 18px;
+  }
+
+  .fire-button-label {
+    font-size: 13px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .fire-button {
+    border: 2px solid white;
+  }
+
+  .fire-button.active {
+    border: 2px solid #fbbf24;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .fire-button {
+    transition: none;
+  }
+
+  .fire-button-icon.flickering,
+  .fire-button-pulse,
+  .fire-spinner {
+    animation: none;
+  }
+
+  .fire-button:hover:not(:disabled) {
+    transform: none;
+  }
+}

@@ -16,12 +16,12 @@ class Config:
     
     # Weaviate Cloud Configuration
     WEAVIATE_CLUSTER_URL = os.getenv(
-        "WEAVIATE_CLUSTER_URL", 
-        "izpf0ebbqumamknydyfbea.c0.asia-southeast1.gcp.weaviate.cloud"
+        "WEAVIATE_CLUSTER_URL",  
+        "YOUR_NEW_CLUSTER_URL.weaviate.cloud"  # Replace with your new cluster URL
     )
     WEAVIATE_API_KEY = os.getenv(
         "WEAVIATE_API_KEY",
-        "cXNDQjZ1eTI0N21MbFRNeF9RdjJ5alYyYzNtdkM5MUZ3ck1OcGVVZjl3RjJRSkF2bDRuN2N4MVZkcEFNPV92MjAw"
+        "YOUR_NEW_API_KEY"  # Replace with your new API key
     )
     
     # Plan Generation Settings

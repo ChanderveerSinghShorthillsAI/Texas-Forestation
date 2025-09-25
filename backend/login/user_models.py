@@ -5,8 +5,7 @@ Professional user management with SQLAlchemy models for spatial_data.db
 """
 
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from datetime import datetime
 import hashlib
 import secrets

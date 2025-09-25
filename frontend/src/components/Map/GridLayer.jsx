@@ -203,17 +203,17 @@ const GridLayer = ({
     });
   };
 
-  if (!isVisible || currentZoom < PERFORMANCE_CONFIG.MIN_ZOOM_FOR_GRID) {
-    return currentZoom < PERFORMANCE_CONFIG.MIN_ZOOM_FOR_GRID ? (
-      <div style={{
-        position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)',
-        background: 'rgba(59, 130, 246, 0.9)', color: 'white', padding: '8px 16px',
-        borderRadius: '6px', fontSize: '12px', fontWeight: '600', zIndex: 1000, pointerEvents: 'none'
-      }}>
-        🔍 Zoom in to see grid cells (zoom ≥ {PERFORMANCE_CONFIG.MIN_ZOOM_FOR_GRID})
-      </div>
-    ) : null;
-  }
+  // if (!isVisible || currentZoom < PERFORMANCE_CONFIG.MIN_ZOOM_FOR_GRID) {
+  //   return currentZoom < PERFORMANCE_CONFIG.MIN_ZOOM_FOR_GRID ? (
+  //     <div style={{
+  //       position: 'absolute', top: '10px', left: '50%', transform: 'translateX(-50%)',
+  //       background: 'rgba(59, 130, 246, 0.9)', color: 'white', padding: '8px 16px',
+  //       borderRadius: '6px', fontSize: '12px', fontWeight: '600', zIndex: 1000, pointerEvents: 'none'
+  //     }}>
+  //       🔍 Zoom in to see grid cells (zoom ≥ {PERFORMANCE_CONFIG.MIN_ZOOM_FOR_GRID})
+  //     </div>
+  //   ) : null;
+  // }
 
   const debugOverlay = (
     <div style={{

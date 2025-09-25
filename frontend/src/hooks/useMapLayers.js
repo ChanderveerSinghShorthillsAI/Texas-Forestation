@@ -11,12 +11,48 @@ export const useMapLayers = () => {
   const [loadingLayers, setLoadingLayers] = useState(new Set());
   const [errors, setErrors] = useState(new Map());
 
-  // Load default layers on mount
+  // Delay default layer loading to prevent overwhelming the browser during initial load
   useEffect(() => {
-    const defaultLayers = getDefaultLayers();
-    defaultLayers.forEach(layerConfig => {
-      loadLayer(layerConfig.id);
-    });
+    const loadDefaultLayersDelayed = async () => {
+      // Wait for map to be initialized before loading default layers
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const defaultLayers = getDefaultLayers();
+      console.log('🗂️ Loading default map layers...');
+      
+      // Update loading progress
+      if (window.updateLoadingTask) {
+        window.updateLoadingTask('layers', { status: 'in-progress', progress: 0 });
+      }
+      
+      // Load layers with small delays between each to prevent browser freeze
+      for (let i = 0; i < defaultLayers.length; i++) {
+        const layerConfig = defaultLayers[i];
+        
+        try {
+          await loadLayer(layerConfig.id);
+          
+          // Update progress
+          if (window.updateLoadingTask) {
+            const progress = ((i + 1) / defaultLayers.length) * 100;
+            window.updateLoadingTask('layers', { status: 'in-progress', progress });
+          }
+          
+          // Small delay between layers to prevent browser lockup
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (error) {
+          console.warn(`Failed to load layer ${layerConfig.id}:`, error);
+        }
+      }
+      
+      if (window.updateLoadingTask) {
+        window.updateLoadingTask('layers', { status: 'completed', progress: 100 });
+      }
+      
+      console.log('✅ Default layers loaded');
+    };
+
+    loadDefaultLayersDelayed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -44,7 +80,7 @@ export const useMapLayers = () => {
     try {
       // Measure network fetch time
       const fetchStartTime = performance.now();
-      const geoJsonData = await geoJsonService.loadGeoJson(layerConfig.file);
+      const geoJsonData = await geoJsonService.loadGeoJson(layerConfig.file, layerConfig.basePath);
       const fetchEndTime = performance.now();
       const fetchTime = fetchEndTime - fetchStartTime;
       

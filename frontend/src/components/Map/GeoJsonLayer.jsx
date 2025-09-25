@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { createMeaningfulPopup } from '../../utils/mapUtils';
+import { carbonEstimationService } from '../../services/carbonEstimationService';
 
 /**
  * Component for rendering GeoJSON layers on the map
@@ -106,29 +107,126 @@ const GeoJsonLayer = ({ layerData }) => {
       }, 100);
     }
 
-    // Add hover-based labels if enabled
+    // Add hover-based labels if enabled (Enhanced with Carbon Data)
     if (showLabelsOnHover && feature.properties && (feature.properties.NAME || feature.properties.name)) {
       const labelText = feature.properties.NAME || feature.properties.name;
       let hoverLabel = null;
 
-      layer.on('mouseover', (e) => {
+      layer.on('mouseover', async (e) => {
         if (layer.getBounds) {
           const bounds = layer.getBounds();
           const center = bounds.getCenter();
           
-          // Create hover label
-          hoverLabel = L.marker(center, {
-            icon: L.divIcon({
-              className: 'county-label county-label-hover',
-              html: `<span class="county-name-hover">${labelText}</span>`,
-              iconSize: [120, 20],
-              iconAnchor: [60, 10]
-            }),
-            interactive: false,
-            zIndexOffset: 2000
-          });
+          // Check if this is a county for carbon data
+          const isCounty = layerData?.name?.toLowerCase().includes('county') || 
+                          layerData?.name?.toLowerCase().includes('counties') ||
+                          labelText.toLowerCase().includes('county');
           
-          hoverLabel.addTo(map);
+          let hoverContent = `<span class="county-name-hover">${labelText}</span>`;
+          
+          if (isCounty) {
+            // Extract county name for carbon lookup
+            const countyName = carbonEstimationService.extractCountyName(feature);
+            
+            if (countyName) {
+              // Show loading state first
+              hoverContent += `<div class="carbon-loading">🔄 Loading carbon data...</div>`;
+              
+              // Create initial hover label with loading
+              hoverLabel = L.marker(center, {
+                icon: L.divIcon({
+                  className: 'county-label county-label-hover county-label-with-carbon',
+                  html: `<div class="county-hover-content">${hoverContent}</div>`,
+                  iconSize: [200, 60],
+                  iconAnchor: [100, 30]
+                }),
+                interactive: false,
+                zIndexOffset: 2000
+              });
+              
+              hoverLabel.addTo(map);
+              
+              try {
+                // Fetch carbon data
+                const carbonData = await carbonEstimationService.getCountyCarbon(countyName);
+                
+                // Update with carbon data if hover label still exists
+                if (hoverLabel && map.hasLayer(hoverLabel)) {
+                  // Check if the response has the expected structure
+                  if (carbonData && carbonData.county_name && carbonData.total_carbon_tons !== undefined) {
+                    // The carbonEstimationService returns the direct data, not wrapped
+                    const carbonInfo = carbonData;
+                    hoverContent = `
+                      <span class="county-name-hover">${labelText}</span>
+                      <div class="carbon-data">
+                        <div class="carbon-item">🌲 ${carbonEstimationService.formatCarbonValue(carbonInfo.total_carbon_tons)}</div>
+                        <div class="carbon-item">💨 ${carbonEstimationService.formatCO2Value(carbonInfo.total_co2_equivalent_tons)}</div>
+                      </div>
+                    `;
+                    
+                    // Update the hover label content
+                    const newIcon = L.divIcon({
+                      className: 'county-label county-label-hover county-label-with-carbon',
+                      html: `<div class="county-hover-content">${hoverContent}</div>`,
+                      iconSize: [220, 80],
+                      iconAnchor: [110, 40]
+                    });
+                    
+                    hoverLabel.setIcon(newIcon);
+                  } else {
+                    console.warn(`❌ Invalid carbon data structure:`, carbonData);
+                    throw new Error('Invalid response structure');
+                  }
+                }
+              } catch (error) {
+                console.warn(`Carbon data unavailable for ${countyName}:`, error.message);
+                // Update with error message if hover label still exists
+                if (hoverLabel && map.hasLayer(hoverLabel)) {
+                  hoverContent = `
+                    <span class="county-name-hover">${labelText}</span>
+                    <div class="carbon-error">⚠️ Carbon data unavailable</div>
+                  `;
+                  
+                  const errorIcon = L.divIcon({
+                    className: 'county-label county-label-hover county-label-with-carbon',
+                    html: `<div class="county-hover-content">${hoverContent}</div>`,
+                    iconSize: [200, 60],
+                    iconAnchor: [100, 30]
+                  });
+                  
+                  hoverLabel.setIcon(errorIcon);
+                }
+              }
+            } else {
+              // Regular county without carbon lookup capability
+              hoverLabel = L.marker(center, {
+                icon: L.divIcon({
+                  className: 'county-label county-label-hover',
+                  html: `<span class="county-name-hover">${labelText}</span>`,
+                  iconSize: [120, 20],
+                  iconAnchor: [60, 10]
+                }),
+                interactive: false,
+                zIndexOffset: 2000
+              });
+              
+              hoverLabel.addTo(map);
+            }
+          } else {
+            // Non-county feature (regular behavior)
+            hoverLabel = L.marker(center, {
+              icon: L.divIcon({
+                className: 'county-label county-label-hover',
+                html: `<span class="county-name-hover">${labelText}</span>`,
+                iconSize: [120, 20],
+                iconAnchor: [60, 10]
+              }),
+              interactive: false,
+              zIndexOffset: 2000
+            });
+            
+            hoverLabel.addTo(map);
+          }
         }
       });
 

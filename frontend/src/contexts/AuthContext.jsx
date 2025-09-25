@@ -11,6 +11,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { authService } from '../services/authService';
+import { AuthStateManager, isAuthLoop, clearAuthAttempts } from '../utils/authOptimization';
 
 // Create the authentication context
 const AuthContext = createContext(null);
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [authManager] = useState(() => new AuthStateManager());
 
   /**
    * Initialize authentication state
@@ -52,8 +54,19 @@ export const AuthProvider = ({ children }) => {
       const currentUser = authService.getCurrentUser();
 
       if (authenticated && currentUser) {
-        // Validate token with server
-        const validation = await authService.validateToken();
+        // Prevent auth loops
+        if (isAuthLoop()) {
+          console.warn('🔐 Auth loop detected, clearing state and cooling down');
+          clearAuthAttempts();
+          setIsAuthenticated(false);
+          setUser(null);
+          authService.clearAuthData();
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Cool down
+          return;
+        }
+
+        // Optimized token validation
+        const validation = await authManager.optimizedValidation(() => authService.validateToken());
         
         if (validation.valid) {
           setIsAuthenticated(true);

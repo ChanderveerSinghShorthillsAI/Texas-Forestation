@@ -9,8 +9,8 @@ import re
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_
 
-from google import genai
-from google.genai import types
+import google.generativeai as genai
+from google.generativeai import types
 from dotenv import load_dotenv
 
 from .citizen_chatbot_models import ChatSession, ChatMessage, SessionLocal, ConfidentialQuery
@@ -23,11 +23,18 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 # Configure Gemini AI - Updated for current API
-client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-grounding_tool = types.Tool(google_search=types.GoogleSearch())
-config = types.GenerateContentConfig(tools=[grounding_tool])
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
 
-logger.info("✅ Google Search grounding configured for Gemini 2.5 Flash")
+# For google-generativeai 0.3.2, grounding is handled differently
+# We'll configure the model to use grounding when available
+generation_config = genai.types.GenerationConfig(
+    temperature=0.7,
+    top_p=0.95,
+    top_k=64,
+    max_output_tokens=8192,
+)
+
+logger.info("✅ Google Generative AI configured for Gemini 2.5 Pro")
 
 # Texas-specific system prompt
 TEXAS_SYSTEM_PROMPT = """
@@ -651,12 +658,13 @@ class TexasCitizenChatService:
             # Use Gemini EXACTLY like Django chatbot
             chat_history = [{"role": "user", "parts": [{"text": full_prompt}]}]
             
-            # Stream the response - EXACT Django implementation
+            # Stream the response - Updated for current API
             all_chunks = []  # Collect all chunks for better citation extraction
-            for chunk in client.models.generate_content_stream(
-                model="gemini-2.5-pro",
+            model = genai.GenerativeModel("gemini-2.5-pro")
+            for chunk in model.generate_content(
                 contents=chat_history,
-                config=config,
+                generation_config=generation_config,
+                stream=True
             ):
                 chunk_count += 1
                 all_chunks.append(chunk)  # Store all chunks

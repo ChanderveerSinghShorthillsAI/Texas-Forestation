@@ -37,7 +37,7 @@ class SpatialQueryService {
 
     try {
       // Try to get just the header/metadata if possible
-      const response = await fetch(`/Texas_Geojsons/${layerConfig.file}`, {
+      const response = await fetch(`/Texas_Geojsons/Texas_Geojsons/${layerConfig.file}`, {
         method: 'HEAD'
       });
       

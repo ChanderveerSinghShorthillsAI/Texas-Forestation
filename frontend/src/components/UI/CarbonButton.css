@@ -1,0 +1,143 @@
+/* Carbon Button Styles */
+
+.carbon-button {
+  position: fixed !important;
+  top: 140px !important;
+  right: 20px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #2d5016 0%, #4a7c1c 100%) !important;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  z-index: 10000 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  min-width: 140px;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.carbon-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s;
+}
+
+.carbon-button:hover::before {
+  left: 100%;
+}
+
+.carbon-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(135deg, #3d6317 0%, #5a8f23 100%);
+}
+
+.carbon-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.carbon-button.active {
+  background: linear-gradient(135deg, #4a7c1c 0%, #6ba329 100%);
+  box-shadow: 0 0 0 2px rgba(74, 124, 28, 0.3), 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.carbon-button.disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.carbon-button.disabled:hover {
+  transform: none;
+  box-shadow: none;
+  background: #cccccc;
+}
+
+.carbon-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.carbon-text {
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.active-indicator {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: #90ee90;
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(144, 238, 144, 0.8);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .carbon-button {
+    top: 120px;
+    right: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+    min-width: 120px;
+  }
+
+  .carbon-icon {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .carbon-button {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-width: 100px;
+  }
+
+  .carbon-text {
+    display: none;
+  }
+
+  .carbon-button {
+    min-width: 44px;
+    padding: 10px;
+    border-radius: 50%;
+  }
+
+  .carbon-icon {
+    font-size: 20px;
+  }
+}

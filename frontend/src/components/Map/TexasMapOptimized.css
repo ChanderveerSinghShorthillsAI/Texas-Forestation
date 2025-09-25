@@ -1,0 +1,53 @@
+/* Performance optimizations for Texas Map */
+
+/* Enable hardware acceleration for smoother animations */
+.leaflet-container {
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  perspective: 1000;
+  -webkit-perspective: 1000;
+}
+
+/* Optimize SVG rendering */
+.leaflet-overlay-pane svg {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+/* Reduce repaints during zoom/pan */
+.leaflet-zoom-animated {
+  will-change: transform;
+}
+
+/* Optimize county layers for better performance */
+.leaflet-interactive {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+/* Reduce shadow DOM complexity */
+.leaflet-shadow-pane {
+  display: none;
+}
+
+/* Optimize marker rendering */
+.leaflet-marker-pane {
+  will-change: transform;
+}
+
+/* Smooth transitions but limit to essential elements */
+.leaflet-fade-anim .leaflet-tile {
+  transition: opacity 0.2s;
+}
+
+/* Optimize popup rendering */
+.leaflet-popup {
+  will-change: transform;
+}
+
+/* Reduce complexity of grid overlays during zoom */
+.leaflet-overlay-pane {
+  transform: translateZ(0);
+}
