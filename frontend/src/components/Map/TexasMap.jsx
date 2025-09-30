@@ -26,6 +26,12 @@ import CarbonLegend from '../UI/CarbonLegend';
 import FireLayer from './FireLayer';
 import FireButton from '../UI/FireButton';
 import FireControlPanel from '../UI/FireControlPanel';
+import WildfireLayer from './WildfireLayer';
+import WildfireButton from '../UI/WildfireButton';
+import WildfireControlPanel from '../UI/WildfireControlPanel';
+import USGSWildfireButton from '../UI/USGSWildfireButton';
+import HistoricalDataButton from '../UI/HistoricalDataButton';
+import HistoricalDataModal from '../UI/HistoricalDataModal';
 
 // Fix for default markers in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -63,67 +69,6 @@ function getGeoJsonBounds(geojson) {
 }
 
 
-/**
- * Component to enforce Texas boundary restrictions
- */
-const BoundaryEnforcer = ({ restrictedBounds }) => {
-  const map = useMap();
-  
-  useMapEvents({
-    move: () => {
-      // Get current center
-      const center = map.getCenter();
-      const bounds = restrictedBounds;
-      
-      if (bounds) {
-        const [[minLat, minLng], [maxLat, maxLng]] = bounds;
-        
-        // Check if center is outside bounds
-        let newLat = center.lat;
-        let newLng = center.lng;
-        let needsCorrection = false;
-        
-        if (center.lat < minLat) {
-          newLat = minLat;
-          needsCorrection = true;
-        } else if (center.lat > maxLat) {
-          newLat = maxLat;
-          needsCorrection = true;
-        }
-        
-        if (center.lng < minLng) {
-          newLng = minLng;
-          needsCorrection = true;
-        } else if (center.lng > maxLng) {
-          newLng = maxLng;
-          needsCorrection = true;
-        }
-        
-        // Pan back to valid bounds if needed
-        if (needsCorrection) {
-          map.panTo([newLat, newLng], { animate: false });
-        }
-      }
-    },
-    drag: () => {
-      // Additional check during drag events
-      const center = map.getCenter();
-      const bounds = restrictedBounds;
-      
-      if (bounds) {
-        const [[minLat, minLng], [maxLat, maxLng]] = bounds;
-        
-        // If dragging would take us outside bounds, prevent it
-        if (center.lat < minLat || center.lat > maxLat || 
-            center.lng < minLng || center.lng > maxLng) {
-          map.stop(); // Stop the current drag operation
-        }
-      }
-    }
-  });
-  
-  return null;
-};
 
 /**
  * Component to track map events (zoom, pan) for carbon layer visibility
@@ -361,6 +306,16 @@ const TexasMap = () => {
   const [fireDays, setFireDays] = useState(1);
   const [fireData, setFireData] = useState(null);
   const [isLoadingFire, setIsLoadingFire] = useState(false);
+  
+  // Wildfire prediction states
+  const [showWildfireLayer, setShowWildfireLayer] = useState(false);
+  const [showWildfirePanel, setShowWildfirePanel] = useState(false);
+  const [wildfireData, setWildfireData] = useState(null);
+  const [wildfireMapData, setWildfireMapData] = useState(null);
+  const [selectedWildfirePoint, setSelectedWildfirePoint] = useState(null);
+  
+  // Historical data states
+  const [showHistoricalData, setShowHistoricalData] = useState(false);
   
   // Loading optimization states
   const [isInitializing, setIsInitializing] = useState(true);
@@ -664,6 +619,49 @@ const TexasMap = () => {
   };
 
   /**
+   * Handle wildfire button toggle
+   */
+  const handleWildfireToggle = (isActive) => {
+    setShowWildfireLayer(isActive);
+    if (isActive) {
+      // When enabling wildfire layer, also show the control panel
+      setShowWildfirePanel(true);
+    } else {
+      // Clear selected point when disabling
+      setSelectedWildfirePoint(null);
+    }
+  };
+
+  /**
+   * Handle wildfire data load from button
+   */
+  const handleWildfireDataLoad = (data) => {
+    setWildfireData(data.rawData);
+    setWildfireMapData(data.mapData);
+  };
+
+  /**
+   * Handle wildfire location selection
+   */
+  const handleWildfireLocationSelect = (location) => {
+    console.log('🔥 Wildfire location selected:', location);
+    setSelectedWildfirePoint(location);
+    // Ensure panel is open when a location is selected
+    if (!showWildfirePanel) {
+      console.log('🔥 Opening wildfire panel for selected location');
+      setShowWildfirePanel(true);
+    }
+  };
+
+  /**
+   * Handle wildfire panel close
+   */
+  const handleWildfirePanelClose = () => {
+    setShowWildfirePanel(false);
+    setSelectedWildfirePoint(null);
+  };
+
+  /**
    * Handle fire panel close
    */
   const handleFirePanelClose = () => {
@@ -703,6 +701,20 @@ const TexasMap = () => {
     }, 2000);
   };
 
+  /**
+   * Handle historical data button click
+   */
+  const handleHistoricalDataClick = () => {
+    setShowHistoricalData(!showHistoricalData);
+  };
+
+  /**
+   * Handle historical data modal close
+   */
+  const handleHistoricalDataClose = () => {
+    setShowHistoricalData(false);
+  };
+
   // Show loading optimizer during initialization
   if (isInitializing) {
     return (
@@ -731,16 +743,10 @@ const TexasMap = () => {
     );
   }
 
-  // Enhanced bounds calculation with padding to prevent world scrolling
+  // Calculate Texas bounds for initial view (but don't restrict scrolling)
   const texasBounds = texasBoundaryData && texasBoundaryData.features 
     ? getGeoJsonBounds(texasBoundaryData) 
     : TEXAS_BOUNDS.maxBounds; // Use predefined bounds as fallback
-
-  // Create more restrictive bounds with minimal padding to show full Texas while preventing world scrolling
-  const restrictedTexasBounds = texasBounds ? [
-    [texasBounds[0][0] - 0.2, texasBounds[0][1] - 0.2], // Southwest corner with small buffer
-    [texasBounds[1][0] + 0.2, texasBounds[1][1] + 0.2]  // Northeast corner with small buffer
-  ] : TEXAS_BOUNDS.maxBounds;
 
   return (
     <div className="texas-map-container">
@@ -751,8 +757,6 @@ const TexasMap = () => {
         maxZoom={18}
         style={{ height: '100vh', width: '100%' }}
         ref={mapRef}
-        maxBounds={restrictedTexasBounds}
-        maxBoundsViscosity={1.0}
         className="texas-map"
         zoomAnimation={true}
         fadeAnimation={true}
@@ -836,8 +840,16 @@ const TexasMap = () => {
           />
         )}
 
-        {/* Boundary enforcer to prevent scrolling outside Texas */}
-        <BoundaryEnforcer restrictedBounds={restrictedTexasBounds} />
+        {/* Wildfire prediction layer */}
+        {showWildfireLayer && wildfireMapData && (
+          <WildfireLayer
+            wildfireData={wildfireMapData}
+            isVisible={showWildfireLayer}
+            onLocationClick={handleWildfireLocationSelect}
+            opacity={0.8}
+          />
+        )}
+
         
         {/* Map event tracker for carbon layer visibility */}
         <MapEventTracker setCurrentZoom={setCurrentZoom} setMapBounds={setMapBounds} />
@@ -1046,6 +1058,22 @@ const TexasMap = () => {
         fireCount={fireData?.totalDetections || 0}
       />
 
+      {/* Wildfire Prediction Button - Now with Full Texas Coverage */}
+      <WildfireButton
+        onToggle={handleWildfireToggle}
+        isActive={showWildfireLayer}
+        onDataLoad={handleWildfireDataLoad}
+      />
+
+      {/* USGS Enhanced Wildfire Prediction Button */}
+      <USGSWildfireButton />
+
+      {/* Historical Data Button */}
+      <HistoricalDataButton
+        onClick={handleHistoricalDataClick}
+        isActive={showHistoricalData}
+      />
+
       {/* Carbon Estimation Panel */}
       <CarbonEstimationPanel
         selectedCounty={selectedCountyForCarbon}
@@ -1062,6 +1090,21 @@ const TexasMap = () => {
         onDaysChange={handleFireDaysChange}
         onRefresh={handleFireRefresh}
         fireData={fireData}
+      />
+
+      {/* Wildfire Control Panel */}
+      <WildfireControlPanel
+        isVisible={showWildfirePanel}
+        onClose={handleWildfirePanelClose}
+        selectedPoint={selectedWildfirePoint}
+        onLocationSelect={handleWildfireLocationSelect}
+        mapData={wildfireMapData}
+      />
+
+      {/* Historical Data Modal */}
+      <HistoricalDataModal
+        isVisible={showHistoricalData}
+        onClose={handleHistoricalDataClose}
       />
 
       {/* Spatial Query Results Modal */}

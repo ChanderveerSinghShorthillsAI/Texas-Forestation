@@ -1,0 +1,595 @@
+/**
+ * Full Texas Wildfire Prediction Component Styles
+ */
+
+.full-texas-wildfire-prediction {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 20px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+
+/* Header */
+.prediction-header {
+  text-align: center;
+  margin-bottom: 30px;
+  color: white;
+}
+
+.prediction-header h1 {
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+  font-weight: 700;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+.prediction-header p {
+  font-size: 1.2rem;
+  opacity: 0.9;
+  margin: 0;
+}
+
+/* Error Banner */
+.error-banner {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 4px 15px rgba(255, 107, 107, 0.3);
+}
+
+/* Info Banner */
+.info-banner {
+  background: linear-gradient(135deg, #2196f3, #1976d2);
+  color: white;
+  padding: 15px 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  box-shadow: 0 4px 15px rgba(33, 150, 243, 0.3);
+  animation: slideInDown 0.5s ease-out;
+}
+
+.info-content h3, .info-content strong {
+  margin: 0 0 5px 0;
+  font-size: 1.1rem;
+}
+
+.info-content p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+
+.error-icon {
+  font-size: 1.5rem;
+}
+
+.error-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 5px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.error-close:hover {
+  background-color: rgba(255,255,255,0.2);
+}
+
+/* Update Status Banner */
+.update-status-banner {
+  background: linear-gradient(135deg, #4caf50, #45a049);
+  color: white;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+  animation: slideInDown 0.5s ease-out;
+}
+
+.success-icon {
+  font-size: 2rem;
+}
+
+.status-content h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.4rem;
+}
+
+.status-content p {
+  margin: 0 0 10px 0;
+  opacity: 0.9;
+}
+
+.status-details {
+  display: flex;
+  gap: 20px;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.status-details span {
+  background: rgba(255,255,255,0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+/* Coverage Status Card */
+.coverage-status-card {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.coverage-status-card h2 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.coverage-info {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.coverage-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  border-left: 4px solid #3498db;
+}
+
+.stat-label {
+  font-weight: 500;
+  color: #5a6c7d;
+}
+
+.stat-value {
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #2c3e50;
+}
+
+/* Progress Bar */
+.progress-container {
+  margin: 20px 0;
+}
+
+.progress-bar-wrapper {
+  width: 100%;
+  height: 30px;
+  background: #ecf0f1;
+  border-radius: 15px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 15px;
+  transition: width 0.8s ease-in-out, background-color 0.3s ease;
+  position: relative;
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0.2) 0%, 
+    rgba(255,255,255,0) 50%, 
+    rgba(255,255,255,0.2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-weight: 700;
+  font-size: 0.9rem;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Status Indicators */
+.status-indicators {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 15px;
+  align-items: center;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 15px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.status-item.loading {
+  background: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-item.complete {
+  background: #e8f5e8;
+  color: #2e7d32;
+}
+
+.loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e3f2fd;
+  border-top: 2px solid #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  gap: 15px;
+  margin: 30px 0;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.btn {
+  padding: 15px 30px;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 180px;
+  justify-content: center;
+  text-decoration: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(135deg, #74b9ff, #0984e3);
+  color: white;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(116, 185, 255, 0.4);
+}
+
+.btn-warning {
+  background: linear-gradient(135deg, #fdcb6e, #e17055);
+  color: white;
+}
+
+.btn-warning:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(253, 203, 110, 0.4);
+}
+
+.btn-full-update {
+  font-size: 1.1rem;
+  padding: 18px 35px;
+}
+
+.btn-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top: 2px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+/* Wildfire Summary */
+.wildfire-summary {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.wildfire-summary h2 {
+  margin: 0 0 25px 0;
+  color: #2c3e50;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.summary-card {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  border-left: 4px solid #3498db;
+  transition: transform 0.2s ease;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+}
+
+.summary-card.danger {
+  border-left-color: #e74c3c;
+}
+
+.summary-card.warning {
+  border-left-color: #f39c12;
+}
+
+.summary-card.info {
+  border-left-color: #9b59b6;
+}
+
+.summary-card h3 {
+  margin: 0 0 15px 0;
+  color: #5a6c7d;
+  font-size: 1rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-card .stat-value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.summary-card .stat-label {
+  font-weight: 500;
+  color: #7f8c8d;
+  margin-bottom: 5px;
+  display: block;
+}
+
+.summary-card .stat-detail {
+  font-size: 0.85rem;
+  color: #95a5a6;
+}
+
+/* High-Risk Locations */
+.high-risk-locations {
+  background: white;
+  border-radius: 15px;
+  padding: 25px;
+  margin-bottom: 25px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.high-risk-locations h2 {
+  margin: 0 0 20px 0;
+  color: #2c3e50;
+  font-size: 1.8rem;
+  font-weight: 600;
+}
+
+.locations-table-container {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #ecf0f1;
+}
+
+.locations-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.locations-table th {
+  background: #34495e;
+  color: white;
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  border: none;
+}
+
+.locations-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.locations-table tr:hover {
+  background: #f8f9fa;
+}
+
+.risk-score, .risk-level {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+
+.risk-0 { background: #d5f4e6; color: #27ae60; }
+.risk-1 { background: #fff3cd; color: #856404; }
+.risk-2 { background: #ffeeba; color: #b45309; }
+.risk-3 { background: #f5c6cb; color: #721c24; }
+.risk-4, .risk-5 { background: #f8d7da; color: #721c24; }
+
+/* Footer */
+.prediction-footer {
+  background: rgba(255,255,255,0.95);
+  border-radius: 15px;
+  padding: 25px;
+  margin-top: 30px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+}
+
+.footer-info h3 {
+  margin: 0 0 15px 0;
+  color: #2c3e50;
+  font-size: 1.4rem;
+}
+
+.footer-info p {
+  color: #5a6c7d;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+.footer-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+}
+
+.footer-stat {
+  padding: 10px 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.footer-stat strong {
+  color: #2c3e50;
+}
+
+/* No Progress Data */
+.no-progress-data {
+  text-align: center;
+  padding: 40px;
+  color: #7f8c8d;
+}
+
+.no-progress-data p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Animations */
+@keyframes slideInDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .full-texas-wildfire-prediction {
+    padding: 15px;
+  }
+  
+  .prediction-header h1 {
+    font-size: 2rem;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn {
+    min-width: auto;
+  }
+  
+  .summary-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .coverage-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .status-details {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .footer-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .update-status-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+  }
+  
+  .locations-table {
+    font-size: 0.85rem;
+  }
+  
+  .locations-table th,
+  .locations-table td {
+    padding: 8px 10px;
+  }
+}

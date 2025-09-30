@@ -1,0 +1,289 @@
+/**
+ * USGS Wildfire Button Component Styles
+ * Modern, government-themed styling with enhanced visual appeal
+ */
+
+.usgs-wildfire-button-container {
+    position: fixed;
+    bottom: 180px;
+    left: 20px;
+    margin-bottom: 15px;
+    z-index: 1000;
+    min-width: 160px;
+}
+
+.usgs-wildfire-button {
+    position: relative;
+    width: 100%;
+    min-height: 60px;
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(30, 60, 114, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.usgs-wildfire-button:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(30, 60, 114, 0.4);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.usgs-wildfire-button:active:not(:disabled) {
+    transform: translateY(-1px);
+}
+
+.usgs-wildfire-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Status-based styling */
+.usgs-wildfire-button.online {
+    background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    border-color: rgba(0, 255, 0, 0.3);
+}
+
+.usgs-wildfire-button.degraded {
+    background: linear-gradient(135deg, #b8860b 0%, #daa520 100%);
+    border-color: rgba(255, 255, 0, 0.3);
+}
+
+.usgs-wildfire-button.offline {
+    background: linear-gradient(135deg, #8b0000 0%, #dc143c 100%);
+    border-color: rgba(255, 0, 0, 0.3);
+}
+
+.button-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 15px 20px;
+    position: relative;
+    z-index: 2;
+}
+
+.button-icon {
+    font-size: 20px;
+    line-height: 1;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+.button-text {
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.loading-spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.status-indicator {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    z-index: 3;
+    animation: statusPulse 2s infinite;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes statusPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.2); }
+}
+
+/* Service Info */
+.service-info {
+    margin-top: 10px;
+    padding: 12px 15px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.service-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: statusDotPulse 2s infinite;
+}
+
+@keyframes statusDotPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.status-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: #333;
+}
+
+.forecast-info {
+    font-size: 11px;
+    color: #666;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Enhanced Features Badge */
+.enhanced-badge {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+    color: #333;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+    border: 1px solid rgba(255, 215, 0, 0.6);
+    z-index: 4;
+    animation: badgeGlow 3s infinite;
+}
+
+@keyframes badgeGlow {
+    0%, 100% { 
+        box-shadow: 0 2px 8px rgba(255, 215, 0, 0.4);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 4px 16px rgba(255, 215, 0, 0.6);
+        transform: scale(1.05);
+    }
+}
+
+.badge-icon {
+    font-size: 10px;
+    line-height: 1;
+}
+
+.badge-text {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Hover effects for enhanced badge */
+.usgs-wildfire-button:hover .enhanced-badge {
+    animation-duration: 1s;
+}
+
+/* Background pattern overlay */
+.usgs-wildfire-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .usgs-wildfire-button {
+        min-height: 55px;
+    }
+    
+    .button-content {
+        padding: 12px 15px;
+        gap: 10px;
+    }
+    
+    .button-icon {
+        font-size: 18px;
+    }
+    
+    .button-text {
+        font-size: 13px;
+    }
+    
+    .service-info {
+        padding: 10px 12px;
+    }
+    
+    .enhanced-badge {
+        top: -6px;
+        left: -6px;
+        padding: 3px 6px;
+    }
+    
+    .badge-text {
+        font-size: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .usgs-wildfire-button {
+        min-height: 50px;
+    }
+    
+    .button-content {
+        padding: 10px 12px;
+        gap: 8px;
+    }
+    
+    .button-icon {
+        font-size: 16px;
+    }
+    
+    .button-text {
+        font-size: 12px;
+    }
+    
+    .service-info {
+        padding: 8px 10px;
+    }
+    
+    .status-text,
+    .forecast-info {
+        font-size: 10px;
+    }
+}

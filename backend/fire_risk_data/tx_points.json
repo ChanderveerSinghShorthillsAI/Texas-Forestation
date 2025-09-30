@@ -1,0 +1,1526 @@
+[
+  {
+    "id": "48233",
+    "name": "Hutchinson County",
+    "lat": 35.835973,
+    "lon": -101.354552
+  },
+  {
+    "id": "48241",
+    "name": "Jasper County",
+    "lat": 30.699818,
+    "lon": -93.99847
+  },
+  {
+    "id": "48243",
+    "name": "Jeff Davis County",
+    "lat": 30.712543,
+    "lon": -104.167371
+  },
+  {
+    "id": "48261",
+    "name": "Kenedy County",
+    "lat": 26.943084,
+    "lon": -97.770528
+  },
+  {
+    "id": "48263",
+    "name": "Kent County",
+    "lat": 33.198125,
+    "lon": -100.777969
+  },
+  {
+    "id": "48269",
+    "name": "King County",
+    "lat": 33.606792,
+    "lon": -100.25572
+  },
+  {
+    "id": "48273",
+    "name": "Kleberg County",
+    "lat": 27.418786,
+    "lon": -97.714884
+  },
+  {
+    "id": "48277",
+    "name": "Lamar County",
+    "lat": 33.650132,
+    "lon": -95.583136
+  },
+  {
+    "id": "48287",
+    "name": "Lee County",
+    "lat": 30.294524,
+    "lon": -96.888356
+  },
+  {
+    "id": "48289",
+    "name": "Leon County",
+    "lat": 31.31426,
+    "lon": -95.996613
+  },
+  {
+    "id": "48185",
+    "name": "Grimes County",
+    "lat": 30.543671,
+    "lon": -95.991578
+  },
+  {
+    "id": "48189",
+    "name": "Hale County",
+    "lat": 34.066965,
+    "lon": -101.826325
+  },
+  {
+    "id": "48191",
+    "name": "Hall County",
+    "lat": 34.54483,
+    "lon": -100.68064
+  },
+  {
+    "id": "48199",
+    "name": "Hardin County",
+    "lat": 30.311972,
+    "lon": -94.386884
+  },
+  {
+    "id": "48201",
+    "name": "Harris County",
+    "lat": 29.834159,
+    "lon": -95.386576
+  },
+  {
+    "id": "48203",
+    "name": "Harrison County",
+    "lat": 32.561903,
+    "lon": -94.372505
+  },
+  {
+    "id": "48211",
+    "name": "Hemphill County",
+    "lat": 35.851603,
+    "lon": -100.270666
+  },
+  {
+    "id": "48213",
+    "name": "Henderson County",
+    "lat": 32.182425,
+    "lon": -95.818835
+  },
+  {
+    "id": "48223",
+    "name": "Hopkins County",
+    "lat": 33.170149,
+    "lon": -95.585181
+  },
+  {
+    "id": "48225",
+    "name": "Houston County",
+    "lat": 31.259328,
+    "lon": -95.434893
+  },
+  {
+    "id": "48295",
+    "name": "Lipscomb County",
+    "lat": 36.281368,
+    "lon": -100.273242
+  },
+  {
+    "id": "48301",
+    "name": "Loving County",
+    "lat": 31.825501,
+    "lon": -103.567758
+  },
+  {
+    "id": "48311",
+    "name": "McMullen County",
+    "lat": 28.32052,
+    "lon": -98.567774
+  },
+  {
+    "id": "48313",
+    "name": "Madison County",
+    "lat": 30.958241,
+    "lon": -95.947297
+  },
+  {
+    "id": "48321",
+    "name": "Matagorda County",
+    "lat": 28.80868,
+    "lon": -95.92582
+  },
+  {
+    "id": "48327",
+    "name": "Menard County",
+    "lat": 30.87867,
+    "lon": -99.80033
+  },
+  {
+    "id": "48333",
+    "name": "Mills County",
+    "lat": 31.476624,
+    "lon": -98.651944
+  },
+  {
+    "id": "48339",
+    "name": "Montgomery County",
+    "lat": 30.330236,
+    "lon": -95.5141
+  },
+  {
+    "id": "48341",
+    "name": "Moore County",
+    "lat": 35.829575,
+    "lon": -101.892948
+  },
+  {
+    "id": "48343",
+    "name": "Morris County",
+    "lat": 33.12379,
+    "lon": -94.734028
+  },
+  {
+    "id": "48347",
+    "name": "Nacogdoches County",
+    "lat": 31.53403,
+    "lon": -94.593402
+  },
+  {
+    "id": "48349",
+    "name": "Navarro County",
+    "lat": 32.062433,
+    "lon": -96.475422
+  },
+  {
+    "id": "48355",
+    "name": "Nueces County",
+    "lat": 27.779773,
+    "lon": -97.662796
+  },
+  {
+    "id": "48217",
+    "name": "Hill County",
+    "lat": 31.987027,
+    "lon": -97.121079
+  },
+  {
+    "id": "48219",
+    "name": "Hockley County",
+    "lat": 33.616048,
+    "lon": -102.343231
+  },
+  {
+    "id": "48221",
+    "name": "Hood County",
+    "lat": 32.406841,
+    "lon": -97.819249
+  },
+  {
+    "id": "48227",
+    "name": "Howard County",
+    "lat": 32.338199,
+    "lon": -101.434875
+  },
+  {
+    "id": "48229",
+    "name": "Hudspeth County",
+    "lat": 31.315933,
+    "lon": -105.423148
+  },
+  {
+    "id": "48231",
+    "name": "Hunt County",
+    "lat": 33.114974,
+    "lon": -96.079452
+  },
+  {
+    "id": "48235",
+    "name": "Irion County",
+    "lat": 31.299546,
+    "lon": -100.981243
+  },
+  {
+    "id": "48237",
+    "name": "Jack County",
+    "lat": 33.235121,
+    "lon": -98.170573
+  },
+  {
+    "id": "48367",
+    "name": "Parker County",
+    "lat": 32.782472,
+    "lon": -97.804588
+  },
+  {
+    "id": "48371",
+    "name": "Pecos County",
+    "lat": 30.712718,
+    "lon": -102.658124
+  },
+  {
+    "id": "48373",
+    "name": "Polk County",
+    "lat": 30.816034,
+    "lon": -94.896274
+  },
+  {
+    "id": "48379",
+    "name": "Rains County",
+    "lat": 32.845622,
+    "lon": -95.801519
+  },
+  {
+    "id": "48383",
+    "name": "Reagan County",
+    "lat": 31.384798,
+    "lon": -101.522844
+  },
+  {
+    "id": "48387",
+    "name": "Red River County",
+    "lat": 33.650132,
+    "lon": -95.028358
+  },
+  {
+    "id": "48391",
+    "name": "Refugio County",
+    "lat": 28.299696,
+    "lon": -97.185101
+  },
+  {
+    "id": "48405",
+    "name": "San Augustine County",
+    "lat": 31.37615,
+    "lon": -94.174986
+  },
+  {
+    "id": "48407",
+    "name": "San Jacinto County",
+    "lat": 30.610499,
+    "lon": -95.178087
+  },
+  {
+    "id": "48409",
+    "name": "San Patricio County",
+    "lat": 28.000647,
+    "lon": -97.50166
+  },
+  {
+    "id": "48411",
+    "name": "San Saba County",
+    "lat": 31.207586,
+    "lon": -98.830163
+  },
+  {
+    "id": "48419",
+    "name": "Shelby County",
+    "lat": 31.776199,
+    "lon": -94.126683
+  },
+  {
+    "id": "48423",
+    "name": "Smith County",
+    "lat": 32.411764,
+    "lon": -95.245908
+  },
+  {
+    "id": "48425",
+    "name": "Somervell County",
+    "lat": 32.202444,
+    "lon": -97.784866
+  },
+  {
+    "id": "48435",
+    "name": "Sutton County",
+    "lat": 30.484515,
+    "lon": -100.538624
+  },
+  {
+    "id": "48443",
+    "name": "Terrell County",
+    "lat": 30.205779,
+    "lon": -102.162849
+  },
+  {
+    "id": "48447",
+    "name": "Throckmorton County",
+    "lat": 33.176293,
+    "lon": -99.212305
+  },
+  {
+    "id": "48453",
+    "name": "Travis County",
+    "lat": 30.334358,
+    "lon": -97.781002
+  },
+  {
+    "id": "48455",
+    "name": "Trinity County",
+    "lat": 31.104249,
+    "lon": -95.124946
+  },
+  {
+    "id": "48465",
+    "name": "Val Verde County",
+    "lat": 29.763542,
+    "lon": -101.076902
+  },
+  {
+    "id": "48471",
+    "name": "Walker County",
+    "lat": 30.778416,
+    "lon": -95.592995
+  },
+  {
+    "id": "48497",
+    "name": "Wise County",
+    "lat": 33.211187,
+    "lon": -97.655508
+  },
+  {
+    "id": "48501",
+    "name": "Yoakum County",
+    "lat": 33.186011,
+    "lon": -102.827748
+  },
+  {
+    "id": "48503",
+    "name": "Young County",
+    "lat": 33.176293,
+    "lon": -98.688178
+  },
+  {
+    "id": "48085",
+    "name": "Collin County",
+    "lat": 33.193734,
+    "lon": -96.567588
+  },
+  {
+    "id": "48087",
+    "name": "Collingsworth County",
+    "lat": 34.943406,
+    "lon": -100.270184
+  },
+  {
+    "id": "48089",
+    "name": "Colorado County",
+    "lat": 29.604515,
+    "lon": -96.523585
+  },
+  {
+    "id": "48093",
+    "name": "Comanche County",
+    "lat": 31.971437,
+    "lon": -98.600141
+  },
+  {
+    "id": "48095",
+    "name": "Concho County",
+    "lat": 31.322812,
+    "lon": -99.857712
+  },
+  {
+    "id": "48457",
+    "name": "Tyler County",
+    "lat": 30.792334,
+    "lon": -94.387175
+  },
+  {
+    "id": "48467",
+    "name": "Van Zandt County",
+    "lat": 32.596684,
+    "lon": -95.835094
+  },
+  {
+    "id": "48469",
+    "name": "Victoria County",
+    "lat": 28.794705,
+    "lon": -96.936685
+  },
+  {
+    "id": "48473",
+    "name": "Waller County",
+    "lat": 29.988107,
+    "lon": -95.999677
+  },
+  {
+    "id": "48475",
+    "name": "Ward County",
+    "lat": 31.457844,
+    "lon": -103.128479
+  },
+  {
+    "id": "48481",
+    "name": "Wharton County",
+    "lat": 29.298113,
+    "lon": -96.221413
+  },
+  {
+    "id": "48491",
+    "name": "Williamson County",
+    "lat": 30.642221,
+    "lon": -97.635843
+  },
+  {
+    "id": "48495",
+    "name": "Winkler County",
+    "lat": 31.931855,
+    "lon": -103.062806
+  },
+  {
+    "id": "48499",
+    "name": "Wood County",
+    "lat": 32.769897,
+    "lon": -95.396875
+  },
+  {
+    "id": "48507",
+    "name": "Zavala County",
+    "lat": 28.872864,
+    "lon": -99.762301
+  },
+  {
+    "id": "48183",
+    "name": "Gregg County",
+    "lat": 32.50916,
+    "lon": -94.844417
+  },
+  {
+    "id": "48193",
+    "name": "Hamilton County",
+    "lat": 31.704999,
+    "lon": -98.106024
+  },
+  {
+    "id": "48195",
+    "name": "Hansford County",
+    "lat": 36.287477,
+    "lon": -101.354642
+  },
+  {
+    "id": "48197",
+    "name": "Hardeman County",
+    "lat": 34.317408,
+    "lon": -99.736455
+  },
+  {
+    "id": "48205",
+    "name": "Hartley County",
+    "lat": 35.852078,
+    "lon": -102.602028
+  },
+  {
+    "id": "48207",
+    "name": "Haskell County",
+    "lat": 33.179341,
+    "lon": -99.730653
+  },
+  {
+    "id": "48209",
+    "name": "Hays County",
+    "lat": 30.057063,
+    "lon": -98.022738
+  },
+  {
+    "id": "48215",
+    "name": "Hidalgo County",
+    "lat": 26.403926,
+    "lon": -98.187316
+  },
+  {
+    "id": "48001",
+    "name": "Anderson County",
+    "lat": 31.79413,
+    "lon": -95.689449
+  },
+  {
+    "id": "48003",
+    "name": "Andrews County",
+    "lat": 32.272011,
+    "lon": -102.637798
+  },
+  {
+    "id": "48005",
+    "name": "Angelina County",
+    "lat": 31.276598,
+    "lon": -94.635506
+  },
+  {
+    "id": "48007",
+    "name": "Aransas County",
+    "lat": 28.008849,
+    "lon": -97.133911
+  },
+  {
+    "id": "48011",
+    "name": "Armstrong County",
+    "lat": 34.96484,
+    "lon": -101.3572
+  },
+  {
+    "id": "48015",
+    "name": "Austin County",
+    "lat": 29.849355,
+    "lon": -96.274326
+  },
+  {
+    "id": "48023",
+    "name": "Baylor County",
+    "lat": 33.613094,
+    "lon": -99.213679
+  },
+  {
+    "id": "48025",
+    "name": "Bee County",
+    "lat": 28.423615,
+    "lon": -97.709488
+  },
+  {
+    "id": "48029",
+    "name": "Bexar County",
+    "lat": 29.434455,
+    "lon": -98.473571
+  },
+  {
+    "id": "48035",
+    "name": "Bosque County",
+    "lat": 31.896654,
+    "lon": -97.646912
+  },
+  {
+    "id": "48037",
+    "name": "Bowie County",
+    "lat": 33.47893,
+    "lon": -94.394887
+  },
+  {
+    "id": "48039",
+    "name": "Brazoria County",
+    "lat": 29.209621,
+    "lon": -95.456578
+  },
+  {
+    "id": "48041",
+    "name": "Brazos County",
+    "lat": 30.651288,
+    "lon": -96.381602
+  },
+  {
+    "id": "48051",
+    "name": "Burleson County",
+    "lat": 30.513,
+    "lon": -96.636719
+  },
+  {
+    "id": "48055",
+    "name": "Caldwell County",
+    "lat": 29.852126,
+    "lon": -97.626661
+  },
+  {
+    "id": "48057",
+    "name": "Calhoun County",
+    "lat": 28.520082,
+    "lon": -96.696871
+  },
+  {
+    "id": "48063",
+    "name": "Camp County",
+    "lat": 32.989911,
+    "lon": -94.993612
+  },
+  {
+    "id": "48067",
+    "name": "Cass County",
+    "lat": 33.098923,
+    "lon": -94.348241
+  },
+  {
+    "id": "48071",
+    "name": "Chambers County",
+    "lat": 29.708409,
+    "lon": -94.524191
+  },
+  {
+    "id": "48073",
+    "name": "Cherokee County",
+    "lat": 31.781898,
+    "lon": -95.18352
+  },
+  {
+    "id": "48079",
+    "name": "Cochran County",
+    "lat": 33.616577,
+    "lon": -102.828663
+  },
+  {
+    "id": "48083",
+    "name": "Coleman County",
+    "lat": 31.727713,
+    "lon": -99.461203
+  },
+  {
+    "id": "48091",
+    "name": "Comal County",
+    "lat": 29.818453,
+    "lon": -98.288391
+  },
+  {
+    "id": "48101",
+    "name": "Cottle County",
+    "lat": 34.074054,
+    "lon": -100.282947
+  },
+  {
+    "id": "48103",
+    "name": "Crane County",
+    "lat": 31.384966,
+    "lon": -102.540405
+  },
+  {
+    "id": "48105",
+    "name": "Crockett County",
+    "lat": 30.686692,
+    "lon": -101.370612
+  },
+  {
+    "id": "48113",
+    "name": "Dallas County",
+    "lat": 32.769035,
+    "lon": -96.777349
+  },
+  {
+    "id": "48119",
+    "name": "Delta County",
+    "lat": 33.35687,
+    "lon": -95.724622
+  },
+  {
+    "id": "48125",
+    "name": "Dickens County",
+    "lat": 33.611508,
+    "lon": -100.778893
+  },
+  {
+    "id": "48127",
+    "name": "Dimmit County",
+    "lat": 28.38706,
+    "lon": -99.754599
+  },
+  {
+    "id": "48135",
+    "name": "Ector County",
+    "lat": 31.868632,
+    "lon": -102.542923
+  },
+  {
+    "id": "48153",
+    "name": "Floyd County",
+    "lat": 34.066965,
+    "lon": -101.303029
+  },
+  {
+    "id": "48155",
+    "name": "Foard County",
+    "lat": 33.952522,
+    "lon": -99.761724
+  },
+  {
+    "id": "48157",
+    "name": "Fort Bend County",
+    "lat": 29.525442,
+    "lon": -95.745617
+  },
+  {
+    "id": "48161",
+    "name": "Freestone County",
+    "lat": 31.713497,
+    "lon": -96.157974
+  },
+  {
+    "id": "48167",
+    "name": "Galveston County",
+    "lat": 29.376692,
+    "lon": -95.024908
+  },
+  {
+    "id": "48173",
+    "name": "Glasscock County",
+    "lat": 31.868157,
+    "lon": -101.520827
+  },
+  {
+    "id": "48175",
+    "name": "Goliad County",
+    "lat": 28.656972,
+    "lon": -97.467934
+  },
+  {
+    "id": "48305",
+    "name": "Lynn County",
+    "lat": 33.173635,
+    "lon": -101.816663
+  },
+  {
+    "id": "48307",
+    "name": "McCulloch County",
+    "lat": 31.208485,
+    "lon": -99.346682
+  },
+  {
+    "id": "48309",
+    "name": "McLennan County",
+    "lat": 31.560095,
+    "lon": -97.2065
+  },
+  {
+    "id": "48315",
+    "name": "Marion County",
+    "lat": 32.782923,
+    "lon": -94.362492
+  },
+  {
+    "id": "48317",
+    "name": "Martin County",
+    "lat": 32.311869,
+    "lon": -101.951387
+  },
+  {
+    "id": "48319",
+    "name": "Mason County",
+    "lat": 30.724418,
+    "lon": -99.223918
+  },
+  {
+    "id": "48323",
+    "name": "Maverick County",
+    "lat": 28.641772,
+    "lon": -100.280644
+  },
+  {
+    "id": "48239",
+    "name": "Jackson County",
+    "lat": 28.970307,
+    "lon": -96.562163
+  },
+  {
+    "id": "48245",
+    "name": "Jefferson County",
+    "lat": 29.875996,
+    "lon": -94.104556
+  },
+  {
+    "id": "48247",
+    "name": "Jim Hogg County",
+    "lat": 27.071806,
+    "lon": -98.71055
+  },
+  {
+    "id": "48249",
+    "name": "Jim Wells County",
+    "lat": 27.661423,
+    "lon": -98.087175
+  },
+  {
+    "id": "48251",
+    "name": "Johnson County",
+    "lat": 32.339412,
+    "lon": -97.350961
+  },
+  {
+    "id": "48253",
+    "name": "Jones County",
+    "lat": 32.738866,
+    "lon": -99.878838
+  },
+  {
+    "id": "48255",
+    "name": "Karnes County",
+    "lat": 28.947522,
+    "lon": -97.900562
+  },
+  {
+    "id": "48257",
+    "name": "Kaufman County",
+    "lat": 32.595332,
+    "lon": -96.299144
+  },
+  {
+    "id": "48259",
+    "name": "Kendall County",
+    "lat": 29.915921,
+    "lon": -98.679652
+  },
+  {
+    "id": "48265",
+    "name": "Kerr County",
+    "lat": 30.029112,
+    "lon": -99.305387
+  },
+  {
+    "id": "48267",
+    "name": "Kimble County",
+    "lat": 30.485917,
+    "lon": -99.71025
+  },
+  {
+    "id": "48271",
+    "name": "Kinney County",
+    "lat": 29.353498,
+    "lon": -100.410792
+  },
+  {
+    "id": "48275",
+    "name": "Knox County",
+    "lat": 33.600776,
+    "lon": -99.7336
+  },
+  {
+    "id": "48279",
+    "name": "Lamb County",
+    "lat": 34.074494,
+    "lon": -102.35176
+  },
+  {
+    "id": "48281",
+    "name": "Lampasas County",
+    "lat": 31.250405,
+    "lon": -98.281141
+  },
+  {
+    "id": "48283",
+    "name": "La Salle County",
+    "lat": 28.301566,
+    "lon": -99.097787
+  },
+  {
+    "id": "48285",
+    "name": "Lavaca County",
+    "lat": 29.353956,
+    "lon": -96.894576
+  },
+  {
+    "id": "48291",
+    "name": "Liberty County",
+    "lat": 30.188601,
+    "lon": -94.864465
+  },
+  {
+    "id": "48293",
+    "name": "Limestone County",
+    "lat": 31.510996,
+    "lon": -96.547797
+  },
+  {
+    "id": "48297",
+    "name": "Live Oak County",
+    "lat": 28.408721,
+    "lon": -98.137438
+  },
+  {
+    "id": "48299",
+    "name": "Llano County",
+    "lat": 30.70269,
+    "lon": -98.688852
+  },
+  {
+    "id": "48303",
+    "name": "Lubbock County",
+    "lat": 33.609505,
+    "lon": -101.820531
+  },
+  {
+    "id": "48403",
+    "name": "Sabine County",
+    "lat": 31.373465,
+    "lon": -93.846184
+  },
+  {
+    "id": "48413",
+    "name": "Schleicher County",
+    "lat": 30.89781,
+    "lon": -100.539005
+  },
+  {
+    "id": "48415",
+    "name": "Scurry County",
+    "lat": 32.769261,
+    "lon": -100.916407
+  },
+  {
+    "id": "48417",
+    "name": "Shackelford County",
+    "lat": 32.728497,
+    "lon": -99.354016
+  },
+  {
+    "id": "48421",
+    "name": "Sherman County",
+    "lat": 36.27453,
+    "lon": -101.893436
+  },
+  {
+    "id": "48427",
+    "name": "Starr County",
+    "lat": 26.512771,
+    "lon": -98.786512
+  },
+  {
+    "id": "48429",
+    "name": "Stephens County",
+    "lat": 32.735006,
+    "lon": -98.835985
+  },
+  {
+    "id": "48431",
+    "name": "Sterling County",
+    "lat": 31.833216,
+    "lon": -101.045011
+  },
+  {
+    "id": "48433",
+    "name": "Stonewall County",
+    "lat": 33.196532,
+    "lon": -100.253313
+  },
+  {
+    "id": "48437",
+    "name": "Swisher County",
+    "lat": 34.53231,
+    "lon": -101.735074
+  },
+  {
+    "id": "48325",
+    "name": "Medina County",
+    "lat": 29.384789,
+    "lon": -99.108779
+  },
+  {
+    "id": "48329",
+    "name": "Midland County",
+    "lat": 31.851272,
+    "lon": -102.031663
+  },
+  {
+    "id": "48331",
+    "name": "Milam County",
+    "lat": 30.784306,
+    "lon": -96.97577
+  },
+  {
+    "id": "48335",
+    "name": "Mitchell County",
+    "lat": 32.322174,
+    "lon": -100.920969
+  },
+  {
+    "id": "48337",
+    "name": "Montague County",
+    "lat": 33.712861,
+    "lon": -97.731902
+  },
+  {
+    "id": "48345",
+    "name": "Motley County",
+    "lat": 34.069553,
+    "lon": -100.779844
+  },
+  {
+    "id": "48351",
+    "name": "Newton County",
+    "lat": 30.716022,
+    "lon": -93.743468
+  },
+  {
+    "id": "48353",
+    "name": "Nolan County",
+    "lat": 32.29779,
+    "lon": -100.406399
+  },
+  {
+    "id": "48357",
+    "name": "Ochiltree County",
+    "lat": 36.280582,
+    "lon": -100.815823
+  },
+  {
+    "id": "48359",
+    "name": "Oldham County",
+    "lat": 35.44984,
+    "lon": -102.603469
+  },
+  {
+    "id": "48361",
+    "name": "Orange County",
+    "lat": 30.055288,
+    "lon": -93.866157
+  },
+  {
+    "id": "48363",
+    "name": "Palo Pinto County",
+    "lat": 32.76327,
+    "lon": -98.318682
+  },
+  {
+    "id": "48365",
+    "name": "Panola County",
+    "lat": 32.175977,
+    "lon": -94.311577
+  },
+  {
+    "id": "48369",
+    "name": "Parmer County",
+    "lat": 34.528056,
+    "lon": -102.784332
+  },
+  {
+    "id": "48375",
+    "name": "Potter County",
+    "lat": 35.395656,
+    "lon": -101.894459
+  },
+  {
+    "id": "48377",
+    "name": "Presidio County",
+    "lat": 29.940377,
+    "lon": -104.2398
+  },
+  {
+    "id": "48381",
+    "name": "Randall County",
+    "lat": 34.962233,
+    "lon": -101.8968
+  },
+  {
+    "id": "48385",
+    "name": "Real County",
+    "lat": 29.852902,
+    "lon": -99.81276
+  },
+  {
+    "id": "48393",
+    "name": "Roberts County",
+    "lat": 35.869907,
+    "lon": -100.813428
+  },
+  {
+    "id": "48397",
+    "name": "Rockwall County",
+    "lat": 32.894753,
+    "lon": -96.407717
+  },
+  {
+    "id": "48399",
+    "name": "Runnels County",
+    "lat": 31.838837,
+    "lon": -99.976597
+  },
+  {
+    "id": "48401",
+    "name": "Rusk County",
+    "lat": 32.125644,
+    "lon": -94.787167
+  },
+  {
+    "id": "48439",
+    "name": "Tarrant County",
+    "lat": 32.769035,
+    "lon": -97.291704
+  },
+  {
+    "id": "48441",
+    "name": "Taylor County",
+    "lat": 32.306644,
+    "lon": -99.890048
+  },
+  {
+    "id": "48445",
+    "name": "Terry County",
+    "lat": 33.175479,
+    "lon": -102.335289
+  },
+  {
+    "id": "48449",
+    "name": "Titus County",
+    "lat": 33.19897,
+    "lon": -94.968845
+  },
+  {
+    "id": "48451",
+    "name": "Tom Green County",
+    "lat": 31.392155,
+    "lon": -100.4022
+  },
+  {
+    "id": "48459",
+    "name": "Upshur County",
+    "lat": 32.709934,
+    "lon": -94.92737
+  },
+  {
+    "id": "48461",
+    "name": "Upton County",
+    "lat": 31.382684,
+    "lon": -102.04438
+  },
+  {
+    "id": "48463",
+    "name": "Uvalde County",
+    "lat": 29.367548,
+    "lon": -99.762399
+  },
+  {
+    "id": "48505",
+    "name": "Zapata County",
+    "lat": 26.952478,
+    "lon": -99.172847
+  },
+  {
+    "id": "48009",
+    "name": "Archer County",
+    "lat": 33.618616,
+    "lon": -98.688279
+  },
+  {
+    "id": "48013",
+    "name": "Atascosa County",
+    "lat": 28.920522,
+    "lon": -98.515148
+  },
+  {
+    "id": "48017",
+    "name": "Bailey County",
+    "lat": 34.071185,
+    "lon": -102.829478
+  },
+  {
+    "id": "48019",
+    "name": "Bandera County",
+    "lat": 29.730579,
+    "lon": -99.203071
+  },
+  {
+    "id": "48479",
+    "name": "Webb County",
+    "lat": 27.732842,
+    "lon": -99.287488
+  },
+  {
+    "id": "48483",
+    "name": "Wheeler County",
+    "lat": 35.396229,
+    "lon": -100.269626
+  },
+  {
+    "id": "48485",
+    "name": "Wichita County",
+    "lat": 34.021489,
+    "lon": -98.688332
+  },
+  {
+    "id": "48487",
+    "name": "Wilbarger County",
+    "lat": 34.124489,
+    "lon": -99.214025
+  },
+  {
+    "id": "48489",
+    "name": "Willacy County",
+    "lat": 26.46102,
+    "lon": -97.721705
+  },
+  {
+    "id": "48493",
+    "name": "Wilson County",
+    "lat": 29.1594,
+    "lon": -98.091444
+  },
+  {
+    "id": "48097",
+    "name": "Cooke County",
+    "lat": 33.690657,
+    "lon": -97.214448
+  },
+  {
+    "id": "48099",
+    "name": "Coryell County",
+    "lat": 31.393454,
+    "lon": -97.800567
+  },
+  {
+    "id": "48107",
+    "name": "Crosby County",
+    "lat": 33.609505,
+    "lon": -101.29995
+  },
+  {
+    "id": "48109",
+    "name": "Culberson County",
+    "lat": 31.372562,
+    "lon": -104.495292
+  },
+  {
+    "id": "48111",
+    "name": "Dallam County",
+    "lat": 36.254025,
+    "lon": -102.602321
+  },
+  {
+    "id": "48115",
+    "name": "Dawson County",
+    "lat": 32.740527,
+    "lon": -101.947772
+  },
+  {
+    "id": "48117",
+    "name": "Deaf Smith County",
+    "lat": 34.942859,
+    "lon": -102.605147
+  },
+  {
+    "id": "48121",
+    "name": "Denton County",
+    "lat": 33.211187,
+    "lon": -97.115477
+  },
+  {
+    "id": "48123",
+    "name": "DeWitt County",
+    "lat": 29.099493,
+    "lon": -97.305182
+  },
+  {
+    "id": "48021",
+    "name": "Bastrop County",
+    "lat": 30.120471,
+    "lon": -97.317294
+  },
+  {
+    "id": "48027",
+    "name": "Bell County",
+    "lat": 31.047576,
+    "lon": -97.512955
+  },
+  {
+    "id": "48031",
+    "name": "Blanco County",
+    "lat": 30.231422,
+    "lon": -98.404979
+  },
+  {
+    "id": "48033",
+    "name": "Borden County",
+    "lat": 32.746387,
+    "lon": -101.432223
+  },
+  {
+    "id": "48043",
+    "name": "Brewster County",
+    "lat": 29.810284,
+    "lon": -103.085039
+  },
+  {
+    "id": "48045",
+    "name": "Briscoe County",
+    "lat": 34.513238,
+    "lon": -101.208681
+  },
+  {
+    "id": "48047",
+    "name": "Brooks County",
+    "lat": 27.027488,
+    "lon": -98.202086
+  },
+  {
+    "id": "48049",
+    "name": "Brown County",
+    "lat": 31.765154,
+    "lon": -98.957644
+  },
+  {
+    "id": "48053",
+    "name": "Burnet County",
+    "lat": 30.733698,
+    "lon": -98.185853
+  },
+  {
+    "id": "48059",
+    "name": "Callahan County",
+    "lat": 32.294135,
+    "lon": -99.373986
+  },
+  {
+    "id": "48065",
+    "name": "Carson County",
+    "lat": 35.42267,
+    "lon": -101.354658
+  },
+  {
+    "id": "48069",
+    "name": "Castro County",
+    "lat": 34.530492,
+    "lon": -102.261821
+  },
+  {
+    "id": "48075",
+    "name": "Childress County",
+    "lat": 34.544717,
+    "lon": -100.206704
+  },
+  {
+    "id": "48077",
+    "name": "Clay County",
+    "lat": 33.801491,
+    "lon": -98.200784
+  },
+  {
+    "id": "48081",
+    "name": "Coke County",
+    "lat": 31.878839,
+    "lon": -100.529694
+  },
+  {
+    "id": "48129",
+    "name": "Donley County",
+    "lat": 34.969909,
+    "lon": -100.814087
+  },
+  {
+    "id": "48131",
+    "name": "Duval County",
+    "lat": 27.661423,
+    "lon": -98.517527
+  },
+  {
+    "id": "48133",
+    "name": "Eastland County",
+    "lat": 32.293988,
+    "lon": -98.801132
+  },
+  {
+    "id": "48137",
+    "name": "Edwards County",
+    "lat": 29.978488,
+    "lon": -100.347236
+  },
+  {
+    "id": "48141",
+    "name": "El Paso County",
+    "lat": 31.693909,
+    "lon": -106.171588
+  },
+  {
+    "id": "48143",
+    "name": "Erath County",
+    "lat": 32.194514,
+    "lon": -98.215056
+  },
+  {
+    "id": "48145",
+    "name": "Falls County",
+    "lat": 31.262672,
+    "lon": -96.945529
+  },
+  {
+    "id": "48147",
+    "name": "Fannin County",
+    "lat": 33.60987,
+    "lon": -96.119374
+  },
+  {
+    "id": "48149",
+    "name": "Fayette County",
+    "lat": 29.886007,
+    "lon": -96.921108
+  },
+  {
+    "id": "48151",
+    "name": "Fisher County",
+    "lat": 32.746107,
+    "lon": -100.402264
+  },
+  {
+    "id": "48159",
+    "name": "Franklin County",
+    "lat": 33.176349,
+    "lon": -95.216453
+  },
+  {
+    "id": "48163",
+    "name": "Frio County",
+    "lat": 28.856401,
+    "lon": -99.107402
+  },
+  {
+    "id": "48165",
+    "name": "Gaines County",
+    "lat": 32.7443,
+    "lon": -102.635153
+  },
+  {
+    "id": "48169",
+    "name": "Garza County",
+    "lat": 33.1871,
+    "lon": -101.298044
+  },
+  {
+    "id": "48171",
+    "name": "Gillespie County",
+    "lat": 30.328832,
+    "lon": -98.94573
+  },
+  {
+    "id": "48177",
+    "name": "Gonzales County",
+    "lat": 29.437475,
+    "lon": -97.508618
+  },
+  {
+    "id": "48179",
+    "name": "Gray County",
+    "lat": 35.402455,
+    "lon": -100.812457
+  },
+  {
+    "id": "48181",
+    "name": "Grayson County",
+    "lat": 33.681809,
+    "lon": -96.661972
+  },
+  {
+    "id": "48395",
+    "name": "Robertson County",
+    "lat": 31.026798,
+    "lon": -96.512947
+  },
+  {
+    "id": "48477",
+    "name": "Washington County",
+    "lat": 30.221671,
+    "lon": -96.429807
+  },
+  {
+    "id": "48139",
+    "name": "Ellis County",
+    "lat": 32.300087,
+    "lon": -96.763249
+  },
+  {
+    "id": "48061",
+    "name": "Cameron County",
+    "lat": 26.124344,
+    "lon": -97.572809
+  },
+  {
+    "id": "48389",
+    "name": "Reeves County",
+    "lat": 31.383182,
+    "lon": -103.648535
+  },
+  {
+    "id": "48187",
+    "name": "Guadalupe County",
+    "lat": 29.61024,
+    "lon": -97.966985
+  }
+]

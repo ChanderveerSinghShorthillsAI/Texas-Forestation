@@ -1,0 +1,665 @@
+/**
+ * USGS Wildfire Prediction Component
+ * Enhanced wildfire forecasting using government USGS WFPI WMS data
+ * Modern UI with beautiful styling and comprehensive functionality
+ */
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import usgsWfpiService from '../../services/usgsWfpiService';
+import './USGSWildfirePrediction.css';
+
+// Fix for default markers in react-leaflet
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
+
+// Texas center coordinates and bounds
+const texasCenter = [31.0, -99.0];
+const texasBounds = [
+    [25.8371, -106.6456], // Southwest corner
+    [36.5007, -93.5083]   // Northeast corner
+];
+
+/**
+ * WMS Layer Component
+ */
+const WMSLayer = ({ timeValue, isVisible, currentLayer, onLayerReady }) => {
+    const map = useMap();
+    const layerRef = useRef(null);
+
+    useEffect(() => {
+        if (!timeValue) return;
+
+        // Remove existing layer
+        if (layerRef.current) {
+            map.removeLayer(layerRef.current);
+        }
+
+        // Create new layer
+        if (isVisible) {
+            layerRef.current = usgsWfpiService.createFireLayer(timeValue, currentLayer);
+            layerRef.current.addTo(map);
+            
+            if (onLayerReady) {
+                onLayerReady(layerRef.current);
+            }
+        }
+
+        // Cleanup
+        return () => {
+            if (layerRef.current) {
+                map.removeLayer(layerRef.current);
+            }
+        };
+    }, [map, timeValue, isVisible, currentLayer, onLayerReady]);
+
+    return null;
+};
+
+/**
+ * Map Click Handler Component
+ */
+const MapClickHandler = ({ onMapClick, currentTime }) => {
+    useMapEvents({
+        click: (e) => {
+            console.log('🖱️ Map clicked at:', e.latlng);
+            console.log('🕒 Current time:', currentTime);
+            console.log('🔧 onMapClick function:', !!onMapClick);
+            
+            if (onMapClick && currentTime) {
+                console.log('✅ Calling onMapClick handler');
+                onMapClick(e.latlng, currentTime);
+            } else {
+                console.warn('❌ Missing onMapClick or currentTime');
+            }
+        }
+    });
+    return null;
+};
+
+/**
+ * Texas Bounds Handler Component
+ */
+const TexasBoundsHandler = ({ texasBoundaryData }) => {
+    const map = useMap();
+
+    useEffect(() => {
+        if (texasBoundaryData) {
+            // Use actual GeoJSON bounds for precise fitting
+            const texasLayer = L.geoJSON(texasBoundaryData);
+            const bounds = texasLayer.getBounds();
+            
+            map.fitBounds(bounds, {
+                padding: [20, 20],
+                maxZoom: 8
+            });
+
+            // Set max bounds based on actual Texas geometry with some buffer
+            const bufferedBounds = bounds.pad(0.1); // 10% buffer
+            map.setMaxBounds(bufferedBounds);
+        } else {
+            // Fallback to predefined bounds
+            map.fitBounds(texasBounds, {
+                padding: [20, 20],
+                maxZoom: 8
+            });
+
+            map.setMaxBounds([
+                [23.0, -109.0], // Extended southwest
+                [38.0, -91.0]   // Extended northeast
+            ]);
+        }
+    }, [map, texasBoundaryData]);
+
+    return null;
+};
+
+/**
+ * Texas GeoJSON Boundary Component
+ */
+const TexasGeoJSONBoundary = ({ texasBoundaryData }) => {
+    if (!texasBoundaryData) return null;
+
+    const boundaryStyle = {
+        fillColor: "transparent",
+        color: "#1e3c72",
+        weight: 3,
+        opacity: 0.8,
+        fillOpacity: 0,
+        dashArray: "8, 4"
+    };
+
+    return (
+        <GeoJSON
+            data={texasBoundaryData}
+            style={boundaryStyle}
+            interactive={false}  // Make boundary non-interactive to allow map clicks
+        />
+    );
+};
+
+/**
+ * Main USGS Wildfire Prediction Component
+ */
+const USGSWildfirePrediction = () => {
+    const navigate = useNavigate();
+    const mapRef = useRef(null);
+    
+    // State management
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [availableTimes, setAvailableTimes] = useState([]);
+    const [currentTime, setCurrentTime] = useState(null);
+    const [isLayerVisible, setIsLayerVisible] = useState(true);
+    const [legendUrl, setLegendUrl] = useState(null);
+    const [serviceHealth, setServiceHealth] = useState(null);
+    const [clickInfo, setClickInfo] = useState(null);
+    const [isLoadingClick, setIsLoadingClick] = useState(false);
+    const [texasBoundaryData, setTexasBoundaryData] = useState(null);
+    const [currentLayer, setCurrentLayer] = useState('wfpi');
+    const [availableLayers, setAvailableLayers] = useState([]);
+
+    /**
+     * Initialize the component with data
+     */
+    const initializeComponent = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            console.log('🔥 Initializing USGS Fire Prediction component...');
+            
+            // Load available layers
+            const layers = usgsWfpiService.getAvailableLayers();
+            setAvailableLayers(layers);
+            console.log('✅ Available layers loaded:', layers.map(l => l.name));
+            
+            // Load Texas boundary GeoJSON, available times, and service health in parallel
+            const [boundaryResponse, times, health] = await Promise.all([
+                fetch('/Texas_Geojsons/Texas_Geojsons/texas.geojson'),
+                usgsWfpiService.fetchAvailableTimes(currentLayer),
+                usgsWfpiService.checkServiceHealth()
+            ]);
+
+            // Process Texas boundary data
+            if (boundaryResponse.ok) {
+                const boundaryData = await boundaryResponse.json();
+                setTexasBoundaryData(boundaryData);
+                console.log('✅ Texas boundary GeoJSON loaded successfully');
+            } else {
+                console.warn('⚠️ Failed to load Texas boundary GeoJSON');
+            }
+
+            setAvailableTimes(times);
+            setServiceHealth(health);
+            
+            // Set default time (first available)
+            if (times.length > 0) {
+                setCurrentTime(times[0]);
+            }
+
+            // Set legend URL for current layer
+            setLegendUrl(usgsWfpiService.buildLegendUrl(currentLayer));
+
+            console.log(`✅ USGS Fire Prediction initialized with ${times.length} forecast times for ${currentLayer}`);
+        } catch (err) {
+            console.error('❌ Failed to initialize USGS Fire Prediction:', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    }, [currentLayer]);
+
+    /**
+     * Initialize component
+     */
+    useEffect(() => {
+        initializeComponent();
+    }, [initializeComponent]);
+
+    /**
+     * Handle time selection change
+     */
+    const handleTimeChange = useCallback((event) => {
+        const newTime = event.target.value;
+        setCurrentTime(newTime);
+        setClickInfo(null); // Clear previous click info
+        console.log('🔥 Time changed to:', newTime);
+    }, []);
+
+    /**
+     * Handle layer toggle
+     */
+    const handleLayerToggle = useCallback(() => {
+        setIsLayerVisible(prev => !prev);
+        setClickInfo(null); // Clear click info when toggling
+    }, []);
+
+    /**
+     * Handle layer change
+     */
+    const handleLayerChange = useCallback(async (layerId) => {
+        if (layerId === currentLayer) return;
+        
+        console.log(`🔥 Switching from ${currentLayer} to ${layerId}`);
+        setLoading(true);
+        setClickInfo(null); // Clear previous click info
+        
+        try {
+            // Update service layer
+            usgsWfpiService.setCurrentLayer(layerId);
+            setCurrentLayer(layerId);
+            
+            // Fetch times for new layer
+            const times = await usgsWfpiService.fetchAvailableTimes(layerId);
+            setAvailableTimes(times);
+            
+            // Set default time
+            if (times.length > 0) {
+                setCurrentTime(times[0]);
+            }
+            
+            // Update legend
+            setLegendUrl(usgsWfpiService.buildLegendUrl(layerId));
+            
+            console.log(`✅ Switched to ${layerId} layer with ${times.length} times`);
+        } catch (err) {
+            console.error('❌ Failed to switch layer:', err);
+            setError(`Failed to switch to ${layerId} layer: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    }, [currentLayer]);
+
+    /**
+     * Check if coordinates are within Texas bounds using simple bounds check
+     */
+    const isWithinTexas = (latlng) => {
+        // Use simple bounds check for now - more reliable than complex polygon check
+        const { lat, lng } = latlng;
+        const withinBounds = lat >= texasBounds[0][0] && lat <= texasBounds[1][0] && 
+                            lng >= texasBounds[0][1] && lng <= texasBounds[1][1];
+        
+        console.log('🔍 Bounds check details:', {
+            clickLat: lat,
+            clickLng: lng,
+            texasBounds: texasBounds,
+            withinBounds: withinBounds
+        });
+        
+        return withinBounds;
+    };
+
+    /**
+     * Handle map click for feature info
+     */
+    const handleMapClick = useCallback(async (latlng, timeValue) => {
+        console.log('🔥 handleMapClick called with:', { latlng, timeValue });
+        console.log('🗺️ mapRef.current:', !!mapRef.current);
+        
+        if (!mapRef.current) {
+            console.warn('❌ No map reference available');
+            return;
+        }
+
+        // Check if click is within Texas bounds
+        console.log('🔍 Checking if within Texas bounds...');
+        const withinTexas = isWithinTexas(latlng);
+        console.log('🗺️ Within Texas:', withinTexas);
+        
+        if (!withinTexas) {
+            console.log('❌ Click outside Texas bounds');
+            setClickInfo({
+                success: false,
+                error: "Please click within Texas boundaries for wildfire risk data",
+                coordinates: latlng,
+                time: timeValue,
+                outsideTexas: true
+            });
+            return;
+        }
+
+        console.log('✅ Click within Texas, fetching USGS data...');
+        setIsLoadingClick(true);
+        setClickInfo(null);
+
+        try {
+            console.log('📡 Calling USGS service...');
+            const result = await usgsWfpiService.fetchFeatureInfo(mapRef.current, latlng, timeValue, currentLayer);
+            console.log('📊 USGS result:', result);
+            setClickInfo(result);
+        } catch (error) {
+            console.error('🔥 Failed to fetch click info:', error);
+            setClickInfo({
+                success: false,
+                error: error.message,
+                coordinates: latlng,
+                time: timeValue
+            });
+        } finally {
+            setIsLoadingClick(false);
+        }
+    }, [texasBoundaryData, currentLayer]);
+
+    /**
+     * Handle refresh
+     */
+    const handleRefresh = useCallback(async () => {
+        console.log('🔄 Refreshing USGS data and clearing cache...');
+        usgsWfpiService.clearCache();
+        await initializeComponent();
+    }, [initializeComponent]);
+
+    /**
+     * Navigate back to main map
+     */
+    const handleBackToMap = useCallback(() => {
+        navigate('/texas-forestation-planner');
+    }, [navigate]);
+
+    /**
+     * Format date for display
+     */
+    const formatDateForDisplay = (isoString) => {
+        if (!isoString) return '';
+        return isoString.slice(0, 10); // YYYY-MM-DD
+    };
+
+    /**
+     * Get status color based on service health
+     */
+    const getStatusColor = (status) => {
+        switch (status) {
+            case 'online': return '#00ff00';
+            case 'degraded': return '#ffff00';
+            case 'offline': return '#ff0000';
+            default: return '#999999';
+        }
+    };
+
+    return (
+        <div className="usgs-wildfire-prediction">
+            {/* Header */}
+            <div className="usgs-header">
+                <div className="header-content">
+                    <div className="header-left">
+                        <button 
+                            className="back-button"
+                            onClick={handleBackToMap}
+                            title="Back to Main Map"
+                        >
+                            ← Back to Map
+                        </button>
+                        <div className="header-info">
+                            <h1>🏛️ USGS Wildfire Forecast</h1>
+                            <p>Enhanced government wildfire prediction using USGS WFPI data</p>
+                        </div>
+                    </div>
+                    
+                    <div className="header-right">
+                        <div className="service-status">
+                            {serviceHealth && (
+                                <div className="status-indicator">
+                                    <div 
+                                        className="status-dot"
+                                        style={{ backgroundColor: getStatusColor(serviceHealth.status) }}
+                                    ></div>
+                                    <span className="status-text">
+                                        USGS Service: {serviceHealth.status}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <button 
+                            className="refresh-button"
+                            onClick={handleRefresh}
+                            disabled={loading}
+                            title="Refresh Data"
+                        >
+                            {loading ? '⏳' : '🔄'} Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Loading State */}
+            {loading && (
+                <div className="loading-overlay">
+                    <div className="loading-container">
+                        <div className="loading-spinner"></div>
+                        <h2>Loading USGS Wildfire Data</h2>
+                        <p>Connecting to government wildfire prediction service...</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+                <div className="error-container">
+                    <div className="error-content">
+                        <div className="error-icon">⚠️</div>
+                        <h2>Unable to Load USGS Data</h2>
+                        <p>{error}</p>
+                        <button onClick={handleRefresh} className="retry-button">
+                            🔄 Retry
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Main Content */}
+            {!loading && !error && (
+                <div className="main-content">
+                    {/* Controls Panel */}
+                    <div className="controls-panel">
+                        <div className="control-group">
+                            <label htmlFor="fireDate" className="control-label">
+                                📅 Forecast Date:
+                            </label>
+                            <select 
+                                id="fireDate" 
+                                className="date-select"
+                                value={currentTime || ''}
+                                onChange={handleTimeChange}
+                            >
+                                {availableTimes.map(time => (
+                                    <option key={time} value={time}>
+                                        {formatDateForDisplay(time)}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Layer Selection */}
+                        <div className="control-group">
+                            <label className="control-label">
+                                🔥 Fire Prediction Layer:
+                            </label>
+                            <div className="layer-toggle-group">
+                                {availableLayers.map(layer => (
+                                    <button
+                                        key={layer.id}
+                                        className={`layer-toggle-button ${currentLayer === layer.id ? 'active' : ''}`}
+                                        onClick={() => handleLayerChange(layer.id)}
+                                        title={layer.description}
+                                        disabled={loading}
+                                    >
+                                        <span className="layer-icon" style={{ color: layer.color }}>
+                                            {layer.icon}
+                                        </span>
+                                        <span className="layer-name">{layer.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <button 
+                            className={`toggle-button ${isLayerVisible ? 'active' : ''}`}
+                            onClick={handleLayerToggle}
+                            title="Toggle Fire Layer"
+                        >
+                            {isLayerVisible ? '🔥 Hide Layer' : '🔥 Show Layer'}
+                        </button>
+
+                        {/* Legend */}
+                        {legendUrl && isLayerVisible && (
+                            <div className="legend-container">
+                                <h3 className="legend-title">
+                                    🔥 {availableLayers.find(l => l.id === currentLayer)?.name || 'Fire'} Legend
+                                </h3>
+                                <img 
+                                    src={legendUrl} 
+                                    alt="WFPI Legend" 
+                                    className="legend-image"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        console.warn('Failed to load legend image');
+                                    }}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Map Container */}
+                    <div className="map-container">
+                        <MapContainer
+                            center={texasCenter}
+                            zoom={6}
+                            style={{ height: '100%', width: '100%' }}
+                            zoomControl={true}
+                            scrollWheelZoom={true}
+                            doubleClickZoom={true}
+                            dragging={true}
+                            ref={(mapInstance) => {
+                                if (mapInstance) {
+                                    mapRef.current = mapInstance;
+                                    console.log('🗺️ Map reference set:', !!mapRef.current);
+                                }
+                            }}
+                        >
+                            <TileLayer
+                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            />
+                            
+                            {/* Texas bounds handler */}
+                            <TexasBoundsHandler texasBoundaryData={texasBoundaryData} />
+                            
+                            {/* Texas GeoJSON boundary */}
+                            <TexasGeoJSONBoundary texasBoundaryData={texasBoundaryData} />
+                            
+                            {currentTime && (
+                                <WMSLayer
+                                    timeValue={currentTime}
+                                    isVisible={isLayerVisible}
+                                    currentLayer={currentLayer}
+                                />
+                            )}
+
+                            <MapClickHandler
+                                onMapClick={handleMapClick}
+                                currentTime={currentTime}
+                            />
+                        </MapContainer>
+
+                        {/* Click Info Panel */}
+                        {(clickInfo || isLoadingClick) && (
+                            <div className="click-info-panel">
+                                {isLoadingClick ? (
+                                    <div className="click-loading">
+                                        <div className="mini-spinner"></div>
+                                        <span>Getting wildfire data...</span>
+                                    </div>
+                                ) : clickInfo.success ? (
+                                    <div className="click-success">
+                                        <h4>🔥 Wildfire Risk Analysis</h4>
+                                        <div className="info-row">
+                                            <span className="info-label">Date:</span>
+                                            <span className="info-value">
+                                                {formatDateForDisplay(clickInfo.time)}
+                                            </span>
+                                        </div>
+                                        <div className="info-row">
+                                            <span className="info-label">Location:</span>
+                                            <span className="info-value">
+                                                {clickInfo.coordinates.lat.toFixed(4)}, {clickInfo.coordinates.lng.toFixed(4)}
+                                            </span>
+                                        </div>
+                                        <div className="info-row">
+                                            <span className="info-label">WFPI Value:</span>
+                                            <span className="info-value">
+                                                {clickInfo.value !== null ? clickInfo.value.toFixed(1) : 'No data'}
+                                            </span>
+                                        </div>
+                                        <div className="info-row">
+                                            <span className="info-label">Risk Level:</span>
+                                            <span 
+                                                className="info-value risk-level"
+                                                style={{ 
+                                                    color: clickInfo.interpretation.color,
+                                                    fontWeight: 'bold'
+                                                }}
+                                            >
+                                                {clickInfo.interpretation.label}
+                                            </span>
+                                        </div>
+                                        <button 
+                                            className="close-info-button"
+                                            onClick={() => setClickInfo(null)}
+                                            title="Close"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className={`click-error ${clickInfo.outsideTexas ? 'texas-boundary-error' : ''}`}>
+                                        <h4>{clickInfo.outsideTexas ? '🗺️ Outside Texas' : '❌ Error'}</h4>
+                                        <p>{clickInfo.error}</p>
+                                        {clickInfo.outsideTexas && (
+                                            <div className="texas-hint">
+                                                <small>💡 This tool focuses on Texas wildfire data only</small>
+                                            </div>
+                                        )}
+                                        <button 
+                                            className="close-info-button"
+                                            onClick={() => setClickInfo(null)}
+                                            title="Close"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Map Instructions */}
+                        <div className="map-instructions">
+                            <div className="instruction-item">
+                                <span className="instruction-icon">🏛️</span>
+                                <span>USGS Government Data - Texas Region Focus</span>
+                            </div>
+                            <div className="instruction-item">
+                                <span className="instruction-icon">🖱️</span>
+                                <span>Click anywhere in Texas to get wildfire risk data</span>
+                            </div>
+                            <div className="instruction-item">
+                                <span className="instruction-icon">📅</span>
+                                <span>Use the date selector to view different forecast days</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default USGSWildfirePrediction;

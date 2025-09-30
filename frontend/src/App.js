@@ -4,6 +4,11 @@ import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import TexasMap from './components/Map/TexasMap';
 import LoginPage from './components/login/LoginPage';
 import CitizenChatbotPage from './components/CitizenChatbot/CitizenChatbotPage';
+import WildfirePredictionPage from './components/Wildfire/WildfirePredictionPage';
+import FullTexasWildfirePrediction from './components/Wildfire/FullTexasWildfirePrediction';
+import USGSWildfirePrediction from './components/Wildfire/USGSWildfirePrediction';
+import GridFireDashboard from './components/GridFire/GridFireDashboard';
+import GridFireMap from './components/GridFire/GridFireMap';
 import './App.css';
 
 /**
@@ -151,6 +156,56 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <MainAppContent />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Wildfire Prediction Route - Protected */}
+      <Route 
+        path="/wildfire-prediction" 
+        element={
+          <ProtectedRoute>
+            <WildfirePredictionPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Full Texas Wildfire Prediction Route - Protected */}
+      <Route 
+        path="/full-texas-wildfire" 
+        element={
+          <ProtectedRoute>
+            <FullTexasWildfirePrediction />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* USGS Wildfire Prediction Route - Protected */}
+      <Route 
+        path="/usgs-wildfire-prediction" 
+        element={
+          <ProtectedRoute>
+            <USGSWildfirePrediction />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Grid Fire Dashboard Route - Protected */}
+      <Route 
+        path="/grid-fire-dashboard" 
+        element={
+          <ProtectedRoute>
+            <GridFireDashboard />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Grid Fire Map Route - Protected */}
+      <Route 
+        path="/grid-fire-map" 
+        element={
+          <ProtectedRoute>
+            <GridFireMap />
           </ProtectedRoute>
         } 
       />

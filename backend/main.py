@@ -33,6 +33,11 @@ from carbon_estimation_service import CarbonEstimationService
 # Import fire tracking components
 from fire_api_routes import router as fire_router
 
+# Import wildfire prediction components
+from wildfire_api_routes import router as wildfire_router
+from grid_fire_api_routes import router as grid_fire_router
+from grid_scheduler import grid_fire_scheduler
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -178,6 +183,8 @@ app.include_router(chatbot_router)
 app.include_router(auth_router)
 app.include_router(carbon_router)
 app.include_router(fire_router)
+app.include_router(wildfire_router)
+app.include_router(grid_fire_router)
 
 @app.get("/")
 async def root():
@@ -205,7 +212,12 @@ async def root():
             "fire_texas": "/api/fire/texas",
             "fire_statistics": "/api/fire/statistics",
             "fire_datasets": "/api/fire/datasets",
-            "fire_health": "/api/fire/health"
+            "fire_health": "/api/fire/health",
+            "wildfire_texas_forecast": "/api/wildfire/texas-forecast",
+            "wildfire_point_risk": "/api/wildfire/point-risk",
+            "wildfire_health": "/api/wildfire/health",
+            "wildfire_categories": "/api/wildfire/risk-categories",
+            "wildfire_locations": "/api/wildfire/texas-locations"
         }
     }
 
@@ -460,6 +472,40 @@ async def get_layer_stats(layer_id: str):
 async def websocket_chatbot_endpoint(websocket: WebSocket):
     """WebSocket endpoint for real-time citizen chatbot"""
     await handle_websocket_connection(websocket)
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize services on startup"""
+    try:
+        logger.info("Starting Texas Vanrakshak backend services...")
+        
+        # Start grid fire risk scheduler
+        try:
+            grid_fire_scheduler.start()
+            logger.info("Grid fire risk scheduler started")
+        except Exception as e:
+            logger.warning(f"Failed to start grid fire scheduler: {str(e)}")
+        
+        logger.info("Grid fire services initialized successfully")
+    except Exception as e:
+        logger.error(f"Grid fire startup failed: {str(e)}")
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Cleanup on shutdown"""
+    try:
+        logger.info("Shutting down Texas Vanrakshak backend services...")
+        
+        # Stop grid fire risk scheduler
+        try:
+            grid_fire_scheduler.stop()
+            logger.info("Grid fire risk scheduler stopped")
+        except Exception as e:
+            logger.warning(f"Error stopping grid fire scheduler: {str(e)}")
+        
+        logger.info("Shutdown complete")
+    except Exception as e:
+        logger.error(f"Shutdown error: {str(e)}")
 
 if __name__ == "__main__":
     import uvicorn
