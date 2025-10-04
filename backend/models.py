@@ -109,4 +109,48 @@ class PlanStatusResponse(BaseModel):
     plan_id: str
     status: str  # 'pending', 'processing', 'completed', 'failed'
     estimated_completion: Optional[datetime] = None
-    progress_percentage: Optional[int] = None 
+    progress_percentage: Optional[int] = None
+
+# === ENCROACHMENT TRACKING MODELS ===
+
+class EncroachmentAlert(BaseModel):
+    """Model for encroachment alert data"""
+    latitude: float = Field(..., description="Latitude of the encroachment alert")
+    longitude: float = Field(..., description="Longitude of the encroachment alert")
+    date: str = Field(..., description="Date of the encroachment alert (YYYY-MM-DD)")
+    confidence: str = Field(..., description="Confidence level: 'high', 'nominal', or 'low'")
+    alert_id: Optional[str] = Field(None, description="Unique identifier for the alert")
+
+class EncroachmentRequest(BaseModel):
+    """Request model for encroachment data queries"""
+    start_date: Optional[str] = Field(None, description="Start date in YYYY-MM-DD format")
+    end_date: Optional[str] = Field(None, description="End date in YYYY-MM-DD format")
+    confidence_level: Optional[str] = Field("all", description="Confidence level filter")
+    limit: Optional[int] = Field(10000, description="Maximum number of alerts to return", ge=1, le=50000)
+    offset: Optional[int] = Field(0, description="Number of alerts to skip", ge=0)
+
+class EncroachmentResponse(BaseModel):
+    """Response model for encroachment data"""
+    alerts: List[EncroachmentAlert]
+    total_count: int
+    date_range: Dict[str, str]
+    confidence_breakdown: Dict[str, int]
+    last_updated: datetime
+    query_duration_ms: float
+
+class EncroachmentStats(BaseModel):
+    """Statistics for encroachment data"""
+    total_alerts: int
+    alerts_by_confidence: Dict[str, int]
+    alerts_by_date: Dict[str, int]
+    recent_alerts_count: int
+    high_confidence_count: int
+    last_alert_date: Optional[str]
+
+class EncroachmentHealth(BaseModel):
+    """Health check for encroachment service"""
+    status: str
+    api_accessible: bool
+    last_successful_fetch: Optional[datetime]
+    total_cached_alerts: int
+    cache_age_hours: Optional[float] 

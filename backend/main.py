@@ -38,6 +38,9 @@ from wildfire_api_routes import router as wildfire_router
 from grid_fire_api_routes import router as grid_fire_router
 from grid_scheduler import grid_fire_scheduler
 
+# Import encroachment tracking components
+from encroachment_api_routes import router as encroachment_router
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -185,6 +188,7 @@ app.include_router(carbon_router)
 app.include_router(fire_router)
 app.include_router(wildfire_router)
 app.include_router(grid_fire_router)
+app.include_router(encroachment_router)
 
 @app.get("/")
 async def root():
@@ -217,7 +221,13 @@ async def root():
             "wildfire_point_risk": "/api/wildfire/point-risk",
             "wildfire_health": "/api/wildfire/health",
             "wildfire_categories": "/api/wildfire/risk-categories",
-            "wildfire_locations": "/api/wildfire/texas-locations"
+            "wildfire_locations": "/api/wildfire/texas-locations",
+            "encroachment_texas": "/api/encroachment/texas",
+            "encroachment_statistics": "/api/encroachment/statistics",
+            "encroachment_recent": "/api/encroachment/recent",
+            "encroachment_high_confidence": "/api/encroachment/high-confidence",
+            "encroachment_health": "/api/encroachment/health",
+            "encroachment_refresh": "/api/encroachment/refresh"
         }
     }
 

@@ -75,6 +75,31 @@ def reset_password(username: str, new_password: str):
     else:
         print(f"❌ Failed to reset password for '{username}' (user may not exist)")
 
+def unlock_user(username: str):
+    """Unlock user account by resetting failed login attempts"""
+    print(f"🔓 Unlocking account for user: {username}")
+    
+    try:
+        from login.user_models import User
+        with user_db_service.get_session() as session:
+            user = session.query(User).filter_by(username=username).first()
+            if not user:
+                print(f"❌ User '{username}' not found")
+                return False
+            
+            if not user.is_account_locked():
+                print(f"ℹ️ Account '{username}' is not locked")
+                return True
+            
+            user.failed_login_attempts = 0
+            print(f"✅ Account '{username}' unlocked successfully!")
+            print(f"   Failed attempts reset to 0")
+            return True
+            
+    except Exception as e:
+        print(f"❌ Error unlocking account: {e}")
+        return False
+
 def show_stats():
     """Show system statistics"""
     print("📊 Texas Forestation System Statistics:")
@@ -89,7 +114,7 @@ def show_stats():
 
 def main():
     parser = argparse.ArgumentParser(description='Texas Forestation User Management')
-    parser.add_argument('command', choices=['list', 'create', 'test', 'reset', 'stats'], 
+    parser.add_argument('command', choices=['list', 'create', 'test', 'reset', 'unlock', 'stats'], 
                        help='Command to execute')
     parser.add_argument('--username', '-u', help='Username')
     parser.add_argument('--password', '-p', help='Password')
@@ -120,6 +145,12 @@ def main():
             print("❌ Error: --username and --new-password required for reset command")
             sys.exit(1)
         reset_password(args.username, args.new_password)
+    
+    elif args.command == 'unlock':
+        if not args.username:
+            print("❌ Error: --username required for unlock command")
+            sys.exit(1)
+        unlock_user(args.username)
     
     elif args.command == 'stats':
         show_stats()

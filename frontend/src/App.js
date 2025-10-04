@@ -9,6 +9,7 @@ import FullTexasWildfirePrediction from './components/Wildfire/FullTexasWildfire
 import USGSWildfirePrediction from './components/Wildfire/USGSWildfirePrediction';
 import GridFireDashboard from './components/GridFire/GridFireDashboard';
 import GridFireMap from './components/GridFire/GridFireMap';
+import EncroachmentTrackingPage from './components/Encroachment/EncroachmentTrackingPage';
 import './App.css';
 
 /**
@@ -98,6 +99,43 @@ const MainAppContent = () => {
   return (
     <div className="App">
       <TexasMap />
+      
+      {/* Encroachment Tracking Button - positioned in top-left corner */}
+      <button
+        onClick={() => navigate('/encroachment-tracking')}
+        style={{
+          position: 'fixed',
+          top: '20px',
+          left: '20px',
+          zIndex: 1500,
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          border: 'none',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '25px',
+          fontSize: '14px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+          backdropFilter: 'blur(10px)',
+          border: '2px solid rgba(255, 255, 255, 0.2)'
+        }}
+        title="Track forest encroachment alerts across Texas"
+        onMouseOver={(e) => {
+          e.target.style.transform = 'translateY(-3px)';
+          e.target.style.boxShadow = '0 6px 25px rgba(102, 126, 234, 0.6)';
+        }}
+        onMouseOut={(e) => {
+          e.target.style.transform = 'translateY(0)';
+          e.target.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.4)';
+        }}
+      >
+        🌲 Encroachment Tracking
+      </button>
       
       {/* Logout button - positioned in bottom-right corner */}
       <div style={{
@@ -206,6 +244,16 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <GridFireMap />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Encroachment Tracking Route - Protected */}
+      <Route 
+        path="/encroachment-tracking" 
+        element={
+          <ProtectedRoute>
+            <EncroachmentTrackingPage />
           </ProtectedRoute>
         } 
       />
