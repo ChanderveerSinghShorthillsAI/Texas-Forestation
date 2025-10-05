@@ -10,6 +10,7 @@ import USGSWildfirePrediction from './components/Wildfire/USGSWildfirePrediction
 import GridFireDashboard from './components/GridFire/GridFireDashboard';
 import GridFireMap from './components/GridFire/GridFireMap';
 import EncroachmentTrackingPage from './components/Encroachment/EncroachmentTrackingPage';
+import TemporalComparisonPage from './components/SatelliteComparison/TemporalComparisonPage';
 import './App.css';
 
 /**
@@ -100,42 +101,80 @@ const MainAppContent = () => {
     <div className="App">
       <TexasMap />
       
-      {/* Encroachment Tracking Button - positioned in top-left corner */}
-      <button
-        onClick={() => navigate('/encroachment-tracking')}
-        style={{
-          position: 'fixed',
-          top: '20px',
-          left: '20px',
-          zIndex: 1500,
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          border: 'none',
-          color: 'white',
-          padding: '12px 20px',
-          borderRadius: '25px',
-          fontSize: '14px',
-          cursor: 'pointer',
-          fontWeight: '600',
-          transition: 'all 0.3s ease',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
-          backdropFilter: 'blur(10px)',
-          border: '2px solid rgba(255, 255, 255, 0.2)'
-        }}
-        title="Track forest encroachment alerts across Texas"
-        onMouseOver={(e) => {
-          e.target.style.transform = 'translateY(-3px)';
-          e.target.style.boxShadow = '0 6px 25px rgba(102, 126, 234, 0.6)';
-        }}
-        onMouseOut={(e) => {
-          e.target.style.transform = 'translateY(0)';
-          e.target.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.4)';
-        }}
-      >
-        🌲 Encroachment Tracking
-      </button>
+      {/* Feature Navigation Buttons - positioned in top-left corner */}
+      <div style={{
+        position: 'fixed',
+        top: '20px',
+        left: '20px',
+        zIndex: 1500,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
+      }}>
+        <button
+          onClick={() => navigate('/encroachment-tracking')}
+          style={{
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            border: 'none',
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '25px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+            backdropFilter: 'blur(10px)',
+            border: '2px solid rgba(255, 255, 255, 0.2)'
+          }}
+          title="Track forest encroachment alerts across Texas"
+          onMouseOver={(e) => {
+            e.target.style.transform = 'translateY(-3px)';
+            e.target.style.boxShadow = '0 6px 25px rgba(102, 126, 234, 0.6)';
+          }}
+          onMouseOut={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = '0 4px 20px rgba(102, 126, 234, 0.4)';
+          }}
+        >
+          🌲 Encroachment Tracking
+        </button>
+        
+        <button
+          onClick={() => navigate('/satellite-comparison')}
+          style={{
+            background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            border: 'none',
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '25px',
+            fontSize: '14px',
+            cursor: 'pointer',
+            fontWeight: '600',
+            transition: 'all 0.3s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            boxShadow: '0 4px 20px rgba(245, 158, 11, 0.4)',
+            backdropFilter: 'blur(10px)',
+            border: '2px solid rgba(255, 255, 255, 0.2)'
+          }}
+          title="Compare satellite imagery across time"
+          onMouseOver={(e) => {
+            e.target.style.transform = 'translateY(-3px)';
+            e.target.style.boxShadow = '0 6px 25px rgba(245, 158, 11, 0.6)';
+          }}
+          onMouseOut={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = '0 4px 20px rgba(245, 158, 11, 0.4)';
+          }}
+        >
+          🛰️ Satellite Comparison
+        </button>
+      </div>
       
       {/* Logout button - positioned in bottom-right corner */}
       <div style={{
@@ -254,6 +293,16 @@ const AppRouter = () => {
         element={
           <ProtectedRoute>
             <EncroachmentTrackingPage />
+          </ProtectedRoute>
+        } 
+      />
+      
+      {/* Satellite Comparison Route - Protected */}
+      <Route 
+        path="/satellite-comparison" 
+        element={
+          <ProtectedRoute>
+            <TemporalComparisonPage />
           </ProtectedRoute>
         } 
       />

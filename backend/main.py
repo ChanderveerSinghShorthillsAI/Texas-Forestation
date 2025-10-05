@@ -41,6 +41,10 @@ from grid_scheduler import grid_fire_scheduler
 # Import encroachment tracking components
 from encroachment_api_routes import router as encroachment_router
 
+# Import satellite comparison components
+from satellite_comparison_api_routes import router as satellite_comparison_router
+from sentinel_hub_api_routes import router as sentinel_hub_router
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -189,6 +193,8 @@ app.include_router(fire_router)
 app.include_router(wildfire_router)
 app.include_router(grid_fire_router)
 app.include_router(encroachment_router)
+app.include_router(satellite_comparison_router)
+app.include_router(sentinel_hub_router)
 
 @app.get("/")
 async def root():
@@ -227,7 +233,10 @@ async def root():
             "encroachment_recent": "/api/encroachment/recent",
             "encroachment_high_confidence": "/api/encroachment/high-confidence",
             "encroachment_health": "/api/encroachment/health",
-            "encroachment_refresh": "/api/encroachment/refresh"
+            "encroachment_refresh": "/api/encroachment/refresh",
+            "satellite_comparison_health": "/api/satellite-comparison/health",
+            "satellite_comparison_search": "/api/satellite-comparison/search",
+            "satellite_comparison_compare": "/api/satellite-comparison/compare"
         }
     }
 

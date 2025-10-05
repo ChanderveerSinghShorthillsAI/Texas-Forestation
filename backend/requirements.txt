@@ -39,3 +39,8 @@ passlib[bcrypt]==1.7.4
 
 # Chatbot dependencies
 websockets==12.0
+
+# Satellite imagery comparison
+planet==2.4.0
+sentinelhub==3.10.0
+Pillow==10.0.0
