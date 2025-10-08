@@ -23,3 +23,5 @@ backend/login/__pycache__
 backend/texas_chatbot.db
 frontend/build
 frontend/public/texas_fire_geojsons
+frontend/public/texas_fire_geojsons.zip
+frontend/public/Texas_Geojsons.zip

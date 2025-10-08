@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { carbonEstimationService } from '../../services/carbonEstimationService';
 import './CarbonEstimationPanel.css';
 
@@ -6,7 +6,7 @@ const CarbonEstimationPanel = ({
   selectedCounty = null, 
   isVisible = true, 
   onClose = null,
-  onCountySelect = null 
+  onCountySelect = null
 }) => {
   const [carbonData, setCarbonData] = useState(null);
   const [statewideData, setStatewideData] = useState(null);
@@ -15,70 +15,89 @@ const CarbonEstimationPanel = ({
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('county');
   const [searchCounty, setSearchCounty] = useState('');
+  const [skeletonLoading, setSkeletonLoading] = useState(false);
+  
+  const dataLoadedRef = useRef({
+    county: false,
+    statewide: false,
+    rankings: false
+  });
+
+  // Debounce search input
+  const debounceTimer = useRef(null);
 
   // Load county data when selectedCounty changes
   useEffect(() => {
-    if (selectedCounty && activeTab === 'county') {
+    if (selectedCounty && activeTab === 'county' && !dataLoadedRef.current.county) {
       loadCountyData(selectedCounty);
     }
   }, [selectedCounty, activeTab]);
 
   // Load statewide data when statewide tab is active
   useEffect(() => {
-    if (activeTab === 'statewide' && !statewideData) {
+    if (activeTab === 'statewide' && !dataLoadedRef.current.statewide) {
       loadStatewideData();
     }
-  }, [activeTab, statewideData]);
+  }, [activeTab]);
 
   // Load top counties when rankings tab is active
   useEffect(() => {
-    if (activeTab === 'rankings' && topCounties.length === 0) {
+    if (activeTab === 'rankings' && !dataLoadedRef.current.rankings) {
       loadTopCounties();
     }
-  }, [activeTab, topCounties]);
+  }, [activeTab]);
 
-  const loadCountyData = async (countyName) => {
+  const loadCountyData = useCallback(async (countyName) => {
+    setSkeletonLoading(true);
     setLoading(true);
     setError(null);
 
     try {
       const data = await carbonEstimationService.getCountyCarbon(countyName);
       setCarbonData(data);
+      dataLoadedRef.current.county = true;
     } catch (err) {
       setError(`Failed to load carbon data for ${countyName}: ${err.message}`);
       setCarbonData(null);
     } finally {
       setLoading(false);
+      setSkeletonLoading(false);
     }
-  };
+  }, []);
 
-  const loadStatewideData = async () => {
+  const loadStatewideData = useCallback(async () => {
+    setSkeletonLoading(true);
     setLoading(true);
     setError(null);
 
     try {
       const data = await carbonEstimationService.getStatewideCarbon();
       setStatewideData(data);
+      dataLoadedRef.current.statewide = true;
     } catch (err) {
       setError(`Failed to load statewide data: ${err.message}`);
     } finally {
       setLoading(false);
+      setSkeletonLoading(false);
     }
-  };
+  }, []);
 
-  const loadTopCounties = async () => {
+  const loadTopCounties = useCallback(async () => {
+    setSkeletonLoading(true);
     setLoading(true);
     setError(null);
 
     try {
       const data = await carbonEstimationService.getTopCarbonCounties(15);
       setTopCounties(data.top_counties || []);
+      dataLoadedRef.current.rankings = true;
     } catch (err) {
       setError(`Failed to load top counties: ${err.message}`);
     } finally {
       setLoading(false);
+      setSkeletonLoading(false);
     }
-  };
+  }, []);
 
   const handleSearchCounty = async (e) => {
     e.preventDefault();
@@ -96,192 +115,218 @@ const CarbonEstimationPanel = ({
       onCountySelect(countyName);
     }
     setActiveTab('county');
+    loadCountyData(countyName);
+  };
+
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
   };
 
   if (!isVisible) return null;
 
   return (
-    <div className="carbon-estimation-panel">
-      <div className="panel-header">
-        <h2>🌲 Texas Carbon Estimation</h2>
-        {onClose && (
-          <button className="close-btn" onClick={onClose} aria-label="Close">
-            ×
-          </button>
-        )}
-      </div>
-
-      <div className="panel-tabs">
-        <button 
-          className={`tab ${activeTab === 'county' ? 'active' : ''}`}
-          onClick={() => setActiveTab('county')}
-        >
-          County Analysis
-        </button>
-        <button 
-          className={`tab ${activeTab === 'statewide' ? 'active' : ''}`}
-          onClick={() => setActiveTab('statewide')}
-        >
-          Statewide
-        </button>
-        <button 
-          className={`tab ${activeTab === 'rankings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('rankings')}
-        >
-          Top Counties
-        </button>
-      </div>
-
-      <div className="panel-content">
-        {loading && (
-          <div className="loading-indicator">
-            <div className="spinner"></div>
-            <p>Calculating carbon stocks...</p>
-          </div>
-        )}
-
-        {error && (
-          <div className="error-message">
-            <span className="error-icon">⚠️</span>
-            <p>{error}</p>
-          </div>
-        )}
-
-        {/* County Tab */}
-        {activeTab === 'county' && (
-          <div className="county-tab">
-            <div className="county-search">
-              <form onSubmit={handleSearchCounty}>
-                <input
-                  type="text"
-                  placeholder="Search county (e.g., Harris, Dallas)"
-                  value={searchCounty}
-                  onChange={(e) => setSearchCounty(e.target.value)}
-                  className="county-search-input"
-                />
-                <button type="submit" className="search-btn">
-                  Search
-                </button>
-              </form>
+    <>
+      {/* Backdrop overlay */}
+      <div className="carbon-modal-backdrop" onClick={onClose} />
+      
+      {/* Modal panel */}
+      <div className="carbon-estimation-modal">
+        <div className="modal-header">
+          <div className="header-content">
+            <span className="header-icon">🌲</span>
+            <div className="header-text">
+              <h2>Texas Carbon Analysis</h2>
+              <p className="header-subtitle">Comprehensive carbon stock estimation across Texas counties</p>
             </div>
+          </div>
+          {onClose && (
+            <button className="close-btn" onClick={onClose} aria-label="Close">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </button>
+          )}
+        </div>
 
-            {selectedCounty && (
-              <p className="selected-county">
-                📍 Selected: <strong>{selectedCounty} County</strong>
-              </p>
-            )}
+        <div className="modal-tabs">
+          <button 
+            className={`tab ${activeTab === 'county' ? 'active' : ''}`}
+            onClick={() => handleTabChange('county')}
+          >
+            <span className="tab-icon">📍</span>
+            <span className="tab-text">County Analysis</span>
+          </button>
+          <button 
+            className={`tab ${activeTab === 'statewide' ? 'active' : ''}`}
+            onClick={() => handleTabChange('statewide')}
+          >
+            <span className="tab-icon">🗺️</span>
+            <span className="tab-text">Statewide Overview</span>
+          </button>
+          <button 
+            className={`tab ${activeTab === 'rankings' ? 'active' : ''}`}
+            onClick={() => handleTabChange('rankings')}
+          >
+            <span className="tab-icon">🏆</span>
+            <span className="tab-text">Top Counties</span>
+          </button>
+        </div>
 
-            {carbonData && !loading && (
-              <div className="carbon-results">
-                <div className="county-header">
-                  <h3>{carbonData.county_name} County</h3>
-                  <span className="fips-code">FIPS: {carbonData.county_fips}</span>
-                  {carbonEstimationService.isDefaultEstimate(carbonData) && (
-                    <div className="default-estimate-warning" style={{
-                      backgroundColor: '#fef3c7',
-                      color: '#d97706',
-                      padding: '8px 12px',
-                      borderRadius: '6px',
-                      fontSize: '13px',
-                      marginTop: '8px',
-                      border: '1px solid #fcd34d'
-                    }}>
-                      ⚠️ <strong>Default Estimate:</strong> No biomass data available for this county. Values are based on average Texas county characteristics.
-                    </div>
-                  )}
+        <div className="modal-content">
+          {error && (
+            <div className="error-banner">
+              <span className="error-icon">⚠️</span>
+              <p>{error}</p>
+            </div>
+          )}
+
+          {/* County Tab */}
+          {activeTab === 'county' && (
+            <div className="county-tab">
+              <div className="county-search-section">
+                <form onSubmit={handleSearchCounty} className="search-form">
+                  <div className="search-input-wrapper">
+                    <span className="search-icon">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="Search county (e.g., Harris, Dallas, Travis)"
+                      value={searchCounty}
+                      onChange={(e) => setSearchCounty(e.target.value)}
+                      className="search-input"
+                    />
+                  </div>
+                  <button type="submit" className="search-btn">
+                    Search
+                  </button>
+                </form>
+              </div>
+
+              {selectedCounty && (
+                <div className="selected-indicator">
+                  <span className="indicator-icon">📍</span>
+                  <span>Currently viewing: <strong>{selectedCounty} County</strong></span>
                 </div>
+              )}
 
-                <div className="carbon-metrics">
-                  <div className="metric-card total-carbon">
-                    <div className="metric-icon">🌍</div>
-                    <div className="metric-content">
-                      <div className="metric-label">Total Carbon Stock</div>
-                      <div className="metric-value">
-                        {carbonEstimationService.formatCarbonValue(carbonData.total_carbon_tons)}
-                      </div>
-                    </div>
-                  </div>
+              {skeletonLoading && <SkeletonLoader type="county" />}
 
-                  <div className="metric-card co2-equivalent">
-                    <div className="metric-icon">💨</div>
-                    <div className="metric-content">
-                      <div className="metric-label">CO₂ Equivalent</div>
-                      <div className="metric-value">
-                        {carbonEstimationService.formatCO2Value(carbonData.total_co2_equivalent_tons)}
-                      </div>
+              {carbonData && !skeletonLoading && (
+                <div className="carbon-results">
+                  <div className="county-header-card">
+                    <div className="county-title-section">
+                      <h3>{carbonData.county_name} County</h3>
+                      <span className="fips-badge">FIPS: {carbonData.county_fips}</span>
                     </div>
-                  </div>
-
-                  <div className="metric-card biomass-carbon">
-                    <div className="metric-icon">🌲</div>
-                    <div className="metric-content">
-                      <div className="metric-label">Biomass Carbon</div>
-                      <div className="metric-value">
-                        {carbonEstimationService.formatCarbonValue(carbonData.biomass_carbon_tons)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="metric-card soil-carbon">
-                    <div className="metric-icon">🌱</div>
-                    <div className="metric-content">
-                      <div className="metric-label">Soil Carbon Potential</div>
-                      <div className="metric-value">
-                        {carbonEstimationService.formatCarbonValue(carbonData.soil_carbon_potential_tons)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="detailed-breakdown">
-                  <h4>Detailed Breakdown</h4>
-                  <div className="breakdown-items">
-                    <div className="breakdown-item">
-                      <span className="item-label">Wood Biomass:</span>
-                      <span className="item-value">
-                        {carbonEstimationService.formatCarbonValue(carbonData.wood_biomass_tons)}
-                      </span>
-                    </div>
-                    <div className="breakdown-item">
-                      <span className="item-label">Crop Residue:</span>
-                      <span className="item-value">
-                        {carbonEstimationService.formatCarbonValue(carbonData.crop_residue_tons)}
-                      </span>
-                    </div>
-                    <div className="breakdown-item">
-                      <span className="item-label">Wetland Carbon/Year:</span>
-                      <span className="item-value">
-                        {carbonEstimationService.formatCarbonValue(carbonData.wetland_carbon_potential_tons)}
-                      </span>
-                    </div>
-                    {carbonData.wetland_acres > 0 && (
-                      <div className="breakdown-item">
-                        <span className="item-label">Wetland Area:</span>
-                        <span className="item-value">{carbonData.wetland_acres.toFixed(1)} acres</span>
+                    {carbonEstimationService.isDefaultEstimate(carbonData) && (
+                      <div className="default-warning">
+                        <span className="warning-icon">⚠️</span>
+                        <div className="warning-text">
+                          <strong>Default Estimate:</strong> No biomass data available. Values based on Texas averages.
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
 
-                <div className="calculation-info">
-                  <small>
-                    Calculated: {new Date(carbonData.calculation_timestamp).toLocaleString()}
-                  </small>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                  <div className="metrics-grid">
+                    <div className="metric-card primary">
+                      <div className="metric-header">
+                        <span className="metric-icon">🌍</span>
+                        <span className="metric-label">Total Carbon Stock</span>
+                      </div>
+                      <div className="metric-value">
+                        {carbonEstimationService.formatCarbonValue(carbonData.total_carbon_tons)}
+                      </div>
+                      <div className="metric-description">Stored carbon across all sources</div>
+                    </div>
 
-        {/* Statewide Tab */}
-        {activeTab === 'statewide' && (
-          <div className="statewide-tab">
-            {statewideData && !loading && (
-              <div className="statewide-results">
-                <div className="statewide-summary">
-                  <h3>Texas Statewide Carbon Assessment</h3>
+                    <div className="metric-card secondary">
+                      <div className="metric-header">
+                        <span className="metric-icon">💨</span>
+                        <span className="metric-label">CO₂ Equivalent</span>
+                      </div>
+                      <div className="metric-value">
+                        {carbonEstimationService.formatCO2Value(carbonData.total_co2_equivalent_tons)}
+                      </div>
+                      <div className="metric-description">Total greenhouse gas impact</div>
+                    </div>
+
+                    <div className="metric-card accent-1">
+                      <div className="metric-header">
+                        <span className="metric-icon">🌲</span>
+                        <span className="metric-label">Biomass Carbon</span>
+                      </div>
+                      <div className="metric-value">
+                        {carbonEstimationService.formatCarbonValue(carbonData.biomass_carbon_tons)}
+                      </div>
+                      <div className="metric-description">From vegetation & trees</div>
+                    </div>
+
+                    <div className="metric-card accent-2">
+                      <div className="metric-header">
+                        <span className="metric-icon">🌱</span>
+                        <span className="metric-label">Soil Carbon</span>
+                      </div>
+                      <div className="metric-value">
+                        {carbonEstimationService.formatCarbonValue(carbonData.soil_carbon_potential_tons)}
+                      </div>
+                      <div className="metric-description">Sequestered in soil</div>
+                    </div>
+                  </div>
+
+                  <div className="breakdown-section">
+                    <h4 className="section-title">Detailed Breakdown</h4>
+                    <div className="breakdown-grid">
+                      <div className="breakdown-item">
+                        <span className="breakdown-label">Wood Biomass</span>
+                        <span className="breakdown-value">
+                          {carbonEstimationService.formatCarbonValue(carbonData.wood_biomass_tons)}
+                        </span>
+                      </div>
+                      <div className="breakdown-item">
+                        <span className="breakdown-label">Crop Residue</span>
+                        <span className="breakdown-value">
+                          {carbonEstimationService.formatCarbonValue(carbonData.crop_residue_tons)}
+                        </span>
+                      </div>
+                      <div className="breakdown-item">
+                        <span className="breakdown-label">Wetland Carbon/Year</span>
+                        <span className="breakdown-value">
+                          {carbonEstimationService.formatCarbonValue(carbonData.wetland_carbon_potential_tons)}
+                        </span>
+                      </div>
+                      {carbonData.wetland_acres > 0 && (
+                        <div className="breakdown-item">
+                          <span className="breakdown-label">Wetland Area</span>
+                          <span className="breakdown-value">{carbonData.wetland_acres.toFixed(1)} acres</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="calculation-timestamp">
+                    <span className="timestamp-icon">🕐</span>
+                    <span>Calculated: {new Date(carbonData.calculation_timestamp).toLocaleString()}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Statewide Tab */}
+          {activeTab === 'statewide' && (
+            <div className="statewide-tab">
+              {skeletonLoading && <SkeletonLoader type="statewide" />}
+              
+              {statewideData && !skeletonLoading && (
+                <div className="statewide-results">
+                  <div className="statewide-header">
+                    <h3>Texas Statewide Carbon Assessment</h3>
+                    <p className="statewide-description">
+                      Comprehensive analysis across all {statewideData.total_counties} Texas counties
+                    </p>
+                  </div>
                   
-                  <div className="summary-metrics">
+                  <div className="summary-grid">
                     <div className="summary-card">
                       <div className="summary-icon">🏢</div>
                       <div className="summary-content">
@@ -321,76 +366,140 @@ const CarbonEstimationPanel = ({
                     </div>
                   </div>
 
-                  <div className="top-counties-preview">
-                    <h4>Top 5 Carbon-Rich Counties</h4>
-                    <div className="preview-list">
+                  <div className="top-preview-section">
+                    <h4 className="section-title">Top 5 Carbon-Rich Counties</h4>
+                    <div className="preview-grid">
                       {statewideData.top_carbon_counties.slice(0, 5).map((county, index) => (
                         <div 
                           key={county.county_name} 
-                          className="preview-county"
+                          className="preview-card"
                           onClick={() => handleCountyClick(county.county_name)}
                         >
-                          <span className="rank">#{index + 1}</span>
-                          <span className="name">{county.county_name}</span>
-                          <span className="carbon">
-                            {carbonEstimationService.formatCarbonValue(county.total_carbon_tons)}
-                          </span>
+                          <div className="preview-rank">#{index + 1}</div>
+                          <div className="preview-info">
+                            <div className="preview-name">{county.county_name}</div>
+                            <div className="preview-carbon">
+                              {carbonEstimationService.formatCarbonValue(county.total_carbon_tons)}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
 
-        {/* Rankings Tab */}
-        {activeTab === 'rankings' && (
-          <div className="rankings-tab">
-            {topCounties.length > 0 && !loading && (
-              <div className="rankings-results">
-                <h3>Top 15 Carbon-Rich Counties</h3>
-                <div className="counties-ranking">
-                  {topCounties.map((county, index) => {
-                    const category = carbonEstimationService.getCarbonCategory(county.total_carbon_tons);
-                    return (
-                      <div 
-                        key={county.county_name}
-                        className="ranking-county"
-                        onClick={() => handleCountyClick(county.county_name)}
-                        style={{ borderLeft: `4px solid ${category.color}` }}
-                      >
-                        <div className="ranking-position">
-                          <span className="position-number">#{index + 1}</span>
-                          <span className="category-label">{category.label}</span>
-                        </div>
-                        <div className="county-info">
-                          <div className="county-name">{county.county_name} County</div>
-                          <div className="carbon-amount">
-                            {carbonEstimationService.formatCarbonValue(county.total_carbon_tons)}
+          {/* Rankings Tab */}
+          {activeTab === 'rankings' && (
+            <div className="rankings-tab">
+              {skeletonLoading && <SkeletonLoader type="rankings" />}
+              
+              {topCounties.length > 0 && !skeletonLoading && (
+                <div className="rankings-results">
+                  <div className="rankings-header">
+                    <h3>Top 15 Carbon-Rich Counties</h3>
+                    <p className="rankings-description">
+                      Counties ranked by total carbon stock potential
+                    </p>
+                  </div>
+                  <div className="rankings-grid">
+                    {topCounties.map((county, index) => {
+                      const category = carbonEstimationService.getCarbonCategory(county.total_carbon_tons);
+                      return (
+                        <div 
+                          key={county.county_name}
+                          className="ranking-card"
+                          onClick={() => handleCountyClick(county.county_name)}
+                          style={{ 
+                            borderLeft: `4px solid ${category.color}`,
+                            animationDelay: `${index * 50}ms`
+                          }}
+                        >
+                          <div className="ranking-position">
+                            <div className="position-badge">#{index + 1}</div>
+                            <div className="category-badge" style={{ backgroundColor: category.color }}>
+                              {category.label}
+                            </div>
                           </div>
-                          <div className="co2-amount">
-                            {carbonEstimationService.formatCO2Value(county.total_co2_equivalent_tons)}
+                          <div className="ranking-info">
+                            <div className="ranking-name">{county.county_name} County</div>
+                            <div className="ranking-metrics">
+                              <div className="ranking-carbon">
+                                <span className="metric-icon-small">🌲</span>
+                                {carbonEstimationService.formatCarbonValue(county.total_carbon_tons)}
+                              </div>
+                              <div className="ranking-co2">
+                                <span className="metric-icon-small">💨</span>
+                                {carbonEstimationService.formatCO2Value(county.total_co2_equivalent_tons)}
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </div>
 
-      <div className="panel-footer">
-        <small>
-          🔬 Based on scientific conversion factors (IPCC/FAO standards)
-        </small>
+        <div className="modal-footer">
+          <div className="footer-info">
+            <span className="footer-icon">🔬</span>
+            <span>Based on IPCC/FAO standards | Data cached for optimal performance</span>
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
+};
+
+// Skeleton Loader Component
+const SkeletonLoader = ({ type }) => {
+  if (type === 'county') {
+    return (
+      <div className="skeleton-container">
+        <div className="skeleton skeleton-header"></div>
+        <div className="skeleton-metrics">
+          <div className="skeleton skeleton-card"></div>
+          <div className="skeleton skeleton-card"></div>
+          <div className="skeleton skeleton-card"></div>
+          <div className="skeleton skeleton-card"></div>
+        </div>
+        <div className="skeleton skeleton-breakdown"></div>
+      </div>
+    );
+  }
+  
+  if (type === 'statewide') {
+    return (
+      <div className="skeleton-container">
+        <div className="skeleton skeleton-header"></div>
+        <div className="skeleton-metrics">
+          <div className="skeleton skeleton-card"></div>
+          <div className="skeleton skeleton-card"></div>
+          <div className="skeleton skeleton-card"></div>
+          <div className="skeleton skeleton-card"></div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (type === 'rankings') {
+    return (
+      <div className="skeleton-container">
+        <div className="skeleton skeleton-header"></div>
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="skeleton skeleton-ranking-item"></div>
+        ))}
+      </div>
+    );
+  }
+  
+  return null;
 };
 
 export default CarbonEstimationPanel;

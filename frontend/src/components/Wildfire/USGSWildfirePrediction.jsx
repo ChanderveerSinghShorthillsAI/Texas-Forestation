@@ -8,6 +8,21 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { 
+    FaArrowLeft, 
+    FaSync, 
+    FaFire, 
+    FaCalendarAlt, 
+    FaEye, 
+    FaEyeSlash,
+    FaMapMarkerAlt,
+    FaExclamationTriangle,
+    FaTimes,
+    FaInfoCircle,
+    FaBolt,
+    FaWind
+} from 'react-icons/fa';
+import { MdLayers } from 'react-icons/md';
 
 import usgsWfpiService from '../../services/usgsWfpiService';
 import './USGSWildfirePrediction.css';
@@ -69,15 +84,15 @@ const WMSLayer = ({ timeValue, isVisible, currentLayer, onLayerReady }) => {
 const MapClickHandler = ({ onMapClick, currentTime }) => {
     useMapEvents({
         click: (e) => {
-            console.log('🖱️ Map clicked at:', e.latlng);
-            console.log('🕒 Current time:', currentTime);
-            console.log('🔧 onMapClick function:', !!onMapClick);
+            console.log('Map clicked at:', e.latlng);
+            console.log('Current time:', currentTime);
+            console.log('onMapClick function:', !!onMapClick);
             
             if (onMapClick && currentTime) {
-                console.log('✅ Calling onMapClick handler');
+                console.log('Calling onMapClick handler');
                 onMapClick(e.latlng, currentTime);
             } else {
-                console.warn('❌ Missing onMapClick or currentTime');
+                console.warn('Missing onMapClick or currentTime');
             }
         }
     });
@@ -174,12 +189,12 @@ const USGSWildfirePrediction = () => {
         setError(null);
 
         try {
-            console.log('🔥 Initializing USGS Fire Prediction component...');
+            console.log('Initializing USGS Fire Prediction component...');
             
             // Load available layers
             const layers = usgsWfpiService.getAvailableLayers();
             setAvailableLayers(layers);
-            console.log('✅ Available layers loaded:', layers.map(l => l.name));
+            console.log('Available layers loaded:', layers.map(l => l.name));
             
             // Load Texas boundary GeoJSON, available times, and service health in parallel
             const [boundaryResponse, times, health] = await Promise.all([
@@ -192,9 +207,9 @@ const USGSWildfirePrediction = () => {
             if (boundaryResponse.ok) {
                 const boundaryData = await boundaryResponse.json();
                 setTexasBoundaryData(boundaryData);
-                console.log('✅ Texas boundary GeoJSON loaded successfully');
+                console.log('Texas boundary GeoJSON loaded successfully');
             } else {
-                console.warn('⚠️ Failed to load Texas boundary GeoJSON');
+                console.warn('Failed to load Texas boundary GeoJSON');
             }
 
             setAvailableTimes(times);
@@ -208,9 +223,9 @@ const USGSWildfirePrediction = () => {
             // Set legend URL for current layer
             setLegendUrl(usgsWfpiService.buildLegendUrl(currentLayer));
 
-            console.log(`✅ USGS Fire Prediction initialized with ${times.length} forecast times for ${currentLayer}`);
+            console.log(`USGS Fire Prediction initialized with ${times.length} forecast times for ${currentLayer}`);
         } catch (err) {
-            console.error('❌ Failed to initialize USGS Fire Prediction:', err);
+            console.error('Failed to initialize USGS Fire Prediction:', err);
             setError(err.message);
         } finally {
             setLoading(false);
@@ -231,7 +246,7 @@ const USGSWildfirePrediction = () => {
         const newTime = event.target.value;
         setCurrentTime(newTime);
         setClickInfo(null); // Clear previous click info
-        console.log('🔥 Time changed to:', newTime);
+        console.log('Time changed to:', newTime);
     }, []);
 
     /**
@@ -248,7 +263,7 @@ const USGSWildfirePrediction = () => {
     const handleLayerChange = useCallback(async (layerId) => {
         if (layerId === currentLayer) return;
         
-        console.log(`🔥 Switching from ${currentLayer} to ${layerId}`);
+        console.log(`Switching from ${currentLayer} to ${layerId}`);
         setLoading(true);
         setClickInfo(null); // Clear previous click info
         
@@ -269,9 +284,9 @@ const USGSWildfirePrediction = () => {
             // Update legend
             setLegendUrl(usgsWfpiService.buildLegendUrl(layerId));
             
-            console.log(`✅ Switched to ${layerId} layer with ${times.length} times`);
+            console.log(`Switched to ${layerId} layer with ${times.length} times`);
         } catch (err) {
-            console.error('❌ Failed to switch layer:', err);
+            console.error('Failed to switch layer:', err);
             setError(`Failed to switch to ${layerId} layer: ${err.message}`);
         } finally {
             setLoading(false);
@@ -287,7 +302,7 @@ const USGSWildfirePrediction = () => {
         const withinBounds = lat >= texasBounds[0][0] && lat <= texasBounds[1][0] && 
                             lng >= texasBounds[0][1] && lng <= texasBounds[1][1];
         
-        console.log('🔍 Bounds check details:', {
+        console.log('Bounds check details:', {
             clickLat: lat,
             clickLng: lng,
             texasBounds: texasBounds,
@@ -301,21 +316,21 @@ const USGSWildfirePrediction = () => {
      * Handle map click for feature info
      */
     const handleMapClick = useCallback(async (latlng, timeValue) => {
-        console.log('🔥 handleMapClick called with:', { latlng, timeValue });
-        console.log('🗺️ mapRef.current:', !!mapRef.current);
+        console.log('handleMapClick called with:', { latlng, timeValue });
+        console.log('mapRef.current:', !!mapRef.current);
         
         if (!mapRef.current) {
-            console.warn('❌ No map reference available');
+            console.warn('No map reference available');
             return;
         }
 
         // Check if click is within Texas bounds
-        console.log('🔍 Checking if within Texas bounds...');
+        console.log('Checking if within Texas bounds...');
         const withinTexas = isWithinTexas(latlng);
-        console.log('🗺️ Within Texas:', withinTexas);
+        console.log('Within Texas:', withinTexas);
         
         if (!withinTexas) {
-            console.log('❌ Click outside Texas bounds');
+            console.log('Click outside Texas bounds');
             setClickInfo({
                 success: false,
                 error: "Please click within Texas boundaries for wildfire risk data",
@@ -326,17 +341,17 @@ const USGSWildfirePrediction = () => {
             return;
         }
 
-        console.log('✅ Click within Texas, fetching USGS data...');
+        console.log('Click within Texas, fetching USGS data...');
         setIsLoadingClick(true);
         setClickInfo(null);
 
         try {
-            console.log('📡 Calling USGS service...');
+            console.log('Calling USGS service...');
             const result = await usgsWfpiService.fetchFeatureInfo(mapRef.current, latlng, timeValue, currentLayer);
-            console.log('📊 USGS result:', result);
+            console.log('USGS result:', result);
             setClickInfo(result);
         } catch (error) {
-            console.error('🔥 Failed to fetch click info:', error);
+            console.error('Failed to fetch click info:', error);
             setClickInfo({
                 success: false,
                 error: error.message,
@@ -352,7 +367,7 @@ const USGSWildfirePrediction = () => {
      * Handle refresh
      */
     const handleRefresh = useCallback(async () => {
-        console.log('🔄 Refreshing USGS data and clearing cache...');
+        console.log('Refreshing USGS data and clearing cache...');
         usgsWfpiService.clearCache();
         await initializeComponent();
     }, [initializeComponent]);
@@ -385,7 +400,12 @@ const USGSWildfirePrediction = () => {
     };
 
     return (
-        <div className="usgs-wildfire-prediction">
+        <div 
+            className="usgs-wildfire-prediction"
+            style={{
+                backgroundImage: `url(${process.env.PUBLIC_URL}/images/wildfire-image-4.png)`
+            }}
+        >
             {/* Header */}
             <div className="usgs-header">
                 <div className="header-content">
@@ -395,16 +415,16 @@ const USGSWildfirePrediction = () => {
                             onClick={handleBackToMap}
                             title="Back to Main Map"
                         >
-                            ← Back to Map
+                            <FaArrowLeft /> Back to Map
                         </button>
                         <div className="header-info">
-                            <h1>🏛️ USGS Wildfire Forecast</h1>
+                            <h1><FaFire className="header-icon" /> USGS Wildfire Forecast</h1>
                             <p>Enhanced government wildfire prediction using USGS WFPI data</p>
                         </div>
                     </div>
                     
                     <div className="header-right">
-                        <div className="service-status">
+                        {/* <div className="service-status">
                             {serviceHealth && (
                                 <div className="status-indicator">
                                     <div 
@@ -412,11 +432,11 @@ const USGSWildfirePrediction = () => {
                                         style={{ backgroundColor: getStatusColor(serviceHealth.status) }}
                                     ></div>
                                     <span className="status-text">
-                                        USGS Service: {serviceHealth.status}
+                                        Service: {serviceHealth.status}
                                     </span>
                                 </div>
                             )}
-                        </div>
+                        </div> */}
                         
                         <button 
                             className="refresh-button"
@@ -424,7 +444,7 @@ const USGSWildfirePrediction = () => {
                             disabled={loading}
                             title="Refresh Data"
                         >
-                            {loading ? '⏳' : '🔄'} Refresh
+                            <FaSync className={loading ? 'spinning' : ''} /> Refresh
                         </button>
                     </div>
                 </div>
@@ -432,12 +452,10 @@ const USGSWildfirePrediction = () => {
 
             {/* Loading State */}
             {loading && (
-                <div className="loading-overlay">
-                    <div className="loading-container">
-                        <div className="loading-spinner"></div>
-                        <h2>Loading USGS Wildfire Data</h2>
-                        <p>Connecting to government wildfire prediction service...</p>
-                    </div>
+                <div className="usgs-loading-overlay">
+                    <div className="usgs-loading-spinner"></div>
+                    <h2 className="usgs-loading-text">Fetching Data...</h2>
+                    <p className="usgs-loading-subtext">Loading wildfire prediction information</p>
                 </div>
             )}
 
@@ -445,11 +463,11 @@ const USGSWildfirePrediction = () => {
             {error && (
                 <div className="error-container">
                     <div className="error-content">
-                        <div className="error-icon">⚠️</div>
+                        <div className="error-icon"><FaExclamationTriangle /></div>
                         <h2>Unable to Load USGS Data</h2>
                         <p>{error}</p>
                         <button onClick={handleRefresh} className="retry-button">
-                            🔄 Retry
+                            <FaSync /> Retry
                         </button>
                     </div>
                 </div>
@@ -458,11 +476,11 @@ const USGSWildfirePrediction = () => {
             {/* Main Content */}
             {!loading && !error && (
                 <div className="main-content">
-                    {/* Controls Panel */}
-                    <div className="controls-panel">
-                        <div className="control-group">
+                    {/* Top Controls Bar */}
+                    <div className="top-controls-bar">
+                        <div className="control-item">
                             <label htmlFor="fireDate" className="control-label">
-                                📅 Forecast Date:
+                                <FaCalendarAlt /> Forecast Date
                             </label>
                             <select 
                                 id="fireDate" 
@@ -479,25 +497,31 @@ const USGSWildfirePrediction = () => {
                         </div>
 
                         {/* Layer Selection */}
-                        <div className="control-group">
+                        <div className="control-item layer-selection">
                             <label className="control-label">
-                                🔥 Fire Prediction Layer:
+                                <MdLayers /> Prediction Layer
                             </label>
                             <div className="layer-toggle-group">
-                                {availableLayers.map(layer => (
-                                    <button
-                                        key={layer.id}
-                                        className={`layer-toggle-button ${currentLayer === layer.id ? 'active' : ''}`}
-                                        onClick={() => handleLayerChange(layer.id)}
-                                        title={layer.description}
-                                        disabled={loading}
-                                    >
-                                        <span className="layer-icon" style={{ color: layer.color }}>
-                                            {layer.icon}
-                                        </span>
-                                        <span className="layer-name">{layer.name}</span>
-                                    </button>
-                                ))}
+                                {availableLayers.map(layer => {
+                                    // Map layer IDs to appropriate icons
+                                    let LayerIcon = FaFire;
+                                    if (layer.id === 'wfpi') LayerIcon = FaFire;
+                                    else if (layer.id === 'wlfp') LayerIcon = FaBolt;
+                                    else if (layer.id === 'wfsp') LayerIcon = FaWind;
+                                    
+                                    return (
+                                        <button
+                                            key={layer.id}
+                                            className={`layer-toggle-button ${currentLayer === layer.id ? 'active' : ''}`}
+                                            onClick={() => handleLayerChange(layer.id)}
+                                            title={layer.description}
+                                            disabled={loading}
+                                        >
+                                            <LayerIcon />
+                                            <span className="layer-name" style={{color: 'white'}}>{layer.name}</span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -506,26 +530,8 @@ const USGSWildfirePrediction = () => {
                             onClick={handleLayerToggle}
                             title="Toggle Fire Layer"
                         >
-                            {isLayerVisible ? '🔥 Hide Layer' : '🔥 Show Layer'}
+                            {isLayerVisible ? <><FaEyeSlash /> Hide Layer</> : <><FaEye /> Show Layer</>}
                         </button>
-
-                        {/* Legend */}
-                        {legendUrl && isLayerVisible && (
-                            <div className="legend-container">
-                                <h3 className="legend-title">
-                                    🔥 {availableLayers.find(l => l.id === currentLayer)?.name || 'Fire'} Legend
-                                </h3>
-                                <img 
-                                    src={legendUrl} 
-                                    alt="WFPI Legend" 
-                                    className="legend-image"
-                                    onError={(e) => {
-                                        e.target.style.display = 'none';
-                                        console.warn('Failed to load legend image');
-                                    }}
-                                />
-                            </div>
-                        )}
                     </div>
 
                     {/* Map Container */}
@@ -580,27 +586,27 @@ const USGSWildfirePrediction = () => {
                                     </div>
                                 ) : clickInfo.success ? (
                                     <div className="click-success">
-                                        <h4>🔥 Wildfire Risk Analysis</h4>
+                                        <h4><FaFire /> Wildfire Risk Analysis</h4>
                                         <div className="info-row">
-                                            <span className="info-label">Date:</span>
+                                            <span className="info-label"><FaCalendarAlt /> Date:</span>
                                             <span className="info-value">
                                                 {formatDateForDisplay(clickInfo.time)}
                                             </span>
                                         </div>
                                         <div className="info-row">
-                                            <span className="info-label">Location:</span>
+                                            <span className="info-label"><FaMapMarkerAlt /> Location:</span>
                                             <span className="info-value">
                                                 {clickInfo.coordinates.lat.toFixed(4)}, {clickInfo.coordinates.lng.toFixed(4)}
                                             </span>
                                         </div>
                                         <div className="info-row">
-                                            <span className="info-label">WFPI Value:</span>
+                                            <span className="info-label"><FaInfoCircle /> WFPI Value:</span>
                                             <span className="info-value">
                                                 {clickInfo.value !== null ? clickInfo.value.toFixed(1) : 'No data'}
                                             </span>
                                         </div>
                                         <div className="info-row">
-                                            <span className="info-label">Risk Level:</span>
+                                            <span className="info-label"><FaExclamationTriangle /> Risk Level:</span>
                                             <span 
                                                 className="info-value risk-level"
                                                 style={{ 
@@ -616,16 +622,16 @@ const USGSWildfirePrediction = () => {
                                             onClick={() => setClickInfo(null)}
                                             title="Close"
                                         >
-                                            ✕
+                                            <FaTimes />
                                         </button>
                                     </div>
                                 ) : (
                                     <div className={`click-error ${clickInfo.outsideTexas ? 'texas-boundary-error' : ''}`}>
-                                        <h4>{clickInfo.outsideTexas ? '🗺️ Outside Texas' : '❌ Error'}</h4>
+                                        <h4>{clickInfo.outsideTexas ? <><FaMapMarkerAlt /> Outside Texas</> : <><FaExclamationTriangle /> Error</>}</h4>
                                         <p>{clickInfo.error}</p>
                                         {clickInfo.outsideTexas && (
                                             <div className="texas-hint">
-                                                <small>💡 This tool focuses on Texas wildfire data only</small>
+                                                <small><FaInfoCircle /> This tool focuses on Texas wildfire data only</small>
                                             </div>
                                         )}
                                         <button 
@@ -633,28 +639,30 @@ const USGSWildfirePrediction = () => {
                                             onClick={() => setClickInfo(null)}
                                             title="Close"
                                         >
-                                            ✕
+                                            <FaTimes />
                                         </button>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Map Instructions */}
-                        <div className="map-instructions">
-                            <div className="instruction-item">
-                                <span className="instruction-icon">🏛️</span>
-                                <span>USGS Government Data - Texas Region Focus</span>
+                        {/* Legend - Bottom Right */}
+                        {legendUrl && isLayerVisible && (
+                            <div className="legend-container">
+                                <h3 className="legend-title">
+                                    <FaFire /> {availableLayers.find(l => l.id === currentLayer)?.name || 'Fire'} Legend
+                                </h3>
+                                <img 
+                                    src={legendUrl} 
+                                    alt="WFPI Legend" 
+                                    className="legend-image"
+                                    onError={(e) => {
+                                        e.target.style.display = 'none';
+                                        console.warn('Failed to load legend image');
+                                    }}
+                                />
                             </div>
-                            <div className="instruction-item">
-                                <span className="instruction-icon">🖱️</span>
-                                <span>Click anywhere in Texas to get wildfire risk data</span>
-                            </div>
-                            <div className="instruction-item">
-                                <span className="instruction-icon">📅</span>
-                                <span>Use the date selector to view different forecast days</span>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 </div>
             )}

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocat
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import TexasMap from './components/Map/TexasMap';
 import LoginPage from './components/login/LoginPage';
+import LandingPage from './components/Home/LandingPage';
 import CitizenChatbotPage from './components/CitizenChatbot/CitizenChatbotPage';
 import WildfirePredictionPage from './components/Wildfire/WildfirePredictionPage';
 import FullTexasWildfirePrediction from './components/Wildfire/FullTexasWildfirePrediction';
@@ -11,6 +12,7 @@ import GridFireDashboard from './components/GridFire/GridFireDashboard';
 import GridFireMap from './components/GridFire/GridFireMap';
 import EncroachmentTrackingPage from './components/Encroachment/EncroachmentTrackingPage';
 import TemporalComparisonPage from './components/SatelliteComparison/TemporalComparisonPage';
+import FireTrackingPage from './components/FireTracking/FireTrackingPage';
 import './App.css';
 
 /**
@@ -56,8 +58,8 @@ const LoginRoute = () => {
   const handleLoginSuccess = (authData) => {
     console.log('🎉 Login successful, user authenticated:', authData.user.username);
     
-    // Navigate to the main app or where they were trying to go
-    const from = location.state?.from?.pathname || '/texas-forestation-planner';
+    // Navigate to the home page or where they were trying to go
+    const from = location.state?.from?.pathname || '/home';
     navigate(from, { replace: true });
   };
 
@@ -73,9 +75,9 @@ const LoginRoute = () => {
     );
   }
 
-  // If already authenticated, redirect to main app
+  // If already authenticated, redirect to home page
   if (isAuthenticated) {
-    return <Navigate to="/texas-forestation-planner" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return <LoginPage onLoginSuccess={handleLoginSuccess} />;
@@ -227,6 +229,16 @@ const AppRouter = () => {
       {/* Citizen Chatbot Route - Public Access */}
       <Route path="/citizen-chatbot" element={<CitizenChatbotPage />} />
       
+      {/* Home/Landing Page - Protected */}
+      <Route 
+        path="/home" 
+        element={
+          <ProtectedRoute>
+            <LandingPage />
+          </ProtectedRoute>
+        } 
+      />
+      
       {/* Main Application Route - Protected */}
       <Route 
         path="/texas-forestation-planner" 
@@ -307,6 +319,16 @@ const AppRouter = () => {
         } 
       />
       
+      {/* Fire Tracking Route - Protected */}
+      <Route 
+        path="/fire-tracking" 
+        element={
+          <ProtectedRoute>
+            <FireTrackingPage />
+          </ProtectedRoute>
+        } 
+      />
+      
       {/* Root Route - Redirect based on authentication */}
       <Route path="/" element={<RootRedirect />} />
       
@@ -337,7 +359,7 @@ const RootRedirect = () => {
 
   // Redirect based on authentication status
   return isAuthenticated ? 
-    <Navigate to="/texas-forestation-planner" replace /> : 
+    <Navigate to="/home" replace /> : 
     <Navigate to="/login" replace />;
 };
 

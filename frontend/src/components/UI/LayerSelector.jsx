@@ -159,7 +159,7 @@ const LayerSelector = ({
                 >
                   {getLayerStatusIcon(layer.id)}
                   <div className="layer-info">
-                    <div className="layer-name">{layer.name}</div>
+                    <div className="layer-name" style={{color: 'white'}}>{layer.name}</div>
                     <div className="layer-description">{layer.description}</div>
                     {getLayerError(layer.id) && (
                       <div className="layer-error">

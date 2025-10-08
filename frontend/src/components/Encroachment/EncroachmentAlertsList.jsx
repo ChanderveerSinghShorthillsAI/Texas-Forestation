@@ -1,4 +1,8 @@
 import React, { useState, useMemo } from 'react';
+import {
+  FaList, FaSearch, FaSpinner, FaMapMarkerAlt, FaCircle,
+  FaMapMarkedAlt, FaArrowUp, FaArrowDown
+} from 'react-icons/fa';
 import './EncroachmentAlertsList.css';
 
 const EncroachmentAlertsList = ({ 
@@ -14,11 +18,11 @@ const EncroachmentAlertsList = ({
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Confidence level colors and icons
+  // Confidence level colors and icons using React Icons
   const confidenceConfig = {
-    high: { color: '#dc3545', icon: '🔴', label: 'High' },
-    nominal: { color: '#ffc107', icon: '🟡', label: 'Nominal' },
-    low: { color: '#28a745', icon: '🟢', label: 'Low' }
+    high: { color: '#dc3545', icon: <FaCircle />, label: 'High' },
+    nominal: { color: '#ffc107', icon: <FaCircle />, label: 'Nominal' },
+    low: { color: '#28a745', icon: <FaCircle />, label: 'Low' }
   };
 
   /**
@@ -137,11 +141,11 @@ const EncroachmentAlertsList = ({
     return (
       <div className="alerts-list-container">
         <div className="alerts-list-header">
-          <h3>📋 Encroachment Alerts List</h3>
+          <h3><FaList /> Encroachment Alerts List</h3>
           <p>Loading alerts...</p>
         </div>
         <div className="loading-container">
-          <div className="loading-spinner"></div>
+          <FaSpinner className="loading-spinner-icon" />
           <p>Loading alerts data...</p>
         </div>
       </div>
@@ -155,11 +159,11 @@ const EncroachmentAlertsList = ({
     return (
       <div className="alerts-list-container">
         <div className="alerts-list-header">
-          <h3>📋 Encroachment Alerts List</h3>
+          <h3><FaList /> Encroachment Alerts List</h3>
           <p>No alerts found</p>
         </div>
         <div className="no-data-container">
-          <div className="no-data-icon">📍</div>
+          <FaMapMarkerAlt className="no-data-icon" />
           <h4>No Alerts Found</h4>
           <p>No encroachment alerts found for the selected criteria. Try adjusting your filters or date range.</p>
         </div>
@@ -172,7 +176,7 @@ const EncroachmentAlertsList = ({
       {/* Header */}
       <div className="alerts-list-header">
         <div className="header-content">
-          <h3>📋 Encroachment Alerts List</h3>
+          <h3><FaList /> Encroachment Alerts List</h3>
           <p>{totalCount.toLocaleString()} total alerts • {processedAlerts.length.toLocaleString()} filtered</p>
         </div>
       </div>
@@ -187,7 +191,7 @@ const EncroachmentAlertsList = ({
             onChange={handleSearchChange}
             className="search-input"
           />
-          <span className="search-icon">🔍</span>
+          <FaSearch className="search-icon" />
         </div>
         
         <div className="controls-right">
@@ -213,19 +217,19 @@ const EncroachmentAlertsList = ({
                 className={`sortable ${sortField === 'date' ? `sorted-${sortDirection}` : ''}`}
                 onClick={() => handleSort('date')}
               >
-                Date {sortField === 'date' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Date {sortField === 'date' && (sortDirection === 'asc' ? <FaArrowUp /> : <FaArrowDown />)}
               </th>
               <th 
                 className={`sortable ${sortField === 'confidence' ? `sorted-${sortDirection}` : ''}`}
                 onClick={() => handleSort('confidence')}
               >
-                Confidence {sortField === 'confidence' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Confidence {sortField === 'confidence' && (sortDirection === 'asc' ? <FaArrowUp /> : <FaArrowDown />)}
               </th>
               <th 
                 className={`sortable ${sortField === 'latitude' ? `sorted-${sortDirection}` : ''}`}
                 onClick={() => handleSort('latitude')}
               >
-                Location {sortField === 'latitude' && (sortDirection === 'asc' ? '↑' : '↓')}
+                Location {sortField === 'latitude' && (sortDirection === 'asc' ? <FaArrowUp /> : <FaArrowDown />)}
               </th>
               <th>Alert ID</th>
               <th>Actions</th>
@@ -275,7 +279,7 @@ const EncroachmentAlertsList = ({
                       }}
                       title="Focus on this alert"
                     >
-                      📍 Focus
+                      <FaMapMarkedAlt /> Focus
                     </button>
                   </td>
                 </tr>

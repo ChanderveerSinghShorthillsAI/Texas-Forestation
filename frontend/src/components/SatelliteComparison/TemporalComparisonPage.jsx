@@ -5,6 +5,19 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  FaArrowLeft, 
+  FaSatellite, 
+  FaMapMarkerAlt, 
+  FaCalendarAlt, 
+  FaChartBar, 
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaTimes,
+  FaRedo,
+  FaLeaf,
+  FaTree
+} from 'react-icons/fa';
 import ComparisonViewer from './ComparisonViewer';
 import LocationSelector from './LocationSelector';
 import DateSelector from './DateSelector';
@@ -161,7 +174,11 @@ const TemporalComparisonPage = () => {
   };
 
   return (
-    <div className="temporal-comparison-page">
+    <div 
+      className="temporal-comparison-page"
+      style={{
+        backgroundImage: `url(${process.env.PUBLIC_URL}/images/satellite-comparison.jpg)`,
+      }}>
       {/* Header */}
       <header className="comparison-header">
         <button 
@@ -169,19 +186,24 @@ const TemporalComparisonPage = () => {
           onClick={() => navigate('/')}
           aria-label="Back to home"
         >
-          ← Back
+          <FaArrowLeft /> Back
         </button>
         <div className="header-content">
-          <h1 className="page-title">
-            🛰️ Temporal Satellite Comparison
-          </h1>
-          <p className="page-subtitle">
-            Compare satellite imagery of Texas locations across different time periods
+          <div className="title-icon-wrapper">
+            <FaTree className="title-icon" />
+            <h1 className="page-title">
+              Temporal Forest Monitoring
+            </h1>
+            <FaLeaf className="title-icon leaf-icon" />
+          </div>
+          <p className="page-subtitle" style={{color: 'white'}}>
+            Compare satellite imagery to track vegetation changes across Texas landscapes
           </p>
         </div>
         {serviceHealth && (
           <div className={`health-indicator ${serviceHealth.authenticated ? 'healthy' : 'error'}`}>
             <span className="health-dot"></span>
+            <FaSatellite className="health-icon" />
             {serviceHealth.authenticated ? 'Connected' : 'Disconnected'}
           </div>
         )}
@@ -190,14 +212,14 @@ const TemporalComparisonPage = () => {
       {/* Error banner */}
       {error && (
         <div className="error-banner">
-          <span className="error-icon">⚠️</span>
+          <FaExclamationTriangle className="error-icon" />
           <span className="error-message">{error}</span>
           <button 
             className="error-close"
             onClick={() => setError(null)}
             aria-label="Close error"
           >
-            ×
+            <FaTimes />
           </button>
         </div>
       )}
@@ -205,17 +227,23 @@ const TemporalComparisonPage = () => {
       {/* Progress indicator */}
       <div className="progress-steps">
         <div className={`step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}>
-          <div className="step-number">1</div>
+          <div className="step-icon-wrapper">
+            {step > 1 ? <FaCheckCircle className="step-icon" /> : <FaMapMarkerAlt className="step-icon" />}
+          </div>
           <div className="step-label">Select Location</div>
         </div>
         <div className="step-connector"></div>
         <div className={`step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}>
-          <div className="step-number">2</div>
+          <div className="step-icon-wrapper">
+            {step > 2 ? <FaCheckCircle className="step-icon" /> : <FaCalendarAlt className="step-icon" />}
+          </div>
           <div className="step-label">Choose Dates</div>
         </div>
         <div className="step-connector"></div>
         <div className={`step ${step >= 3 ? 'active' : ''}`}>
-          <div className="step-number">3</div>
+          <div className="step-icon-wrapper">
+            {step >= 3 ? <FaChartBar className="step-icon" /> : <FaSatellite className="step-icon" />}
+          </div>
           <div className="step-label">View Comparison</div>
         </div>
       </div>
@@ -227,8 +255,9 @@ const TemporalComparisonPage = () => {
         {step === 1 && (
           <div className="step-container fade-in">
             <div className="step-instructions">
-              <h2>📍 Step 1: Select a Location</h2>
-              <p>Click anywhere on the Texas map to select a location for comparison</p>
+              <FaMapMarkerAlt className="instruction-icon" />
+              <h2>Step 1: Select a Location</h2>
+              <p>Click anywhere on the Texas map to select a location for vegetation comparison</p>
             </div>
             <LocationSelector 
               onLocationSelect={handleLocationSelect}
@@ -241,7 +270,8 @@ const TemporalComparisonPage = () => {
         {step === 2 && selectedLocation && (
           <div className="step-container fade-in">
             <div className="step-instructions">
-              <h2>📅 Step 2: Select Two Dates</h2>
+              <FaCalendarAlt className="instruction-icon" />
+              <h2>Step 2: Select Two Dates</h2>
               <p>
                 Choose two dates to compare imagery at {' '}
                 <strong>
@@ -259,37 +289,42 @@ const TemporalComparisonPage = () => {
 
         {/* Step 3: Comparison Results */}
         {step === 3 && (
-          <div className="results-container fade-in">
+          <>
             {loading ? (
               <div className="loading-overlay">
                 <div className="spinner-large"></div>
-                <h3>🛰️ Fetching Satellite Imagery...</h3>
-                <p>This may take a few moments</p>
+                <FaSatellite className="loading-icon" />
+                <h3>Fetching Satellite Imagery...</h3>
+                <p>Analyzing vegetation patterns across time</p>
               </div>
             ) : comparisonData ? (
-              <>
+              <div className="results-container fade-in">
                 <div className="results-header">
                   <div className="results-info">
-                    <h2>📊 Comparison Results</h2>
-                    <p className="location-info">
-                      Location: ({comparisonData.location.latitude.toFixed(4)}, {' '}
-                      {comparisonData.location.longitude.toFixed(4)})
-                    </p>
+                    <FaChartBar className="results-icon" />
+                    <div>
+                      <h2>Comparison Results</h2>
+                      <p className="location-info">
+                        <FaMapMarkerAlt className="inline-icon" />
+                        Location: ({comparisonData.location.latitude.toFixed(4)}, {' '}
+                        {comparisonData.location.longitude.toFixed(4)})
+                      </p>
+                    </div>
                   </div>
                   <button 
                     className="reset-button"
                     onClick={handleReset}
                   >
-                    🔄 New Comparison
+                    <FaRedo /> New Comparison
                   </button>
                 </div>
 
                 <ComparisonStats data={comparisonData} />
 
                 <ComparisonViewer data={comparisonData} />
-              </>
+              </div>
             ) : null}
-          </div>
+          </>
         )}
       </div>
 
@@ -297,18 +332,12 @@ const TemporalComparisonPage = () => {
       <footer className="comparison-footer">
         <div className="footer-content">
           <div className="footer-info">
-            <span className="footer-icon">🛰️</span>
-            <span>Powered by Planet Labs satellite imagery</span>
+            <FaSatellite className="footer-icon" />
+            <span>Powered by advanced satellite imagery technology</span>
           </div>
           <div className="footer-links">
-            <a 
-              href="https://www.planet.com/" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="footer-link"
-            >
-              Learn More
-            </a>
+            <FaLeaf className="footer-leaf-icon" />
+            <span className="footer-tagline">Monitoring Earth's Green Spaces</span>
           </div>
         </div>
       </footer>

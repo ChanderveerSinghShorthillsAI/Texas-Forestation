@@ -1,4 +1,4 @@
-/* Location Selector Styles */
+/* Location Selector Styles - Forest Theme */
 
 .location-selector {
   display: flex;
@@ -8,9 +8,13 @@
 
 .map-container-wrapper {
   position: relative;
-  border-radius: 12px;
+  border-radius: 20px;
   overflow: hidden;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 16px 40px rgba(0, 0, 0, 0.3),
+    0 6px 16px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  border: 3px solid rgba(255, 255, 255, 0.4);
 }
 
 .location-map {
@@ -144,13 +148,19 @@
 }
 
 .info-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
+  background: rgba(76, 175, 80, 0.95);
+  backdrop-filter: blur(15px) saturate(180%);
+  -webkit-backdrop-filter: blur(15px) saturate(180%);
+  border-radius: 20px;
   padding: 1.5rem;
   color: white;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.25),
+    0 4px 12px rgba(76, 175, 80, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
   max-width: 500px;
   width: 100%;
+  border: 2px solid rgba(255, 255, 255, 0.4);
 }
 
 .info-header {

@@ -3,7 +3,7 @@
  * Interactive map for selecting comparison location
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 import './LocationSelector.css';
@@ -39,9 +39,83 @@ const MapClickHandler = ({ onLocationSelect }) => {
   return null;
 };
 
+/**
+ * Outside Texas Mask Component
+ * Creates a darkened overlay outside Texas boundaries
+ */
+const OutsideTexasMask = ({ texasGeojson }) => {
+  if (!texasGeojson) return null;
+
+  try {
+    // Extract Texas geometry
+    let texasGeometry;
+    if (texasGeojson.type === 'FeatureCollection') {
+      texasGeometry = texasGeojson.features[0].geometry;
+    } else if (texasGeojson.type === 'Feature') {
+      texasGeometry = texasGeojson.geometry;
+    } else {
+      texasGeometry = texasGeojson;
+    }
+
+    // Handle MultiPolygon - use the largest polygon (mainland Texas)
+    let texasCoords;
+    if (texasGeometry.type === 'MultiPolygon') {
+      // Find the largest polygon (by number of coordinates)
+      const polygons = texasGeometry.coordinates;
+      const largestPolygon = polygons.reduce((largest, current) => {
+        return current[0].length > largest[0].length ? current : largest;
+      }, polygons[0]);
+      texasCoords = largestPolygon;
+    } else if (texasGeometry.type === 'Polygon') {
+      texasCoords = texasGeometry.coordinates;
+    } else {
+      console.warn('Unexpected geometry type:', texasGeometry.type);
+      return null;
+    }
+
+    // Create mask with hole for Texas
+    const maskWithHole = {
+      type: 'Feature',
+      geometry: {
+        type: 'Polygon',
+        coordinates: [
+          // Outer ring (world bounds)
+          [
+            [-180, -90],
+            [180, -90],
+            [180, 90],
+            [-180, 90],
+            [-180, -90]
+          ],
+          // Inner ring (Texas - creates a hole)
+          // Use only the outer ring of the polygon
+          texasCoords[0]
+        ]
+      }
+    };
+
+    return (
+      <GeoJSON
+        data={maskWithHole}
+        style={{
+          fillColor: '#000000',
+          fillOpacity: 0.5,
+          color: 'transparent',
+          weight: 0
+        }}
+        interactive={false}
+      />
+    );
+  } catch (error) {
+    console.error('Error creating Texas mask:', error);
+    return null;
+  }
+};
+
 const LocationSelector = ({ onLocationSelect, selectedLocation }) => {
   const [mapCenter] = useState([31.17, -100.08]); // Center of Texas
   const [mapZoom] = useState(6);
+  const [texasBoundaryData, setTexasBoundaryData] = useState(null);
   const mapRef = useRef(null);
 
   const handleLocationSelect = useCallback((location) => {
@@ -49,20 +123,27 @@ const LocationSelector = ({ onLocationSelect, selectedLocation }) => {
     onLocationSelect(location);
   }, [onLocationSelect]);
 
-  // Texas boundary for reference
-  const texasBoundary = {
-    type: 'Feature',
-    geometry: {
-      type: 'Polygon',
-      coordinates: [[
-        [-106.65, 25.84],
-        [-93.51, 25.84],
-        [-93.51, 36.50],
-        [-106.65, 36.50],
-        [-106.65, 25.84]
-      ]]
-    }
-  };
+  /**
+   * Load Texas GeoJSON boundary data
+   */
+  useEffect(() => {
+    const loadTexasBoundary = async () => {
+      try {
+        const response = await fetch('/Texas_Geojsons/Texas_Geojsons/texas.geojson');
+        if (response.ok) {
+          const data = await response.json();
+          setTexasBoundaryData(data);
+          console.log('✅ Texas boundary GeoJSON loaded for Satellite Comparison Map');
+        } else {
+          console.warn('⚠️ Failed to load Texas boundary GeoJSON');
+        }
+      } catch (error) {
+        console.error('❌ Error loading Texas boundary:', error);
+      }
+    };
+
+    loadTexasBoundary();
+  }, []);
 
   return (
     <div className="location-selector">
@@ -82,17 +163,24 @@ const LocationSelector = ({ onLocationSelect, selectedLocation }) => {
             maxZoom={18}
           />
 
-          {/* Texas boundary */}
-          <GeoJSON
-            data={texasBoundary}
-            style={{
-              fillColor: 'transparent',
-              color: '#667eea',
-              weight: 3,
-              dashArray: '10, 5',
-              opacity: 0.8
-            }}
-          />
+          {/* Darken area outside Texas */}
+          {texasBoundaryData && <OutsideTexasMask texasGeojson={texasBoundaryData} />}
+
+          {/* Texas boundary - using actual GeoJSON data */}
+          {texasBoundaryData && (
+            <GeoJSON
+              data={texasBoundaryData}
+              style={{
+                fillColor: 'rgba(20, 40, 80, 0.15)', // Darker blue fill
+                color: '#0d1f3d', // Much darker blue border
+                weight: 4,
+                opacity: 1,
+                fillOpacity: 0.15,
+                dashArray: '8, 4'
+              }}
+              interactive={false}
+            />
+          )}
 
           {/* Click handler */}
           <MapClickHandler onLocationSelect={handleLocationSelect} />

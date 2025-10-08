@@ -48,13 +48,13 @@
 .map-content {
   flex: 1;
   position: relative;
-  min-height: 500px;
+  min-height: 700px;
 }
 
 .encroachment-map {
   width: 100%;
   height: 100%;
-  min-height: 500px;
+  min-height: 700px;
 }
 
 .map-loading-overlay {
@@ -507,7 +507,7 @@
 } */
 
 
-/* Encroachment Map Styles */
+/* Encroachment Map Styles - Modern & Beautiful */
 
 .encroachment-map-container {
   height: 100%;
@@ -521,22 +521,31 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
-  background: #f8f9fa;
-  border-bottom: 1px solid #dee2e6;
+  padding: 1.75rem 2rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(248, 249, 250, 0.95) 100%);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
 }
 
 .map-title h3 {
-  margin: 0 0 0.25rem 0;
-  color: #495057;
-  font-size: 1.25rem;
-  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  color: #2d3748;
+  font-size: 1.4rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.map-title h3 svg {
+  color: #667eea;
 }
 
 .map-title p {
   margin: 0;
-  color: #6c757d;
-  font-size: 0.9rem;
+  color: #4a5568;
+  font-size: 0.95rem;
+  font-weight: 500;
 }
 
 /* Map Legend */
@@ -544,6 +553,10 @@
   display: flex;
   gap: 1.5rem;
   align-items: center;
+  padding: 0.75rem 1.25rem;
+  background: white;
+  border-radius: 50px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .legend-item {
@@ -551,24 +564,37 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: #495057;
+  color: #2d3748;
+  font-weight: 600;
 }
 
 .legend-icon {
-  font-size: 1rem;
+  font-size: 0.85rem;
+}
+
+.legend-icon.high {
+  color: #dc3545;
+}
+
+.legend-icon.nominal {
+  color: #ffc107;
+}
+
+.legend-icon.low {
+  color: #28a745;
 }
 
 /* Map Content */
 .map-content {
   flex: 1;
   position: relative;
-  min-height: 500px;
+  min-height: 700px;
 }
 
 .encroachment-map {
   width: 100%;
   height: 100%;
-  min-height: 500px;
+  min-height: 700px;
 }
 
 /* Loading Overlay */

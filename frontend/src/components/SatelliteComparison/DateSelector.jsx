@@ -4,6 +4,14 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { 
+  FaCalendarAlt, 
+  FaClock, 
+  FaExclamationTriangle, 
+  FaInfoCircle, 
+  FaArrowLeft, 
+  FaArrowRight 
+} from 'react-icons/fa';
 import satelliteComparisonService from '../../services/satelliteComparisonService';
 import './DateSelector.css';
 
@@ -66,7 +74,7 @@ const DateSelector = ({ location, onDateSubmit, onBack }) => {
         {/* Date 1 Input */}
         <div className="date-input-group">
           <label htmlFor="date1" className="date-label">
-            <span className="label-icon">📅</span>
+            <FaCalendarAlt className="label-icon" />
             <span className="label-text">First Date (Before)</span>
           </label>
           <input
@@ -96,7 +104,7 @@ const DateSelector = ({ location, onDateSubmit, onBack }) => {
           <div className="date-separator">
             <div className="separator-line"></div>
             <div className="separator-badge">
-              <span className="badge-icon">⏱️</span>
+              <FaClock className="badge-icon" />
               <span className="badge-text">
                 {daysBetween > 0 ? `${daysBetween} days` : 'Invalid range'}
               </span>
@@ -108,7 +116,7 @@ const DateSelector = ({ location, onDateSubmit, onBack }) => {
         {/* Date 2 Input */}
         <div className="date-input-group">
           <label htmlFor="date2" className="date-label">
-            <span className="label-icon">📅</span>
+            <FaCalendarAlt className="label-icon" />
             <span className="label-text">Second Date (After)</span>
           </label>
           <input
@@ -138,7 +146,7 @@ const DateSelector = ({ location, onDateSubmit, onBack }) => {
           <div className="date-errors">
             {errors.map((error, index) => (
               <div key={index} className="error-item">
-                <span className="error-icon">⚠️</span>
+                <FaExclamationTriangle className="error-icon" />
                 <span className="error-text">{error}</span>
               </div>
             ))}
@@ -147,7 +155,7 @@ const DateSelector = ({ location, onDateSubmit, onBack }) => {
 
         {/* Info box */}
         <div className="date-info-box">
-          <div className="info-icon">ℹ️</div>
+          <FaInfoCircle className="info-icon" />
           <div className="info-content">
             <h4>Date Selection Tips</h4>
             <ul>
@@ -166,14 +174,14 @@ const DateSelector = ({ location, onDateSubmit, onBack }) => {
             onClick={onBack}
             className="back-btn"
           >
-            ← Back
+            <FaArrowLeft /> Back
           </button>
           <button
             type="submit"
             className="submit-btn"
             disabled={!date1 || !date2 || daysBetween <= 0}
           >
-            Compare Images →
+            Compare Images <FaArrowRight />
           </button>
         </div>
       </form>

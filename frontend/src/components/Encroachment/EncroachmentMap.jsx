@@ -698,7 +698,8 @@
 
 // export default EncroachmentMap;
 
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { FaMapMarkedAlt, FaSpinner, FaSearch, FaCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/leaflet.markercluster';
@@ -727,19 +728,54 @@ const EncroachmentMap = ({
   const spiderfiedSetRef = useRef(new Set());
   const prevSelectedRef = useRef(null);
   const isUnmountingRef = useRef(false);
+  const isProcessingRef = useRef(false); // Prevent concurrent marker processing
+  const currentRenderIdRef = useRef(0); // Track render cycles
+  const onAlertSelectRef = useRef(onAlertSelect); // Stable ref for callback
+  const texasBoundaryLayerRef = useRef(null);
+  const [texasBoundaryData, setTexasBoundaryData] = useState(null);
   const performanceStatsRef = useRef({
     renderTime: 0,
     markerCount: 0
   });
 
+  // Keep the ref updated with latest callback
+  useEffect(() => {
+    onAlertSelectRef.current = onAlertSelect;
+  }, [onAlertSelect]);
+
   // Clean markers cleanup function
   const clearMarkers = useCallback(() => {
-    if (markersLayerRef.current && mapInstanceRef.current) {
-      mapInstanceRef.current.removeLayer(markersLayerRef.current);
+    try {
+      if (markersLayerRef.current) {
+        console.log('🧹 Clearing markers from map...', {
+          layerCount: markersLayerRef.current.getLayers ? markersLayerRef.current.getLayers().length : 'unknown',
+          hasMap: !!mapInstanceRef.current
+        });
+        
+        // Clear all layers from the cluster group first
+        if (markersLayerRef.current.clearLayers) {
+          markersLayerRef.current.clearLayers();
+        }
+        
+        // Then remove the cluster group from the map
+        if (mapInstanceRef.current && mapInstanceRef.current.hasLayer(markersLayerRef.current)) {
+          mapInstanceRef.current.removeLayer(markersLayerRef.current);
+        }
+        
+        markersLayerRef.current = null;
+        console.log('✅ Markers cleared successfully');
+      }
+      
+      // Clear all marker references
+      markerMapRef.current = {};
+      spiderfiedSetRef.current = new Set();
+    } catch (error) {
+      console.error('❌ Error clearing markers:', error);
+      // Force reset even on error
       markersLayerRef.current = null;
+      markerMapRef.current = {};
+      spiderfiedSetRef.current = new Set();
     }
-    markerMapRef.current = {};
-    spiderfiedSetRef.current = new Set();
   }, []);
 
   // Texas bounds
@@ -748,11 +784,14 @@ const EncroachmentMap = ({
     [36.5007, -93.5083]   // Northeast corner
   ];
 
-  // Confidence level icons
-  const confidenceIcons = {
-    high: '🔴',
-    nominal: '🟡',
-    low: '🟢'
+  // Confidence level icons - using React Icons
+  const getConfidenceIconHTML = (level) => {
+    const colors = {
+      high: '#dc3545',
+      nominal: '#ffc107',
+      low: '#28a745'
+    };
+    return `<span style="color: ${colors[level]}; font-size: 1rem;">●</span>`;
   };
 
   const getFillColor = (confidence, isSelected) => {
@@ -786,7 +825,7 @@ const EncroachmentMap = ({
       html: `
         <div class="marker-container ${alert.confidence} ${isSelected ? 'selected' : ''}" style="width: ${containerSize}px; height: ${containerSize}px;">
           <div class="marker-pulse" style="width: ${pulseSize}px; height: ${pulseSize}px;"></div>
-          <span class="marker-icon" style="font-size: ${iconSize}px;">${confidenceIcons[alert.confidence]}</span>
+          <span class="marker-icon" style="font-size: ${iconSize}px;">${getConfidenceIconHTML(alert.confidence)}</span>
         </div>
       `,
       iconSize: [pulseSize, pulseSize],
@@ -796,17 +835,44 @@ const EncroachmentMap = ({
   };
 
   /**
+   * Load Texas GeoJSON boundary data
+   */
+  useEffect(() => {
+    const loadTexasBoundary = async () => {
+      try {
+        const response = await fetch('/Texas_Geojsons/Texas_Geojsons/texas.geojson');
+        if (response.ok) {
+          const data = await response.json();
+          setTexasBoundaryData(data);
+          console.log('✅ Texas boundary GeoJSON loaded for Encroachment Map');
+        } else {
+          console.warn('⚠️ Failed to load Texas boundary GeoJSON');
+        }
+      } catch (error) {
+        console.error('❌ Error loading Texas boundary:', error);
+      }
+    };
+
+    loadTexasBoundary();
+  }, []);
+
+  /**
    * Initialize map
    */
   useEffect(() => {
     if (!mapRef.current || mapInstanceRef.current) return;
 
-    // Create map instance
+    // Reset unmounting flag when map is being created
+    isUnmountingRef.current = false;
+
+    // Create map instance - better center for Texas
     const map = L.map(mapRef.current, {
-      center: [31.9686, -99.9018], // Center of Texas
+      center: [31.0, -99.0], // Better center of Texas
       zoom: 6,
       zoomControl: true,
-      attributionControl: true
+      attributionControl: true,
+      minZoom: 5,
+      maxZoom: 18
     });
 
     // Add tile layer
@@ -815,20 +881,49 @@ const EncroachmentMap = ({
       maxZoom: 18
     }).addTo(map);
 
-    // Set Texas bounds
-    map.setMaxBounds(texasBounds);
-    map.setMinZoom(5);
-
-    // Add Texas outline
-    const texasOutline = L.rectangle(texasBounds, {
-      color: '#667eea',
-      weight: 3,
-      fillColor: 'transparent',
-      fillOpacity: 0,
-      dashArray: '10, 10'
-    }).addTo(map);
+    // Set Texas bounds with proper fitting
+    if (texasBoundaryData) {
+      try {
+        const texasLayer = L.geoJSON(texasBoundaryData);
+        const bounds = texasLayer.getBounds();
+        map.fitBounds(bounds, {
+          padding: [20, 20],
+          maxZoom: 7
+        });
+        map.setMaxBounds(bounds.pad(0.1));
+      } catch (error) {
+        console.error('Error setting Texas bounds:', error);
+        map.setMaxBounds(texasBounds);
+      }
+    } else {
+      map.setMaxBounds(texasBounds);
+    }
 
     mapInstanceRef.current = map;
+
+    // Add boundary if already loaded
+    if (texasBoundaryData && !texasBoundaryLayerRef.current) {
+      const boundaryStyle = {
+        fillColor: 'rgba(30, 60, 114, 0.05)',
+        color: '#1e3c72',
+        weight: 3,
+        opacity: 0.9,
+        fillOpacity: 0.05,
+        dashArray: '8, 4'
+      };
+
+      try {
+        const texasBoundaryLayer = L.geoJSON(texasBoundaryData, {
+          style: boundaryStyle,
+          interactive: false
+        });
+        texasBoundaryLayer.addTo(map);
+        texasBoundaryLayerRef.current = texasBoundaryLayer;
+        console.log('✅ Texas boundary added during map initialization');
+      } catch (error) {
+        console.error('❌ Error adding boundary during init:', error);
+      }
+    }
 
     return () => {
       // Set unmounting flag to prevent further operations
@@ -836,6 +931,12 @@ const EncroachmentMap = ({
       
       // Clear markers
       clearMarkers();
+      
+      // Clear Texas boundary layer
+      if (texasBoundaryLayerRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(texasBoundaryLayerRef.current);
+        texasBoundaryLayerRef.current = null;
+      }
       
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
@@ -845,13 +946,63 @@ const EncroachmentMap = ({
   }, [clearMarkers]);
 
   /**
+   * Add Texas GeoJSON boundary to map when data is loaded
+   */
+  useEffect(() => {
+    if (!mapInstanceRef.current || !texasBoundaryData || isUnmountingRef.current) return;
+    
+    // Skip if boundary already added
+    if (texasBoundaryLayerRef.current) {
+      console.log('🗺️ Texas boundary already added, skipping');
+      return;
+    }
+
+    console.log('🗺️ Adding Texas boundary to map...', {
+      hasMap: !!mapInstanceRef.current,
+      hasBoundary: !!texasBoundaryData,
+      boundaryType: texasBoundaryData?.type
+    });
+
+    // Add Texas GeoJSON boundary with darker styling
+    const boundaryStyle = {
+      fillColor: 'rgba(30, 60, 114, 0.05)', // Slight dark blue fill
+      color: '#1e3c72', // Dark blue border
+      weight: 3,
+      opacity: 0.9,
+      fillOpacity: 0.05,
+      dashArray: '8, 4'
+    };
+
+    try {
+      const texasBoundaryLayer = L.geoJSON(texasBoundaryData, {
+        style: boundaryStyle,
+        interactive: false // Make boundary non-interactive
+      });
+
+      texasBoundaryLayer.addTo(mapInstanceRef.current);
+      texasBoundaryLayerRef.current = texasBoundaryLayer;
+      
+      // Bring boundary to back so markers appear on top
+      if (texasBoundaryLayer.bringToBack) {
+        texasBoundaryLayer.bringToBack();
+      }
+
+      console.log('✅ Texas GeoJSON boundary added to Encroachment Map');
+    } catch (error) {
+      console.error('❌ Error adding Texas boundary:', error);
+    }
+  }, [texasBoundaryData]);
+
+  /**
    * High-performance marker rendering with clustering
    */
   useEffect(() => {
-    console.log("🔎 Guard check", {
+    console.log("🔎 Marker Render Guard Check", {
       hasMap: !!mapInstanceRef.current,
       isUnmounting: isUnmountingRef.current,
-      alertsCount: alerts?.length || 0
+      isProcessing: isProcessingRef.current,
+      alertsCount: alerts?.length || 0,
+      hasExistingMarkers: !!markersLayerRef.current
     });
 
     if (!mapInstanceRef.current || isUnmountingRef.current) {
@@ -859,15 +1010,32 @@ const EncroachmentMap = ({
       return;
     }
 
-    // Clear old markers
+    // Prevent concurrent processing
+    if (isProcessingRef.current) {
+      console.log("⚠️ Already processing markers, skipping...");
+      return;
+    }
+
+    // Increment render ID to invalidate any ongoing batch processing
+    currentRenderIdRef.current += 1;
+    const thisRenderId = currentRenderIdRef.current;
+    console.log(`🔄 Starting marker update #${thisRenderId} for`, alerts?.length || 0, 'alerts');
+
+    // Clear old markers FIRST before adding new ones
     clearMarkers();
 
+    // Mark as processing
+    isProcessingRef.current = true;
+
     if (!alerts.length) {
+      console.log('📭 No alerts to display');
       performanceStatsRef.current = { renderTime: 0, markerCount: 0 };
+      isProcessingRef.current = false;
       return;
     }
 
     const startTime = performance.now();
+    console.log('🎨 Creating new marker cluster group...');
 
     // Create cluster group with custom options
     const markersLayer = L.markerClusterGroup({
@@ -905,10 +1073,24 @@ const EncroachmentMap = ({
       }
     });
 
-    const batchSize = 500;
+    const batchSize = 100; // Smaller batches for better responsiveness
     let processed = 0;
 
     const processBatch = () => {
+      // Check if this render has been superseded by a newer one
+      if (currentRenderIdRef.current !== thisRenderId) {
+        console.log(`⚠️ Aborting render #${thisRenderId} - superseded by #${currentRenderIdRef.current}`);
+        isProcessingRef.current = false;
+        return;
+      }
+
+      // Check if we should stop processing
+      if (isUnmountingRef.current || !mapInstanceRef.current) {
+        console.log('⚠️ Stopping batch processing - component unmounting or map removed');
+        isProcessingRef.current = false;
+        return;
+      }
+
       const batch = alerts.slice(processed, processed + batchSize);
 
       batch.forEach((alert, batchIndex) => {
@@ -921,7 +1103,7 @@ const EncroachmentMap = ({
 
         // Bind tooltip for quick info
         marker.bindTooltip(
-          `<span class="tooltip-confidence ${alert.confidence}">${confidenceIcons[alert.confidence]} ${alert.confidence.toUpperCase()}</span><br>${alert.date}`,
+          `<span class="tooltip-confidence ${alert.confidence}">${getConfidenceIconHTML(alert.confidence)} ${alert.confidence.toUpperCase()}</span><br>${alert.date}`,
           {
             direction: 'top',
             offset: L.point(0, -20),
@@ -935,7 +1117,7 @@ const EncroachmentMap = ({
           <div class="encroachment-popup">
             <div class="popup-header">
               <span class="confidence-badge ${alert.confidence}">
-                ${confidenceIcons[alert.confidence]} ${alert.confidence.toUpperCase()}
+                ${getConfidenceIconHTML(alert.confidence)} ${alert.confidence.toUpperCase()}
               </span>
             </div>
             <div class="popup-content">
@@ -951,7 +1133,7 @@ const EncroachmentMap = ({
             </div>
             <div class="popup-actions">
               <button class="popup-button" onclick="window.focusAlert(${globalIndex})">
-                📍 Focus
+                <span style="margin-right: 4px;">📍</span> Focus
               </button>
             </div>
           </div>
@@ -965,7 +1147,7 @@ const EncroachmentMap = ({
 
         // Add click handler for alert selection
         marker.on('click', () => {
-          onAlertSelect(marker.alert);
+          onAlertSelectRef.current(marker.alert);
         });
 
         markersLayer.addLayer(marker);
@@ -973,9 +1155,25 @@ const EncroachmentMap = ({
       });
 
       processed += batchSize;
-      if (processed < alerts.length) {
-        requestAnimationFrame(processBatch);
+      
+      if (processed < alerts.length && !isUnmountingRef.current) {
+        // Use setTimeout for better performance than requestAnimationFrame
+        setTimeout(processBatch, 0);
       } else {
+        // All batches processed - final check before adding to map
+        if (currentRenderIdRef.current !== thisRenderId) {
+          console.log(`⚠️ Discarding completed render #${thisRenderId} - superseded by #${currentRenderIdRef.current}`);
+          isProcessingRef.current = false;
+          return;
+        }
+
+        if (!mapInstanceRef.current || isUnmountingRef.current) {
+          console.log('⚠️ Map removed before adding markers layer');
+          isProcessingRef.current = false;
+          return;
+        }
+        
+        console.log(`📍 Adding render #${thisRenderId} markers to map...`);
         mapInstanceRef.current.addLayer(markersLayer);
         markersLayerRef.current = markersLayer;
 
@@ -1002,29 +1200,44 @@ const EncroachmentMap = ({
 
         const time = performance.now() - startTime;
         performanceStatsRef.current = { renderTime: time, markerCount: alerts.length };
-        console.log(`✅ Rendered ${alerts.length} markers in ${time.toFixed(2)}ms`);
+        isProcessingRef.current = false; // Reset processing flag
+        console.log(`✅ Render #${thisRenderId} completed: ${alerts.length} markers in ${time.toFixed(2)}ms`);
+        console.log(`📍 Total markers on map: ${markersLayerRef.current.getLayers().length}`);
 
         // Global focus function for popup buttons
         window.focusAlert = (index) => {
           if (alerts[index]) {
-            onAlertSelect(alerts[index]);
+            onAlertSelectRef.current(alerts[index]);
             mapInstanceRef.current.setView([alerts[index].latitude, alerts[index].longitude], 15);
           }
         };
 
-        // Fit map to show all alerts
+        // Fit map to show all alerts, but maintain Texas center
         setTimeout(() => {
           if (alerts.length > 0 && mapInstanceRef.current && !isUnmountingRef.current) {
             try {
               const lats = alerts.map(alert => alert.latitude);
               const lngs = alerts.map(alert => alert.longitude);
               
-              const bounds = L.latLngBounds([
-                [Math.min(...lats), Math.min(...lngs)],
-                [Math.max(...lats), Math.max(...lngs)]
-              ]);
+              // Only fit bounds if alerts span a large area
+              // Otherwise keep the default Texas center view
+              const latSpan = Math.max(...lats) - Math.min(...lats);
+              const lngSpan = Math.max(...lngs) - Math.min(...lngs);
               
-              mapInstanceRef.current.fitBounds(bounds.pad(0.1));
+              // Only auto-fit if alerts cover more than 30% of Texas
+              if (latSpan > 3.0 || lngSpan > 4.0) {
+                const bounds = L.latLngBounds([
+                  [Math.min(...lats), Math.min(...lngs)],
+                  [Math.max(...lats), Math.max(...lngs)]
+                ]);
+                
+                mapInstanceRef.current.fitBounds(bounds.pad(0.15), {
+                  maxZoom: 7 // Don't zoom in too much
+                });
+              } else {
+                // Keep Texas centered for localized alerts
+                mapInstanceRef.current.setView([31.0, -99.0], 6);
+              }
             } catch (error) {
               console.warn('Error fitting bounds:', error);
             }
@@ -1034,7 +1247,15 @@ const EncroachmentMap = ({
     };
 
     processBatch();
-  }, [alerts, selectedAlert, onAlertSelect, clearMarkers]);
+
+    // Cleanup function to ensure markers are cleared when effect re-runs or component unmounts
+    return () => {
+      console.log('🧼 Cleanup: Marker render effect is being cleaned up');
+      isProcessingRef.current = false; // Reset processing flag on cleanup
+      // Note: We don't call clearMarkers here because it would interfere with the next render
+      // The clearMarkers call at the start of the effect handles the cleanup
+    };
+  }, [alerts]);
 
   /**
    * Update marker icons when selectedAlert changes
@@ -1061,25 +1282,69 @@ const EncroachmentMap = ({
         marker.setIcon(getMarkerIcon(selectedAlert, true, isSpiderfied));
         // Bring to front if needed
         if (markersLayerRef.current) {
-          markersLayerRef.current.zoomToShowLayer(marker);
+          markersLayerRef.current.zoomToShowLayer(marker, () => {
+            // After zooming to show layer, pan and zoom to the alert
+            console.log('🎯 Zooming to show layer for selected alert:', selectedAlert);
+            try {
+              mapInstanceRef.current.setView([selectedAlert.latitude, selectedAlert.longitude], 12, {
+                animate: true,
+                duration: 0.5
+              });
+            } catch (error) {
+              console.warn('Error focusing on selected alert after zoom:', error);
+            }
+          });
         }
       }
     }
 
     prevSelectedRef.current = selectedAlert;
-  }, [selectedAlert, alerts]);
+  }, [selectedAlert]);
 
   /**
-   * Focus on selected alert
+   * Focus on selected alert (separate effect for reliability)
    */
   useEffect(() => {
     if (!mapInstanceRef.current || !selectedAlert || isUnmountingRef.current) return;
 
-    try {
-      mapInstanceRef.current.setView([selectedAlert.latitude, selectedAlert.longitude], 12);
-    } catch (error) {
-      console.warn('Error focusing on selected alert:', error);
-    }
+    console.log('🎯 Focus effect triggered for alert:', selectedAlert);
+
+    // Add a small delay to ensure markers are rendered
+    const focusTimeout = setTimeout(() => {
+      if (!mapInstanceRef.current || isUnmountingRef.current) return;
+      
+      try {
+        const key = selectedAlert.alert_id || `${selectedAlert.latitude}-${selectedAlert.longitude}`;
+        const marker = markerMapRef.current[key];
+        
+        if (marker && markersLayerRef.current) {
+          console.log('🎯 Found marker for selected alert, zooming to show layer');
+          // Use zoomToShowLayer which handles clusters properly
+          markersLayerRef.current.zoomToShowLayer(marker, () => {
+            console.log('🎯 Layer shown, now setting view to alert location');
+            if (mapInstanceRef.current && !isUnmountingRef.current) {
+              mapInstanceRef.current.setView(
+                [selectedAlert.latitude, selectedAlert.longitude], 
+                14, // Zoom level 14 for detailed view
+                { animate: true, duration: 0.5 }
+              );
+            }
+          });
+        } else {
+          console.log('🎯 Marker not found in cluster, setting view directly');
+          // If marker not found (might not be rendered yet), just pan to coordinates
+          mapInstanceRef.current.setView(
+            [selectedAlert.latitude, selectedAlert.longitude], 
+            14,
+            { animate: true, duration: 0.5 }
+          );
+        }
+      } catch (error) {
+        console.error('❌ Error focusing on selected alert:', error);
+      }
+    }, 100); // 100ms delay to ensure markers are ready
+
+    return () => clearTimeout(focusTimeout);
   }, [selectedAlert]);
 
   // Always render the map container, but show appropriate message when no alerts
@@ -1089,7 +1354,7 @@ const EncroachmentMap = ({
     <div className="encroachment-map-container">
       <div className="map-header">
         <div className="map-title">
-          <h3>🗺️ Encroachment Alerts Map</h3>
+          <h3><FaMapMarkedAlt /> Encroachment Alerts Map</h3>
           <p>
             {loading ? 'Loading alerts...' : 
              hasAlerts ? `${alerts.length} alerts displayed with clustered rendering` : 
@@ -1104,15 +1369,15 @@ const EncroachmentMap = ({
         </div>
         <div className="map-legend">
           <div className="legend-item">
-            <span className="legend-icon high">🔴</span>
+            <FaCircle className="legend-icon high" />
             <span>High Confidence</span>
           </div>
           <div className="legend-item">
-            <span className="legend-icon nominal">🟡</span>
+            <FaCircle className="legend-icon nominal" />
             <span>Nominal Confidence</span>
           </div>
           <div className="legend-item">
-            <span className="legend-icon low">🟢</span>
+            <FaCircle className="legend-icon low" />
             <span>Low Confidence</span>
           </div>
         </div>
@@ -1125,7 +1390,7 @@ const EncroachmentMap = ({
         {loading && (
           <div className="map-overlay loading-overlay">
             <div className="overlay-content">
-              <div className="spinner">🔄</div>
+              <FaSpinner className="spinner" />
               <p>Loading encroachment data...</p>
             </div>
           </div>
@@ -1135,7 +1400,7 @@ const EncroachmentMap = ({
         {!loading && !hasAlerts && (
           <div className="map-overlay no-data-overlay">
             <div className="overlay-content">
-              <div className="no-data-icon">🔍</div>
+              <FaSearch className="no-data-icon" />
               <h4>No Encroachment Alerts Found</h4>
               <p>Try adjusting your date range or confidence level filters.</p>
               <p>The map shows the Texas region where alerts would appear.</p>

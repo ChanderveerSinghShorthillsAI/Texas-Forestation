@@ -1,53 +1,35 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import './FireButton.css';
 
 /**
  * Fire Button Component
- * Toggle button for fire tracking feature
+ * Navigation button for fire tracking feature
  */
-const FireButton = ({ 
-  onClick, 
-  isActive = false, 
-  isLoading = false,
-  disabled = false,
-  fireCount = 0 
-}) => {
+const FireButton = () => {
+  const navigate = useNavigate();
+
+  const handleClick = () => {
+    navigate('/fire-tracking');
+  };
+
   return (
     <button
-      className={`fire-button ${isActive ? 'active' : ''} ${isLoading ? 'loading' : ''}`}
-      onClick={onClick}
-      disabled={disabled || isLoading}
-      title={isActive ? 'Hide Fire Tracking' : 'Show Fire Tracking'}
+      className="fire-button"
+      onClick={handleClick}
+      title="Open Fire Tracking Dashboard"
     >
       <div className="fire-button-content">
-        <div className={`fire-button-icon ${isActive ? 'flickering' : ''}`}>
+        <div className="fire-button-icon flickering">
           🔥
         </div>
         
         <div className="fire-button-text">
           <div className="fire-button-label">
-            {isLoading ? 'Loading...' : 'Fire Tracking'}
+            Fire Tracking
           </div>
-          
-          {fireCount > 0 && (
-            <div className="fire-button-count">
-              {fireCount} active
-            </div>
-          )}
         </div>
       </div>
-      
-      {isActive && (
-        <div className="fire-button-indicator">
-          <div className="fire-button-pulse"></div>
-        </div>
-      )}
-      
-      {isLoading && (
-        <div className="fire-button-spinner">
-          <div className="fire-spinner"></div>
-        </div>
-      )}
     </button>
   );
 };

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FaFilter, FaSpinner, FaCircle, FaCheckCircle, FaRedoAlt, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import encroachmentService from '../../services/encroachmentService';
 import './EncroachmentFilters.css';
 
@@ -97,18 +98,18 @@ const EncroachmentFilters = ({ filters, onFilterChange, loading = false }) => {
   return (
     <div className="encroachment-filters">
       <div className="filters-header">
-        <h3>🔍 Filters & Search</h3>
+        <h3><FaFilter /> Filters & Search</h3>
         <div className="header-controls">
           {pendingUpdate && (
             <span className="pending-indicator">
-              🔄 Updating...
+              <FaSpinner className="spin-icon" /> Updating...
             </span>
           )}
           <button 
             className="toggle-advanced"
             onClick={() => setShowAdvanced(!showAdvanced)}
           >
-            {showAdvanced ? '▼' : '▶'} Advanced Options
+            {showAdvanced ? <FaChevronDown /> : <FaChevronRight />} Advanced Options
           </button>
         </div>
       </div>
@@ -185,21 +186,21 @@ const EncroachmentFilters = ({ filters, onFilterChange, loading = false }) => {
               onClick={() => handleConfidenceChange('high')}
               disabled={loading}
             >
-              🔴 High
+              <FaCircle /> High
             </button>
             <button
               className={`confidence-btn nominal ${localFilters.confidence_level === 'nominal' ? 'active' : ''}`}
               onClick={() => handleConfidenceChange('nominal')}
               disabled={loading}
             >
-              🟡 Nominal
+              <FaCircle /> Nominal
             </button>
             <button
               className={`confidence-btn low ${localFilters.confidence_level === 'low' ? 'active' : ''}`}
               onClick={() => handleConfidenceChange('low')}
               disabled={loading}
             >
-              🟢 Low
+              <FaCircle /> Low
             </button>
           </div>
         </div>
@@ -248,14 +249,14 @@ const EncroachmentFilters = ({ filters, onFilterChange, loading = false }) => {
             disabled={loading}
             className="apply-button"
           >
-            {loading ? '🔄 Applying...' : '✅ Apply Filters'}
+            {loading ? <><FaSpinner className="spin-icon" /> Applying...</> : <><FaCheckCircle /> Apply Filters</>}
           </button>
           <button
             onClick={handleResetFilters}
             disabled={loading}
             className="reset-button"
           >
-            🔄 Reset
+            <FaRedoAlt /> Reset
           </button>
         </div>
       </div>

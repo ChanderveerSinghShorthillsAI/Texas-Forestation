@@ -126,7 +126,7 @@ const USGSWildfireButton = () => {
             </button>
 
             {/* Service Status Info */}
-            {serviceHealth && (
+            {/* {serviceHealth && (
                 <div className="service-info">
                     <div className="service-status">
                         <span className="status-dot" style={{ backgroundColor: getStatusColor() }}></span>
@@ -141,7 +141,7 @@ const USGSWildfireButton = () => {
                         </div>
                     )}
                 </div>
-            )}
+            )} */}
 
             {/* Enhanced Features Badge */}
             <div className="enhanced-badge">

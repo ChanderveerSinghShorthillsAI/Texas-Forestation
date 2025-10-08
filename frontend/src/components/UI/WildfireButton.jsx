@@ -343,7 +343,7 @@ const WildfireButton = ({ onToggle, isActive, onDataLoad }) => {
 
     return (
         <div className="wildfire-button-container">
-            <button
+            {/* <button
                 className={`wildfire-button ${isActive ? 'active' : ''} ${(loading || isFullTexasProcessing) ? 'loading' : ''}`}
                 onClick={handleToggle}
                 disabled={loading || isFullTexasProcessing}
@@ -355,7 +355,7 @@ const WildfireButton = ({ onToggle, isActive, onDataLoad }) => {
                     {(loading || isFullTexasProcessing) && <div className="loading-spinner"></div>}
                 </div>
                 
-                {/* Progress Bar for Full Texas Processing */}
+                
                 {isFullTexasProcessing && processingProgress && (
                     <div className="progress-bar-container">
                         <div 
@@ -372,9 +372,9 @@ const WildfireButton = ({ onToggle, isActive, onDataLoad }) => {
                     className="status-indicator" 
                     style={{ backgroundColor: status.color }}
                 ></div>
-            </button>
+            </button> */}
 
-            {/* Action buttons when active */}
+            
             {isActive && !loading && !isFullTexasProcessing && (
                 <div className="action-buttons">
                     <button

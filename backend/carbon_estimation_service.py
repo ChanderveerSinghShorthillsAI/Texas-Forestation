@@ -351,8 +351,42 @@ class CarbonEstimationService:
             for row in rows
         ]
 
+    def get_all_county_carbon_full(self, ensure_cache: bool = True) -> List[Dict[str, Any]]:
+        """Return detailed carbon data for all counties from the cache table."""
+        if ensure_cache and not self._is_county_carbon_populated():
+            self.build_county_carbon_cache(force_rebuild=False)
+
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
+                   biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
+                   wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres
+            FROM county_carbon
+            """
+        )
+        rows = cursor.fetchall()
+        conn.close()
+        return [
+            {
+                'county_name': row[0],
+                'county_fips': row[1],
+                'total_carbon_tons': round(row[2], 2) if row[2] is not None else None,
+                'total_co2_equivalent_tons': round(row[3], 2) if row[3] is not None else None,
+                'biomass_carbon_tons': round(row[4], 2) if row[4] is not None else None,
+                'soil_carbon_potential_tons': round(row[5], 2) if row[5] is not None else None,
+                'wetland_carbon_potential_tons': round(row[6], 2) if row[6] is not None else None,
+                'wood_biomass_tons': round(row[7], 2) if row[7] is not None else None,
+                'crop_residue_tons': round(row[8], 2) if row[8] is not None else None,
+                'secondary_residue_tons': round(row[9], 2) if row[9] is not None else None,
+                'wetland_acres': round(row[10], 2) if row[10] is not None else None,
+            }
+            for row in rows
+        ]
+
     def get_cached_county_carbon(self, county_name: str) -> Optional[Dict[str, Any]]:
-        """Get a single county's carbon data from cache if available."""
+        """Get a single county's carbon data from cache if available (summary only)."""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
@@ -368,6 +402,39 @@ class CarbonEstimationService:
             'county_fips': row[1],
             'total_carbon_tons': round(row[2], 2) if row[2] is not None else None,
             'total_co2_equivalent_tons': round(row[3], 2) if row[3] is not None else None
+        }
+    
+    def get_cached_county_carbon_full(self, county_name: str) -> Optional[Dict[str, Any]]:
+        """Get a single county's full carbon data from cache if available."""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
+                      biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
+                      wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres,
+                      calculation_timestamp
+               FROM county_carbon 
+               WHERE county_name = ? OR county_fips = ?""",
+            (county_name, county_name)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            return None
+        return {
+            'county_name': row[0],
+            'county_fips': row[1],
+            'total_carbon_tons': round(row[2], 2) if row[2] is not None else 0,
+            'total_co2_equivalent_tons': round(row[3], 2) if row[3] is not None else 0,
+            'biomass_carbon_tons': round(row[4], 2) if row[4] is not None else 0,
+            'soil_carbon_potential_tons': round(row[5], 2) if row[5] is not None else 0,
+            'wetland_carbon_potential_tons': round(row[6], 2) if row[6] is not None else 0,
+            'wood_biomass_tons': round(row[7], 2) if row[7] is not None else 0,
+            'crop_residue_tons': round(row[8], 2) if row[8] is not None else 0,
+            'secondary_residue_tons': round(row[9], 2) if row[9] is not None else 0,
+            'wetland_acres': round(row[10], 2) if row[10] is not None else 0,
+            'calculation_timestamp': row[11],
+            'methodology_notes': self._get_methodology_notes()
         }
     
     def _get_wood_biomass_data(self, cursor, condition: str) -> Optional[Dict]:
@@ -565,78 +632,62 @@ class CarbonEstimationService:
 
 # Convenience functions for easy API integration
 def get_county_carbon_estimate(county_name: str = None, county_fips: str = None) -> Optional[Dict]:
-    """Get carbon estimate for a specific county"""
+    """Get carbon estimate for a specific county with full breakdown"""
     service = CarbonEstimationService()
-    # Try cache first by county_name when provided
+    
+    # Always do full calculation to get complete data
+    # The API route layer handles caching with get_cached_county_carbon_full()
+    result = service.estimate_county_carbon(county_name=county_name, county_fips=county_fips)
+    
     result_dict: Optional[Dict] = None
-    if county_name:
-        cached = service.get_cached_county_carbon(county_name=county_name.title())
-        if cached and cached.get('total_carbon_tons') is not None:
-            result_dict = {
-                'county_name': cached['county_name'],
-                'county_fips': cached['county_fips'],
-                'total_carbon_tons': round(cached['total_carbon_tons'], 2),
-                'total_co2_equivalent_tons': round(cached['total_co2_equivalent_tons'], 2) if cached['total_co2_equivalent_tons'] is not None else None,
-                'biomass_carbon_tons': None,
-                'soil_carbon_potential_tons': None,
-                'wetland_carbon_potential_tons': None,
-                'wood_biomass_tons': None,
-                'crop_residue_tons': None,
-                'wetland_acres': None,
-                'calculation_timestamp': datetime.now().isoformat(),
-                'methodology_notes': service._get_methodology_notes()
-            }
-    if not result_dict:
-        result = service.estimate_county_carbon(county_name=county_name, county_fips=county_fips)
-        
-        if result:
-            # Also upsert into cache for future fast loads
-            try:
-                conn = sqlite3.connect(service.db_path)
-                cursor = conn.cursor()
-                cursor.execute(
-                    """
-                    INSERT OR REPLACE INTO county_carbon (
-                        county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
-                        biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
-                        wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres,
-                        calculation_timestamp
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    """,
-                    (
-                        result.county_name,
-                        result.county_fips,
-                        float(result.total_carbon_tons),
-                        float(result.total_co2_equivalent_tons),
-                        float(result.biomass_carbon_tons),
-                        float(result.soil_carbon_potential_tons),
-                        float(result.wetland_carbon_potential_tons),
-                        float(result.wood_biomass_tons),
-                        float(result.crop_residue_tons),
-                        float(result.secondary_residue_tons),
-                        float(result.wetland_acres),
-                        result.calculation_timestamp.isoformat()
-                    )
+    if result:
+        # Also upsert into cache for future fast loads
+        try:
+            conn = sqlite3.connect(service.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                INSERT OR REPLACE INTO county_carbon (
+                    county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
+                    biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
+                    wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres,
+                    calculation_timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    result.county_name,
+                    result.county_fips,
+                    float(result.total_carbon_tons),
+                    float(result.total_co2_equivalent_tons),
+                    float(result.biomass_carbon_tons),
+                    float(result.soil_carbon_potential_tons),
+                    float(result.wetland_carbon_potential_tons),
+                    float(result.wood_biomass_tons),
+                    float(result.crop_residue_tons),
+                    float(result.secondary_residue_tons),
+                    float(result.wetland_acres),
+                    result.calculation_timestamp.isoformat()
                 )
-                conn.commit()
-                conn.close()
-            except Exception as e:
-                logger.warning(f"Failed to upsert county into cache: {e}")
-            
-            result_dict = {
-                'county_name': result.county_name,
-                'county_fips': result.county_fips,
-                'total_carbon_tons': round(result.total_carbon_tons, 2),
-                'total_co2_equivalent_tons': round(result.total_co2_equivalent_tons, 2),
-                'biomass_carbon_tons': round(result.biomass_carbon_tons, 2),
-                'soil_carbon_potential_tons': round(result.soil_carbon_potential_tons, 2),
-                'wetland_carbon_potential_tons': round(result.wetland_carbon_potential_tons, 2),
-                'wood_biomass_tons': round(result.wood_biomass_tons, 2),
-                'crop_residue_tons': round(result.crop_residue_tons, 2),
-                'wetland_acres': round(result.wetland_acres, 2),
-                'calculation_timestamp': result.calculation_timestamp.isoformat(),
-                'methodology_notes': result.methodology_notes
-            }
+            )
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            logger.warning(f"Failed to upsert county into cache: {e}")
+        
+        result_dict = {
+            'county_name': result.county_name,
+            'county_fips': result.county_fips,
+            'total_carbon_tons': round(result.total_carbon_tons, 2),
+            'total_co2_equivalent_tons': round(result.total_co2_equivalent_tons, 2),
+            'biomass_carbon_tons': round(result.biomass_carbon_tons, 2),
+            'soil_carbon_potential_tons': round(result.soil_carbon_potential_tons, 2),
+            'wetland_carbon_potential_tons': round(result.wetland_carbon_potential_tons, 2),
+            'wood_biomass_tons': round(result.wood_biomass_tons, 2),
+            'crop_residue_tons': round(result.crop_residue_tons, 2),
+            'wetland_acres': round(result.wetland_acres, 2),
+            'calculation_timestamp': result.calculation_timestamp.isoformat(),
+            'methodology_notes': result.methodology_notes
+        }
     
     return result_dict
 

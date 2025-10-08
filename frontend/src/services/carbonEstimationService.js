@@ -14,13 +14,15 @@ class CarbonEstimationService {
    * Get carbon estimation for a specific county
    * @param {string} countyName - County name (e.g., 'Harris')
    * @param {string} countyFips - County FIPS code (optional)
+   * @param {boolean} useCache - Use cached data for faster response (default: true)
    * @returns {Promise<Object>} Carbon estimation data
    */
-  async getCountyCarbon(countyName, countyFips = null) {
+  async getCountyCarbon(countyName, countyFips = null, useCache = true) {
     const cacheKey = `county_${countyName || countyFips}`;
     
     // Check cache first
     if (this.cache.has(cacheKey)) {
+      console.log(`[CarbonService] Using cached data for ${countyName || countyFips}`);
       return this.cache.get(cacheKey);
     }
 
@@ -33,8 +35,12 @@ class CarbonEstimationService {
       
       if (countyName) params.append('county_name', countyName);
       if (countyFips) params.append('county_fips', countyFips);
+      params.append('use_cache', useCache.toString());
       
       url += `?${params.toString()}`;
+
+      console.log(`[CarbonService] Fetching carbon data for ${countyName || countyFips} (cache: ${useCache})`);
+      const startTime = performance.now();
 
       const response = await fetch(url, {
         method: 'GET',
@@ -49,10 +55,13 @@ class CarbonEstimationService {
       }
 
       const result = await response.json();
+      const duration = (performance.now() - startTime).toFixed(0);
+      console.log(`[CarbonService] Response received in ${duration}ms`);
       
       if (result.success) {
-        // Cache the result
+        // Cache the result for 60 minutes
         this.cache.set(cacheKey, result.data);
+        setTimeout(() => this.cache.delete(cacheKey), 60 * 60 * 1000);
         return result.data;
       } else {
         throw new Error(result.message || 'Failed to get county carbon data');
@@ -60,10 +69,10 @@ class CarbonEstimationService {
 
     } catch (error) {
       if (error.name === 'AbortError') {
-        console.log('County carbon request aborted');
+        console.log('[CarbonService] County carbon request aborted');
         return null;
       }
-      console.error('Error fetching county carbon:', error);
+      console.error('[CarbonService] Error fetching county carbon:', error);
       throw error;
     }
   }
@@ -77,10 +86,14 @@ class CarbonEstimationService {
     
     // Check cache first
     if (this.cache.has(cacheKey)) {
+      console.log('[CarbonService] Using cached statewide data');
       return this.cache.get(cacheKey);
     }
 
     try {
+      console.log('[CarbonService] Fetching statewide carbon data');
+      const startTime = performance.now();
+      
       const response = await fetch(`${this.baseURL}/api/carbon/statewide`, {
         method: 'GET',
         headers: {
@@ -93,18 +106,20 @@ class CarbonEstimationService {
       }
 
       const result = await response.json();
+      const duration = (performance.now() - startTime).toFixed(0);
+      console.log(`[CarbonService] Statewide data received in ${duration}ms`);
       
       if (result.success) {
-        // Cache for 5 minutes (statewide data doesn't change frequently)
+        // Cache for 60 minutes (statewide data doesn't change frequently)
         this.cache.set(cacheKey, result.data);
-        setTimeout(() => this.cache.delete(cacheKey), 5 * 60 * 1000);
+        setTimeout(() => this.cache.delete(cacheKey), 60 * 60 * 1000);
         return result.data;
       } else {
         throw new Error(result.message || 'Failed to get statewide carbon data');
       }
 
     } catch (error) {
-      console.error('Error fetching statewide carbon:', error);
+      console.error('[CarbonService] Error fetching statewide carbon:', error);
       throw error;
     }
   }
@@ -119,10 +134,14 @@ class CarbonEstimationService {
     
     // Check cache first
     if (this.cache.has(cacheKey)) {
+      console.log(`[CarbonService] Using cached top ${limit} counties`);
       return this.cache.get(cacheKey);
     }
 
     try {
+      console.log(`[CarbonService] Fetching top ${limit} counties`);
+      const startTime = performance.now();
+      
       const response = await fetch(`${this.baseURL}/api/carbon/counties/top?limit=${limit}`, {
         method: 'GET',
         headers: {
@@ -135,16 +154,20 @@ class CarbonEstimationService {
       }
 
       const result = await response.json();
+      const duration = (performance.now() - startTime).toFixed(0);
+      console.log(`[CarbonService] Top counties received in ${duration}ms`);
       
       if (result.success) {
+        // Cache for 60 minutes
         this.cache.set(cacheKey, result.data);
+        setTimeout(() => this.cache.delete(cacheKey), 60 * 60 * 1000);
         return result.data;
       } else {
         throw new Error(result.message || 'Failed to get top carbon counties');
       }
 
     } catch (error) {
-      console.error('Error fetching top carbon counties:', error);
+      console.error('[CarbonService] Error fetching top carbon counties:', error);
       throw error;
     }
   }

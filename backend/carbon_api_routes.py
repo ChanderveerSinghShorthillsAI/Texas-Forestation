@@ -22,7 +22,8 @@ router = APIRouter(prefix="/api/carbon", tags=["Carbon Estimation"])
 @router.get("/county")
 async def get_county_carbon(
     county_name: Optional[str] = Query(None, description="County name (e.g., 'Harris', 'Dallas')"),
-    county_fips: Optional[str] = Query(None, description="County FIPS code (e.g., '48201' for Harris)")
+    county_fips: Optional[str] = Query(None, description="County FIPS code (e.g., '48201' for Harris)"),
+    use_cache: bool = Query(True, description="Use cached data when available for faster response")
 ) -> Dict[str, Any]:
     """
     Get carbon stock estimation for a specific Texas county.
@@ -35,9 +36,12 @@ async def get_county_carbon(
     - Wetland carbon sequestration
     - Data sources and methodology
     
+    **Performance:** Uses caching by default for instant responses.
+    
     **Usage Examples:**
     - `/api/carbon/county?county_name=Harris`
     - `/api/carbon/county?county_fips=48201`
+    - `/api/carbon/county?county_name=Harris&use_cache=false` (force recalculation)
     """
     
     if not county_name and not county_fips:
@@ -47,6 +51,10 @@ async def get_county_carbon(
         )
     
     try:
+        # Always use full calculation to ensure complete data
+        # The get_county_carbon_estimate function handles its own caching
+        logger.info(f"Calculating carbon data for {county_name or county_fips}")
+        
         result = get_county_carbon_estimate(
             county_name=county_name,
             county_fips=county_fips
@@ -146,20 +154,33 @@ async def get_top_carbon_counties(
         )
 
 @router.get("/counties/all")
-async def get_all_counties_carbon() -> Dict[str, Any]:
+async def get_all_counties_carbon(
+    summary_only: bool = Query(True, description="Return summary data only (faster)")
+) -> Dict[str, Any]:
     """
     Get cached carbon data for all Texas counties.
     Ensures the cache table exists and is populated once; subsequent calls are instant.
+    
+    **Performance:** Extremely fast when using cache (summary_only=true).
+    Set summary_only=false for detailed breakdown of all counties.
     """
     try:
         service = CarbonEstimationService()
-        data = service.get_all_county_carbon(ensure_cache=True)
+        
+        if summary_only:
+            # Fast path: just summary data
+            data = service.get_all_county_carbon(ensure_cache=True)
+        else:
+            # Slower: full details for all counties
+            data = service.get_all_county_carbon_full(ensure_cache=True)
+            
         return {
             "success": True,
             "data": {
                 "counties": data,
                 "total": len(data)
             },
+            "cached": True,
             "message": f"Retrieved carbon data for {len(data)} counties"
         }
     except Exception as e:
@@ -253,6 +274,42 @@ async def get_methodology() -> Dict[str, Any]:
         "data": methodology,
         "message": "Carbon estimation methodology documentation retrieved successfully"
     }
+
+@router.post("/cache/rebuild")
+async def rebuild_carbon_cache(
+    force: bool = Query(False, description="Force rebuild even if cache exists")
+) -> Dict[str, Any]:
+    """
+    Rebuild the carbon cache table.
+    
+    Use this endpoint to refresh cached carbon data for all counties.
+    This is useful after database updates or if cached data appears incomplete.
+    
+    **Warning:** Force rebuild can take 1-2 minutes for all 254 counties.
+    """
+    try:
+        service = CarbonEstimationService()
+        rows_written = service.build_county_carbon_cache(force_rebuild=force)
+        
+        if rows_written == 0:
+            return {
+                "success": True,
+                "message": "Cache already populated and up to date",
+                "rows_written": 0
+            }
+        
+        return {
+            "success": True,
+            "message": f"Cache rebuilt successfully for {rows_written} counties",
+            "rows_written": rows_written
+        }
+        
+    except Exception as e:
+        logger.error(f"Error rebuilding cache: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error while rebuilding cache"
+        )
 
 @router.get("/health")
 async def carbon_service_health() -> Dict[str, Any]:

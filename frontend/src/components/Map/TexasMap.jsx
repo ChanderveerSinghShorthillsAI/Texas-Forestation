@@ -608,15 +608,9 @@ const TexasMap = () => {
   };
 
   /**
-   * Handle fire button click
+   * Note: Fire button now navigates to separate Fire Tracking page
+   * Fire layer functionality has been moved to /fire-tracking route
    */
-  const handleFireButtonClick = () => {
-    setShowFireLayer(!showFireLayer);
-    if (!showFireLayer) {
-      // When enabling fire layer, also show the control panel
-      setShowFirePanel(true);
-    }
-  };
 
   /**
    * Handle wildfire button toggle
@@ -1050,13 +1044,8 @@ const TexasMap = () => {
         isActive={showCarbonPanel}
       />
 
-      {/* Fire Tracking Button */}
-      <FireButton
-        onClick={handleFireButtonClick}
-        isActive={showFireLayer}
-        isLoading={isLoadingFire}
-        fireCount={fireData?.totalDetections || 0}
-      />
+      {/* Fire Tracking Button - Navigates to separate page */}
+      <FireButton />
 
       {/* Wildfire Prediction Button - Now with Full Texas Coverage */}
       <WildfireButton

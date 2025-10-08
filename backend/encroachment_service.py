@@ -4,6 +4,8 @@ import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import logging
+from shapely.geometry import shape, Point
+from pathlib import Path
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -20,6 +22,11 @@ class EncroachmentService:
             "Content-Type": "application/json",
             "User-Agent": "Texas-Vanrakshak/1.0"
         }
+        
+        # Load actual Texas GeoJSON boundary for precise filtering
+        self.texas_polygon = None
+        self.texas_geojson = None
+        self._load_texas_boundary()
         
         # Texas bounding box coordinates (using a more manageable area)
         self.texas_bounds = {
@@ -50,6 +57,115 @@ class EncroachmentService:
                 }
             }
         ]
+    
+    def _load_texas_boundary(self):
+        """Load the actual Texas GeoJSON boundary for precise point filtering"""
+        try:
+            # Try multiple possible paths
+            possible_paths = [
+                Path(__file__).parent.parent / "frontend" / "public" / "Texas_Geojsons" / "Texas_Geojsons" / "texas.geojson",
+                Path(__file__).parent / ".." / "frontend" / "public" / "Texas_Geojsons" / "Texas_Geojsons" / "texas.geojson",
+                Path("frontend/public/Texas_Geojsons/Texas_Geojsons/texas.geojson"),
+                Path("../frontend/public/Texas_Geojsons/Texas_Geojsons/texas.geojson")
+            ]
+            
+            geojson_path = None
+            for path in possible_paths:
+                if path.exists():
+                    geojson_path = path
+                    break
+            
+            if geojson_path is None:
+                logger.warning("⚠️ Texas GeoJSON boundary file not found. Will use rectangular bounds as fallback.")
+                return
+            
+            with open(geojson_path, 'r') as f:
+                self.texas_geojson = json.load(f)
+            
+            # Convert GeoJSON to Shapely polygon for efficient point-in-polygon checks
+            # Handle both single Feature and FeatureCollection
+            if self.texas_geojson.get('type') == 'FeatureCollection':
+                # Use the first feature's geometry
+                geometry = self.texas_geojson['features'][0]['geometry']
+            elif self.texas_geojson.get('type') == 'Feature':
+                geometry = self.texas_geojson['geometry']
+            else:
+                # Assume it's a direct geometry
+                geometry = self.texas_geojson
+            
+            self.texas_polygon = shape(geometry)
+            logger.info("✅ Texas GeoJSON boundary loaded successfully for precise filtering")
+            
+            # Log geometry type and details
+            if hasattr(self.texas_polygon, 'exterior'):
+                # Simple Polygon
+                logger.info(f"   Boundary type: Polygon with {len(self.texas_polygon.exterior.coords)} vertices")
+            elif hasattr(self.texas_polygon, 'geoms'):
+                # MultiPolygon
+                num_polygons = len(self.texas_polygon.geoms)
+                total_vertices = sum(len(poly.exterior.coords) for poly in self.texas_polygon.geoms)
+                logger.info(f"   Boundary type: MultiPolygon with {num_polygons} polygons and {total_vertices} total vertices")
+            else:
+                logger.info(f"   Boundary type: {type(self.texas_polygon).__name__}")
+            
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to load Texas GeoJSON boundary: {e}. Will use rectangular bounds as fallback.")
+            self.texas_polygon = None
+            self.texas_geojson = None
+    
+    def _is_point_in_texas(self, latitude: float, longitude: float) -> bool:
+        """Check if a point is within the actual Texas boundary"""
+        if self.texas_polygon is None:
+            # Fallback to rectangular bounds check
+            return (25.84 <= latitude <= 36.50 and -106.65 <= longitude <= -93.51)
+        
+        try:
+            point = Point(longitude, latitude)  # Note: Point takes (lon, lat) order
+            return self.texas_polygon.contains(point)
+        except Exception as e:
+            logger.warning(f"Error checking point ({latitude}, {longitude}): {e}")
+            # Fallback to rectangular bounds check
+            return (25.84 <= latitude <= 36.50 and -106.65 <= longitude <= -93.51)
+    
+    def _filter_alerts_by_boundary(self, alerts: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Filter alerts to only include those within actual Texas boundaries"""
+        if self.texas_polygon is None:
+            logger.info("⚠️ Texas polygon not available, returning all alerts")
+            return alerts
+        
+        filtered_alerts = []
+        removed_alerts = []
+        original_count = len(alerts)
+        
+        for alert in alerts:
+            if self._is_point_in_texas(alert['latitude'], alert['longitude']):
+                filtered_alerts.append(alert)
+            else:
+                removed_alerts.append(alert)
+        
+        filtered_count = len(filtered_alerts)
+        removed_count = original_count - filtered_count
+        
+        if removed_count > 0:
+            logger.info(f"🔍 Filtered {removed_count} alerts outside Texas boundary ({filtered_count}/{original_count} remaining)")
+            # Log sample of removed alerts to understand geographic distribution
+            if removed_alerts:
+                sample_removed = removed_alerts[:5]
+                logger.info(f"   Sample removed alerts (first 5):")
+                for alert in sample_removed:
+                    logger.info(f"      - Lat: {alert['latitude']:.4f}, Lon: {alert['longitude']:.4f}")
+        
+        # Log geographic distribution of kept alerts
+        if filtered_alerts:
+            lats = [a['latitude'] for a in filtered_alerts]
+            lons = [a['longitude'] for a in filtered_alerts]
+            logger.info(f"📍 Geographic distribution of alerts:")
+            logger.info(f"   Latitude range: {min(lats):.4f} to {max(lats):.4f}")
+            logger.info(f"   Longitude range: {min(lons):.4f} to {max(lons):.4f}")
+            logger.info(f"   West Texas (lon < -100): {len([l for l in lons if l < -100])} alerts")
+            logger.info(f"   East Texas (lon >= -100): {len([l for l in lons if l >= -100])} alerts")
+        
+        return filtered_alerts
     
     async def health_check(self) -> Dict[str, Any]:
         """Check service health and API connectivity"""
@@ -301,8 +417,13 @@ class EncroachmentService:
             # Sort all alerts by coordinates for consistent ordering
             all_alerts.sort(key=lambda x: (x["latitude"], x["longitude"]))
             
-            logger.info(f"🎉 Successfully fetched ALL {len(all_alerts)} encroachment alerts for date: {latest_date}")
-            return all_alerts, latest_date
+            logger.info(f"📊 Fetched {len(all_alerts)} alerts before boundary filtering")
+            
+            # Filter alerts to only include those within actual Texas boundaries
+            filtered_alerts = self._filter_alerts_by_boundary(all_alerts)
+            
+            logger.info(f"🎉 Successfully fetched {len(filtered_alerts)} encroachment alerts within Texas boundaries for date: {latest_date}")
+            return filtered_alerts, latest_date
                 
         except Exception as e:
             logger.error(f"Failed to fetch latest encroachment data: {e}")
@@ -378,22 +499,25 @@ class EncroachmentService:
                     logger.warning(f"Failed to fetch data for {region['name']}: {e}")
                     continue
             
-            logger.info(f"Successfully fetched {len(all_alerts)} encroachment alerts from all regions")
-            return all_alerts
+            logger.info(f"📊 Fetched {len(all_alerts)} alerts before boundary filtering")
+            
+            # Filter alerts to only include those within actual Texas boundaries
+            filtered_alerts = self._filter_alerts_by_boundary(all_alerts)
+            
+            logger.info(f"Successfully fetched {len(filtered_alerts)} encroachment alerts within Texas boundaries from all regions")
+            return filtered_alerts
                 
         except Exception as e:
             logger.error(f"Failed to fetch encroachment data: {e}")
             raise
     
     async def get_statistics(self) -> Dict[str, Any]:
-        """Get overall statistics for encroachment data from live API"""
+        """Get overall statistics for encroachment data from the latest available date"""
         try:
-            # Get data for the last 30 days for statistics
-            end_date = datetime.now().strftime("%Y-%m-%d")
-            start_date = (datetime.now() - timedelta(days=30)).strftime("%Y-%m-%d")
+            # Fetch ALL alerts for the latest available date (same as main data display)
+            all_alerts, latest_date = await self._fetch_latest_from_api("all")
             
-            # Fetch all alerts for statistics
-            all_alerts = await self._fetch_from_api(start_date, end_date, "all")
+            logger.info(f"📊 Calculating statistics from {len(all_alerts)} alerts for latest date: {latest_date}")
             
             # Calculate statistics
             total_alerts = len(all_alerts)
@@ -404,21 +528,20 @@ class EncroachmentService:
                 conf = alert.get("confidence", "unknown")
                 alerts_by_confidence[conf] = alerts_by_confidence.get(conf, 0) + 1
             
-            # Recent alerts (last 7 days)
-            recent_date = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
-            recent_alerts_count = len([a for a in all_alerts if a["date"] >= recent_date])
+            # For "recent alerts", since we only have one date, we'll count all alerts
+            # as they're all from the latest available date
+            recent_alerts_count = total_alerts
             
             # High confidence count
             high_confidence_count = len([a for a in all_alerts if a["confidence"] == "high"])
             
-            # Last alert date
-            last_alert_date = max([a["date"] for a in all_alerts]) if all_alerts else None
+            # Last alert date (will be the latest_date)
+            last_alert_date = latest_date
             
-            # Alerts by date (last 30 days)
-            alerts_by_date = {}
-            for alert in all_alerts:
-                date = alert["date"]
-                alerts_by_date[date] = alerts_by_date.get(date, 0) + 1
+            # Alerts by date (will have only one date - the latest_date)
+            alerts_by_date = {latest_date: total_alerts}
+            
+            logger.info(f"✅ Statistics calculated: Total={total_alerts}, High={high_confidence_count}, Date={latest_date}")
             
             return {
                 "total_alerts": total_alerts,
