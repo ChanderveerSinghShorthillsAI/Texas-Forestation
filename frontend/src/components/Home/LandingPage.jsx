@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { 
@@ -24,11 +24,49 @@ import './LandingPage.css';
 const LandingPage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  
+  // Refs for scroll animations
+  const sectionsRef = useRef([]);
 
   const handleLogout = async () => {
     await logout();
     navigate('/login', { replace: true });
   };
+
+  // Intersection Observer for scroll animations
+  useEffect(() => {
+    const observerOptions = {
+      root: null,
+      rootMargin: '0px',
+      threshold: 0.15 // Trigger when 15% of the section is visible
+    };
+
+    const observerCallback = (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('section-visible');
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+    // Observe all sections
+    sectionsRef.current.forEach((section) => {
+      if (section) {
+        observer.observe(section);
+      }
+    });
+
+    // Cleanup
+    return () => {
+      sectionsRef.current.forEach((section) => {
+        if (section) {
+          observer.unobserve(section);
+        }
+      });
+    };
+  }, []);
 
   const features = [
     {
@@ -83,30 +121,34 @@ const LandingPage = () => {
     }
   ];
 
-  const statistics = [
+  const capabilities = [
     {
-      icon: <FaGlobeAmericas />,
-      value: '268,596',
-      label: 'Square Miles Monitored',
-      color: '#3B82F6'
+      icon: <FaSatellite />,
+      title: 'Satellite Intelligence',
+      description: 'Advanced multi-spectral imagery analysis with real-time data processing from multiple satellite sources',
+      color: '#3B82F6',
+      gradient: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)'
     },
     {
-      icon: <FaTree />,
-      value: '50M+',
-      label: 'Trees Analyzed',
-      color: '#10B981'
-    },
-    {
-      icon: <FaFire />,
-      value: '99.2%',
-      label: 'Fire Detection Accuracy',
-      color: '#F59E0B'
+      icon: <FaShieldAlt />,
+      title: 'Proactive Protection',
+      description: 'AI-driven threat detection and automated alert systems for comprehensive forest security',
+      color: '#10B981',
+      gradient: 'linear-gradient(135deg, #10B981 0%, #059669 100%)'
     },
     {
       icon: <IoAnalyticsSharp />,
-      value: '24/7',
-      label: 'Real-time Monitoring',
-      color: '#8B5CF6'
+      title: 'Predictive Analytics',
+      description: 'Machine learning models for wildfire forecasting, encroachment detection, and ecosystem monitoring',
+      color: '#F59E0B',
+      gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)'
+    },
+    {
+      icon: <FaGlobeAmericas />,
+      title: 'Comprehensive Coverage',
+      description: 'Statewide monitoring across all Texas forest ecosystems with continuous data integration',
+      color: '#8B5CF6',
+      gradient: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%)'
     }
   ];
 
@@ -177,23 +219,25 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* Statistics Section */}
-      <section className="statistics-section">
-        <div className="statistics-container">
-          {statistics.map((stat, index) => (
-            <div key={index} className="stat-card" style={{ animationDelay: `${index * 0.1}s` }}>
-              <div className="stat-icon" style={{ color: stat.color }}>
-                {stat.icon}
+      {/* Capabilities Section */}
+      <section className="capabilities-section scroll-section" ref={(el) => sectionsRef.current[0] = el}>
+        <div className="capabilities-container">
+          {capabilities.map((capability, index) => (
+            <div key={index} className="capability-card">
+              <div className="capability-icon-wrapper" style={{ background: capability.gradient }}>
+                <div className="capability-icon">
+                  {capability.icon}
+                </div>
               </div>
-              <div className="stat-value">{stat.value}</div>
-              <div className="stat-label">{stat.label}</div>
+              <h3 className="capability-title">{capability.title}</h3>
+              <p className="capability-description">{capability.description}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* About Section */}
-      <section className="about-section">
+      <section className="about-section scroll-section" ref={(el) => sectionsRef.current[1] = el}>
         <div className="about-content">
           <div className="about-header">
             <h2 className="section-title">About Texas Vanrakshak</h2>
@@ -247,7 +291,7 @@ const LandingPage = () => {
       </section>
 
       {/* Features Section */}
-      <section id="features-section" className="features-section">
+      <section id="features-section" className="features-section scroll-section" ref={(el) => sectionsRef.current[2] = el}>
         <div className="features-content">
           <div className="features-header">
             <h2 className="section-title">Powerful Features</h2>
@@ -290,7 +334,7 @@ const LandingPage = () => {
       </section>
 
       {/* Technology Stack Section */}
-      <section className="technology-section">
+      <section className="technology-section scroll-section" ref={(el) => sectionsRef.current[3] = el}>
         <div className="technology-content">
           <div className="technology-header">
             <h2 className="section-title">Powered by Advanced Technology</h2>
@@ -330,7 +374,7 @@ const LandingPage = () => {
       </section>
 
       {/* Call to Action Section */}
-      <section className="cta-section">
+      <section className="cta-section scroll-section" ref={(el) => sectionsRef.current[4] = el}>
         <div className="cta-content">
           <h2 className="cta-title">Ready to Get Started?</h2>
           <p className="cta-description">

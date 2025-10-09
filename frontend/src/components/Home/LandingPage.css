@@ -237,7 +237,7 @@
   background: rgba(16, 185, 129, 0.15);
   border: 1px solid rgba(16, 185, 129, 0.3);
   border-radius: 30px;
-  color: #10B981;
+  color: #ffffff;
   font-size: 0.95rem;
   font-weight: 600;
   margin-bottom: 2rem;
@@ -365,59 +365,86 @@
   z-index: 1;
 }
 
-/* Statistics Section */
-.statistics-section {
+/* Capabilities Section */
+.capabilities-section {
   position: relative;
   z-index: 3;
-  padding: 4rem 2rem;
-  background: rgba(5, 46, 22, 0.5);
+  padding: 5rem 2rem;
+  background: rgba(5, 46, 22, 0.6);
   backdrop-filter: blur(20px);
   margin-top: 0;
   transition: all 0.3s ease;
 }
 
-.statistics-container {
+.capabilities-container {
   max-width: 1400px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2.5rem;
 }
 
-.stat-card {
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.3);
+.capability-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  padding: 2.5rem;
-  text-align: center;
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-  animation: fadeInUp 0.6s ease both;
+  padding: 2.5rem 2rem;
+  backdrop-filter: blur(15px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: translateY(30px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
-.stat-card:hover {
-  transform: translateY(-10px);
-  background: rgba(16, 185, 129, 0.2);
-  box-shadow: 0 20px 60px rgba(16, 185, 129, 0.3);
+.capability-icon-wrapper {
+  width: 70px;
+  height: 70px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-.stat-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
+.capability-icon-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease;
 }
 
-.stat-value {
-  font-size: 3rem;
-  font-weight: 800;
+.capability-icon {
+  font-size: 2rem;
   color: white;
-  margin-bottom: 0.5rem;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 1;
+  position: relative;
 }
 
-.stat-label {
-  font-size: 1rem;
-  color: rgba(255, 255, 255, 0.7);
-  font-weight: 500;
+.capability-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 1rem;
+  text-align: center;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.capability-description {
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: rgba(255, 255, 255, 0.75);
+  text-align: center;
+  font-weight: 400;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* About Section */
@@ -492,6 +519,8 @@
   font-size: 1.15rem;
   line-height: 1.8;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(20px);
 }
 
 .about-description {
@@ -514,6 +543,8 @@
   border: 1px solid rgba(16, 185, 129, 0.2);
   border-radius: 15px;
   transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(30px);
 }
 
 .highlight-item:hover {
@@ -595,7 +626,8 @@
   overflow: hidden;
   cursor: pointer;
   transition: all 0.4s ease;
-  animation: fadeInUp 0.6s ease both;
+  opacity: 0;
+  transform: translateY(30px);
 }
 
 .feature-card:hover {
@@ -746,6 +778,8 @@
   padding: 2.5rem;
   text-align: center;
   transition: all 0.3s ease;
+  opacity: 0;
+  transform: translateY(30px);
 }
 
 .tech-card:hover {
@@ -796,6 +830,8 @@
   color: white;
   margin-bottom: 1rem;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(30px);
 }
 
 .cta-description {
@@ -803,6 +839,8 @@
   color: rgba(255, 255, 255, 0.95);
   margin-bottom: 3rem;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  opacity: 0;
+  transform: translateY(30px);
 }
 
 .cta-button {
@@ -819,6 +857,8 @@
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 0 15px 50px rgba(16, 185, 129, 0.4);
+  opacity: 0;
+  transform: translateY(30px) scale(0.95);
 }
 
 .cta-button:hover {
@@ -926,17 +966,30 @@
     grid-template-columns: 1fr;
   }
 
-  .statistics-container {
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 1rem;
+  .capabilities-container {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
   }
 
-  .stat-card {
-    padding: 1.5rem;
+  .capability-card {
+    padding: 2rem 1.5rem;
   }
 
-  .stat-value {
-    font-size: 2rem;
+  .capability-icon-wrapper {
+    width: 60px;
+    height: 60px;
+  }
+
+  .capability-icon {
+    font-size: 1.8rem;
+  }
+
+  .capability-title {
+    font-size: 1.1rem;
+  }
+
+  .capability-description {
+    font-size: 0.9rem;
   }
 
   .about-highlights {
@@ -990,11 +1043,193 @@
   .section-subtitle {
     font-size: 1rem;
   }
+  
+  /* Reduce animation distance on mobile */
+  .scroll-section {
+    transform: translateY(30px);
+  }
+  
+  .capabilities-container {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+  
+  .capability-card {
+    padding: 2rem 1.5rem;
+  }
+  
+  .capability-title {
+    font-size: 1.1rem;
+  }
+  
+  .capability-description {
+    font-size: 0.88rem;
+  }
 }
 
 /* Smooth Scrolling */
 html {
   scroll-behavior: smooth;
+}
+
+/* Scroll Animation Transitions */
+.scroll-section {
+  opacity: 0;
+  transform: translateY(50px);
+  transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1),
+              transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-section.section-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stagger animations for child elements */
+.section-visible .capability-card,
+.section-visible .feature-card,
+.section-visible .tech-card,
+.section-visible .highlight-item {
+  animation: fadeInUp 0.6s ease both;
+}
+
+.section-visible .capability-card:nth-child(1) { animation-delay: 0.1s; }
+.section-visible .capability-card:nth-child(2) { animation-delay: 0.2s; }
+.section-visible .capability-card:nth-child(3) { animation-delay: 0.3s; }
+.section-visible .capability-card:nth-child(4) { animation-delay: 0.4s; }
+
+.section-visible .feature-card:nth-child(1) { animation-delay: 0.1s; }
+.section-visible .feature-card:nth-child(2) { animation-delay: 0.2s; }
+.section-visible .feature-card:nth-child(3) { animation-delay: 0.3s; }
+.section-visible .feature-card:nth-child(4) { animation-delay: 0.4s; }
+.section-visible .feature-card:nth-child(5) { animation-delay: 0.5s; }
+
+.section-visible .tech-card:nth-child(1) { animation-delay: 0.1s; }
+.section-visible .tech-card:nth-child(2) { animation-delay: 0.2s; }
+.section-visible .tech-card:nth-child(3) { animation-delay: 0.3s; }
+.section-visible .tech-card:nth-child(4) { animation-delay: 0.4s; }
+
+.section-visible .highlight-item:nth-child(1) { animation-delay: 0.1s; }
+.section-visible .highlight-item:nth-child(2) { animation-delay: 0.2s; }
+.section-visible .highlight-item:nth-child(3) { animation-delay: 0.3s; }
+
+/* Animate section titles */
+.section-visible .section-title {
+  animation: fadeInDown 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.section-visible .title-underline {
+  animation: expandWidth 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+.section-visible .section-subtitle {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+
+/* Animate about section elements */
+.section-visible .about-text {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+/* Animate CTA section elements */
+.section-visible .cta-title {
+  animation: fadeInDown 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.section-visible .cta-description {
+  animation: fadeInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.2s both;
+}
+
+.section-visible .cta-button {
+  animation: scaleIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes expandWidth {
+  from {
+    width: 0;
+    opacity: 0;
+  }
+  to {
+    width: 120px;
+    opacity: 1;
+  }
+}
+
+/* Enhanced smooth section transitions */
+.capabilities-section,
+.about-section,
+.features-section,
+.technology-section,
+.cta-section {
+  transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-section {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  
+  .scroll-section.section-visible {
+    animation: none;
+  }
+  
+  .section-visible .capability-card,
+  .section-visible .feature-card,
+  .section-visible .tech-card,
+  .section-visible .highlight-item,
+  .section-visible .section-title,
+  .section-visible .title-underline,
+  .section-visible .section-subtitle,
+  .section-visible .about-text,
+  .section-visible .cta-title,
+  .section-visible .cta-description,
+  .section-visible .cta-button {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+  
+  .capability-card,
+  .feature-card,
+  .tech-card,
+  .highlight-item,
+  .about-text,
+  .cta-title,
+  .cta-description,
+  .cta-button {
+    opacity: 1;
+    transform: none;
+  }
+  
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 /* Custom Scrollbar */
