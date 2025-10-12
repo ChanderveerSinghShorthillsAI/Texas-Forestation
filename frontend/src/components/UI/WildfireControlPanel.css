@@ -260,7 +260,7 @@
     font-weight: 700;
     color: #ff6b35;
     margin-bottom: 4px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    /* text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); */
 }
 
 .stat-subtitle {

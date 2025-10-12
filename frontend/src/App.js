@@ -14,6 +14,7 @@ import EncroachmentTrackingPage from './components/Encroachment/EncroachmentTrac
 import TemporalComparisonPage from './components/SatelliteComparison/TemporalComparisonPage';
 import FireTrackingPage from './components/FireTracking/FireTrackingPage';
 import './App.css';
+import { FaSpinner } from 'react-icons/fa';
 
 /**
  * Protected Route Component
@@ -25,13 +26,11 @@ const ProtectedRoute = ({ children }) => {
 
   if (isLoading) {
     return (
-      <div className="app-loading">
         <div className="loading-container">
-          <div className="loading-spinner"></div>
+          <FaSpinner className="loading-spinner-icon" />
           <h2>Texas Forestation</h2>
           <p>Loading your spatial analysis platform...</p>
         </div>
-      </div>
     );
   }
 
@@ -65,12 +64,10 @@ const LoginRoute = () => {
 
   if (isLoading) {
     return (
-      <div className="app-loading">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <h2>Texas Forestation</h2>
-          <p>Loading your spatial analysis platform...</p>
-        </div>
+      <div className="loading-container">
+        <FaSpinner className="loading-spinner-icon" />
+        <h2>Texas Forestation</h2>
+        <p>Loading your spatial analysis platform...</p>
       </div>
     );
   }
@@ -90,6 +87,7 @@ const LoginRoute = () => {
 const MainAppContent = () => {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+  const [isMapInitializing, setIsMapInitializing] = React.useState(true);
 
   /**
    * Handle logout and redirect to login
@@ -99,20 +97,28 @@ const MainAppContent = () => {
     navigate('/login', { replace: true });
   };
 
+  /**
+   * Handle map initialization status change
+   */
+  const handleMapInitializationChange = (isInitializing) => {
+    setIsMapInitializing(isInitializing);
+  };
+
   return (
     <div className="App">
-      <TexasMap />
+      <TexasMap onInitializationChange={handleMapInitializationChange} />
       
-      {/* Feature Navigation Buttons - positioned in top-left corner */}
-      <div style={{
-        position: 'fixed',
-        top: '20px',
-        left: '20px',
-        zIndex: 1500,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px'
-      }}>
+      {/* Feature Navigation Buttons - positioned in top-left corner - Hidden during initialization */}
+      {/* {!isMapInitializing && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '20px',
+          zIndex: 1500,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px'
+        }}>
         <button
           onClick={() => navigate('/encroachment-tracking')}
           style={{
@@ -176,42 +182,45 @@ const MainAppContent = () => {
         >
           🛰️ Satellite Comparison
         </button>
-      </div>
+        </div>
+      )} */}
       
-      {/* Logout button - positioned in bottom-right corner */}
-      <div style={{
-        position: 'fixed',
-        bottom: '10px',
-        right: '10px',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        background: 'rgba(0, 0, 0, 0.7)',
-        color: 'white',
-        padding: '8px 12px',
-        borderRadius: '20px',
-        fontSize: '12px',
-        fontWeight: '500'
-      }}>
-        <span>👋 {user?.username}</span>
-        <button
-          onClick={handleLogout}
-          style={{
-            background: 'rgba(255, 255, 255, 0.2)',
-            border: 'none',
-            color: 'white',
-            padding: '4px 8px',
-            borderRadius: '12px',
-            fontSize: '11px',
-            cursor: 'pointer',
-            fontWeight: '500'
-          }}
-          title="Logout"
-        >
-          🚪 Logout
-        </button>
-      </div>
+      {/* Logout button - positioned in bottom-right corner - Hidden during initialization */}
+      {/* {!isMapInitializing && (
+        <div style={{
+          position: 'fixed',
+          bottom: '10px',
+          right: '10px',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          background: 'rgba(0, 0, 0, 0.7)',
+          color: 'white',
+          padding: '8px 12px',
+          borderRadius: '20px',
+          fontSize: '12px',
+          fontWeight: '500'
+        }}>
+          <span>👋 {user?.username}</span>
+          <button
+            onClick={handleLogout}
+            style={{
+              background: 'rgba(255, 255, 255, 0.2)',
+              border: 'none',
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '12px',
+              fontSize: '11px',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+            title="Logout"
+          >
+            🚪 Logout
+          </button>
+        </div>
+      )} */}
     </div>
   );
 };
@@ -347,12 +356,10 @@ const RootRedirect = () => {
 
   if (isLoading) {
     return (
-      <div className="app-loading">
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
+      <div className="loading-container">
+          <FaSpinner className="loading-spinner-icon" />
           <h2>Texas Forestation</h2>
           <p>Loading your spatial analysis platform...</p>
-        </div>
       </div>
     );
   }

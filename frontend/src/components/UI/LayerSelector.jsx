@@ -12,9 +12,19 @@ const LayerSelector = ({
   getLayerError,
   clearAllLayers,
   getActiveLayerCount,
-  getActiveLayersData
+  getActiveLayersData,
+  onToggle
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+
+  // Handle toggle with parent notification
+  const handleToggle = () => {
+    const newState = !isOpen;
+    setIsOpen(newState);
+    if (onToggle) {
+      onToggle(newState);
+    }
+  };
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showActiveOnly, setShowActiveOnly] = useState(false);
 
@@ -69,7 +79,7 @@ const LayerSelector = ({
     <div className="layer-selector">
       <button 
         className={`layer-selector-toggle ${isOpen ? 'open' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleToggle}
         title="Toggle Layer Panel"
       >
         <span className="icon">🗂</span>
@@ -159,7 +169,7 @@ const LayerSelector = ({
                 >
                   {getLayerStatusIcon(layer.id)}
                   <div className="layer-info">
-                    <div className="layer-name" style={{color: 'white'}}>{layer.name}</div>
+                    <div className="layer-name" style={{color: 'Black'}}>{layer.name}</div>
                     <div className="layer-description">{layer.description}</div>
                     {getLayerError(layer.id) && (
                       <div className="layer-error">

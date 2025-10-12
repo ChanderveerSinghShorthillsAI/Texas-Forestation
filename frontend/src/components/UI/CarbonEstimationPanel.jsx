@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { carbonEstimationService } from '../../services/carbonEstimationService';
 import './CarbonEstimationPanel.css';
+import { BsFillTreeFill } from "react-icons/bs";
+import { MdLocationPin } from "react-icons/md";
+import { RiRoadMapFill } from "react-icons/ri";
+import { FaTrophy } from "react-icons/fa";
+import { FaEarthAsia } from "react-icons/fa6";
+import { WiSmoke } from "react-icons/wi";
+import { FaTree } from "react-icons/fa";
+import { PiPlantBold } from "react-icons/pi";
+import { FaSearch } from "react-icons/fa";
 
 const CarbonEstimationPanel = ({ 
   selectedCounty = null, 
@@ -131,9 +140,9 @@ const CarbonEstimationPanel = ({
       
       {/* Modal panel */}
       <div className="carbon-estimation-modal">
-        <div className="modal-header">
+        <div className="modal-header"  style={{background: "#3a6725"}}>
           <div className="header-content">
-            <span className="header-icon">🌲</span>
+            {/* <span className="header-icon"><BsFillTreeFill  style={{color: "#2d5016"}}/></span> */}
             <div className="header-text">
               <h2>Texas Carbon Analysis</h2>
               <p className="header-subtitle">Comprehensive carbon stock estimation across Texas counties</p>
@@ -153,21 +162,21 @@ const CarbonEstimationPanel = ({
             className={`tab ${activeTab === 'county' ? 'active' : ''}`}
             onClick={() => handleTabChange('county')}
           >
-            <span className="tab-icon">📍</span>
+            {/* <span className="tab-icon"><MdLocationPin color='#FF0000'/></span> */}
             <span className="tab-text">County Analysis</span>
           </button>
           <button 
             className={`tab ${activeTab === 'statewide' ? 'active' : ''}`}
             onClick={() => handleTabChange('statewide')}
           >
-            <span className="tab-icon">🗺️</span>
+            {/* <span className="tab-icon"><RiRoadMapFill color='#A2653E'/></span> */}
             <span className="tab-text">Statewide Overview</span>
           </button>
           <button 
             className={`tab ${activeTab === 'rankings' ? 'active' : ''}`}
             onClick={() => handleTabChange('rankings')}
           >
-            <span className="tab-icon">🏆</span>
+            {/* <span className="tab-icon"><FaTrophy color='#D6AF36'/></span> */}
             <span className="tab-text">Top Counties</span>
           </button>
         </div>
@@ -184,6 +193,7 @@ const CarbonEstimationPanel = ({
           {activeTab === 'county' && (
             <div className="county-tab">
               <div className="county-search-section">
+              <h1 style={{color: "#FFDA03", textAlign: "center"}}><FaSearch style={{color: "#91b8db"}}/> Search for a County</h1>
                 <form onSubmit={handleSearchCounty} className="search-form">
                   <div className="search-input-wrapper">
                     <span className="search-icon">🔍</span>
@@ -203,7 +213,7 @@ const CarbonEstimationPanel = ({
 
               {selectedCounty && (
                 <div className="selected-indicator">
-                  <span className="indicator-icon">📍</span>
+                  <span className="indicator-icon"><MdLocationPin color='#FF0000'/></span>
                   <span>Currently viewing: <strong>{selectedCounty} County</strong></span>
                 </div>
               )}
@@ -230,7 +240,7 @@ const CarbonEstimationPanel = ({
                   <div className="metrics-grid">
                     <div className="metric-card primary">
                       <div className="metric-header">
-                        <span className="metric-icon">🌍</span>
+                        <span className="metric-icon"><FaEarthAsia color='#88D9C0'/></span>
                         <span className="metric-label">Total Carbon Stock</span>
                       </div>
                       <div className="metric-value">
@@ -241,7 +251,7 @@ const CarbonEstimationPanel = ({
 
                     <div className="metric-card secondary">
                       <div className="metric-header">
-                        <span className="metric-icon">💨</span>
+                        <span className="metric-icon"><WiSmoke color="white"/></span>
                         <span className="metric-label">CO₂ Equivalent</span>
                       </div>
                       <div className="metric-value">
@@ -252,7 +262,7 @@ const CarbonEstimationPanel = ({
 
                     <div className="metric-card accent-1">
                       <div className="metric-header">
-                        <span className="metric-icon">🌲</span>
+                        <span className="metric-icon"><FaTree style={{color: "#2d5016"}}/></span>
                         <span className="metric-label">Biomass Carbon</span>
                       </div>
                       <div className="metric-value">
@@ -263,7 +273,7 @@ const CarbonEstimationPanel = ({
 
                     <div className="metric-card accent-2">
                       <div className="metric-header">
-                        <span className="metric-icon">🌱</span>
+                        <span className="metric-icon"><PiPlantBold color='#358856'/></span>
                         <span className="metric-label">Soil Carbon</span>
                       </div>
                       <div className="metric-value">
@@ -274,7 +284,19 @@ const CarbonEstimationPanel = ({
                   </div>
 
                   <div className="breakdown-section">
-                    <h4 className="section-title">Detailed Breakdown</h4>
+                  <h4
+                  className="section-title"
+                  style={{
+                    fontSize: '2.5rem',
+                    background: 'linear-gradient(135deg, #06b6d4 0%, #10b981 100%)',
+                    WebkitBackgroundClip: 'text',   // vendor prefixed
+                    backgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent', // hides the fill so background shows through
+                    color: 'transparent'
+                  }}
+                >
+                  Detailed Breakdown
+                </h4>
                     <div className="breakdown-grid">
                       <div className="breakdown-item">
                         <span className="breakdown-label">Wood Biomass</span>
@@ -449,7 +471,7 @@ const CarbonEstimationPanel = ({
         <div className="modal-footer">
           <div className="footer-info">
             <span className="footer-icon">🔬</span>
-            <span>Based on IPCC/FAO standards | Data cached for optimal performance</span>
+            <span style={{color: "#E77D22"}}>Based on IPCC/FAO standards | Data cached for optimal performance</span>
           </div>
         </div>
       </div>

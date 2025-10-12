@@ -4,7 +4,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, Pane } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -23,6 +23,79 @@ L.Icon.Default.mergeOptions({
 
 // Texas center coordinates
 const texasCenter = [31.0, -99.0];
+
+/**
+ * Build a "world-with-hole" feature from the Texas boundary GeoJSON
+ */
+function buildOutsideTexasMask(texasGeojson) {
+  let features = [];
+  if (texasGeojson?.type === 'FeatureCollection' && texasGeojson?.features?.length) {
+    features = texasGeojson.features;
+  } else if (texasGeojson?.type === 'Feature' && texasGeojson?.geometry) {
+    features = [texasGeojson];
+  } else {
+    return null;
+  }
+
+  const worldRing = [
+    [-179.9999, -89.9999],
+    [-179.9999,  89.9999],
+    [ 179.9999,  89.9999],
+    [ 179.9999, -89.9999],
+    [-179.9999, -89.9999],
+  ];
+
+  const texasHoles = [];
+  for (const f of features) {
+    const g = f.geometry;
+    if (!g) continue;
+    if (g.type === 'Polygon') {
+      const outer = g.coordinates?.[0];
+      if (outer && outer.length >= 4) texasHoles.push(outer);
+    } else if (g.type === 'MultiPolygon') {
+      for (const poly of g.coordinates || []) {
+        const outer = poly?.[0];
+        if (outer && outer.length >= 4) texasHoles.push(outer);
+      }
+    }
+  }
+
+  if (texasHoles.length === 0) return null;
+
+  return {
+    type: 'Feature',
+    properties: { role: 'outside-texas-mask' },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [worldRing, ...texasHoles],
+    },
+  };
+}
+
+/**
+ * Outside Texas Mask Component
+ */
+const OutsideTexasMask = ({ texasGeojson, opacity = 0.65 }) => {
+  const maskFeature = React.useMemo(() => {
+    return buildOutsideTexasMask(texasGeojson);
+  }, [texasGeojson]);
+  
+  if (!maskFeature) return null;
+
+  return (
+    <Pane name="outside-texas-mask" style={{ zIndex: 350, pointerEvents: 'none' }}>
+      <GeoJSON
+        data={maskFeature}
+        interactive={false}
+        style={{
+          stroke: false,
+          fillColor: '#000000',
+          fillOpacity: opacity,
+        }}
+      />
+    </Pane>
+  );
+};
 
 const WildfirePredictionPage = () => {
     const navigate = useNavigate();

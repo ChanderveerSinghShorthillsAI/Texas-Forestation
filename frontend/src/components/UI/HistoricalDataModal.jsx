@@ -127,19 +127,19 @@ const HistoricalDataModal = ({ isVisible, onClose }) => {
     {
       id: 'deadliest',
       name: 'Deadliest Fires',
-      icon: '💀',
+      // icon: '💀',
       description: 'Historical data of the most deadly wildfires in Texas'
     },
     {
       id: 'destructive',
       name: 'Most Destructive',
-      icon: '💥',
+      // icon: '💥',
       description: 'Historical data of the most destructive wildfires in Texas'
     },
     {
       id: 'stats',
       name: 'Statistics',
-      icon: '📈',
+      // icon: '📈',
       description: 'General wildfire statistics and trends for Texas'
     }
   ];

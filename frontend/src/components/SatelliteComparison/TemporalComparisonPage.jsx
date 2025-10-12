@@ -25,6 +25,7 @@ import ComparisonStats from './ComparisonStats';
 import satelliteComparisonService from '../../services/satelliteComparisonService';
 import sentinelHubService from '../../services/sentinelHubService';
 import './TemporalComparisonPage.css';
+import { FaHome } from 'react-icons/fa';
 
 const TemporalComparisonPage = () => {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ const TemporalComparisonPage = () => {
    * Check service health on mount
    */
   useEffect(() => {
+    window.scrollTo(0, 0);
     checkServiceHealth();
   }, []);
 
@@ -186,7 +188,7 @@ const TemporalComparisonPage = () => {
           onClick={() => navigate('/')}
           aria-label="Back to home"
         >
-          <FaArrowLeft /> Back
+          <FaHome /> Back To Home
         </button>
         <div className="header-content">
           <div className="title-icon-wrapper">
@@ -292,7 +294,7 @@ const TemporalComparisonPage = () => {
           <>
             {loading ? (
               <div className="loading-overlay">
-                <div className="spinner-large"></div>
+                {/* <div className="spinner-large"></div> */}
                 <FaSatellite className="loading-icon" />
                 <h3>Fetching Satellite Imagery...</h3>
                 <p>Analyzing vegetation patterns across time</p>

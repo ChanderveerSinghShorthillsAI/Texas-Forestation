@@ -50,9 +50,9 @@
   margin-bottom: 8px;
 }
 
-.legend-item:last-child {
+/* .legend-item:last-child {
   margin-bottom: 0;
-}
+} */
 
 .legend-color {
   width: 16px;

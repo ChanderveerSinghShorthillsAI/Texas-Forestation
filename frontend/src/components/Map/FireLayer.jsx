@@ -271,7 +271,8 @@ const FireLayer = ({
           >
             {showPopups && (
               <Popup 
-                maxWidth={300}
+                // maxHeight={400}
+                minWidth={330}
                 className="fire-popup-container"
                 closeButton={true}
                 autoClose={false}

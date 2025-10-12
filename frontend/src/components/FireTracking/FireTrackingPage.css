@@ -381,6 +381,8 @@
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid rgba(255, 69, 0, 0.2);
+  border: 2px solid rgba(255, 140, 0, 0.3);
+  background: linear-gradient(135deg, rgba(255, 69, 0, 0.15), rgba(220, 20, 60, 0.15));
 }
 
 .breakdown-title {
@@ -938,8 +940,9 @@
 
 /* ===== Leaflet Popup Overrides for Fire Theme ===== */
 .leaflet-popup-content-wrapper {
-  background: linear-gradient(135deg, rgba(40, 20, 20, 0.98), rgba(60, 30, 20, 0.98));
-  border: 2px solid rgba(255, 69, 0, 0.5);
+  background: linear-gradient(135deg, #2c5530, #4a7c59);
+  /* background: linear-gradient(135deg, rgba(40, 20, 20, 0.98), rgba(60, 30, 20, 0.98)); */
+  /* border: 2px solid rgba(255, 69, 0, 0.5); */
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(10px);

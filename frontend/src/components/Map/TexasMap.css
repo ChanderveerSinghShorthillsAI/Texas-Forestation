@@ -183,6 +183,12 @@
   max-height: 400px;
   overflow-y: auto;
   width: 280px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.leaflet-popup-content::-webkit-scrollbar {
+  display: none;
 }
 
 .custom-popup {
@@ -192,13 +198,15 @@
 /* Enhanced popup content styling */
 .popup-content {
   padding: 16px;
+  max-width: 350px;
 }
 
 .popup-title {
   margin: 0 0 12px 0;
   font-size: 18px;
   font-weight: 700;
-  color: #111827;
+  /* color: #111827; */
+  color: #74ce38;
   border-bottom: 2px solid #3b82f6;
   padding-bottom: 8px;
 }
@@ -213,11 +221,11 @@
 
 .section-title {
   margin: 0 0 8px 0;
-  font-size: 14px;
+  /* font-size: 10px; */
   font-weight: 600;
   color: #374151;
   background: #f3f4f6;
-  padding: 4px 8px;
+  /* padding: 4px 8px; */
   border-radius: 4px;
 }
 
@@ -237,14 +245,14 @@
 
 .popup-label {
   font-weight: 600;
-  color: #4b5563;
+  color: white;
   flex: 1;
   margin-right: 12px;
   font-size: 12px;
 }
 
 .popup-value {
-  color: #111827;
+  color: white;
   font-weight: 500;
   text-align: right;
   flex: 1;

@@ -215,26 +215,26 @@ const GridLayer = ({
   //   ) : null;
   // }
 
-  const debugOverlay = (
-    <div style={{
-      position: 'absolute', top: '60px', left: '10px', background: 'rgba(0, 0, 0, 0.8)',
-      color: 'white', padding: '8px 12px', borderRadius: '4px', fontSize: '11px',
-      zIndex: 1000, pointerEvents: 'none', fontFamily: 'monospace'
-    }}>
-      <div>🎨 YOLO: {yoloResults ? 'Loaded' : 'Loading...'}</div>
-      {yoloResults && (
-        <>
-          <div>🌱 Green: {cultivableGrids?.features.length || 0}</div>
-          <div>🖤 Black: {nonCultivableGrids?.features.length || 0}</div>
-        </>
-      )}
-      <div>Zoom: {currentZoom}</div>
-    </div>
-  );
+  // const debugOverlay = (
+  //   <div style={{
+  //     position: 'absolute', top: '80px', left: '10px', background: 'rgba(0, 0, 0, 0.8)',
+  //     color: 'white', padding: '8px 12px', borderRadius: '4px', fontSize: '11px',
+  //     zIndex: 1000, pointerEvents: 'none', fontFamily: 'monospace'
+  //   }}>
+  //     <div>🎨 YOLO: {yoloResults ? 'Loaded' : 'Loading...'}</div>
+  //     {yoloResults && (
+  //       <>
+  //         <div>🌱 Green: {cultivableGrids?.features.length || 0}</div>
+  //         <div>🖤 Black: {nonCultivableGrids?.features.length || 0}</div>
+  //       </>
+  //     )}
+  //     <div>Zoom: {currentZoom}</div>
+  //   </div>
+  // );
 
   return (
     <>
-      {debugOverlay}
+      {/* {debugOverlay} */}
       
       {/* BLACK GRIDS - NO INTERACTIONS */}
       {nonCultivableGrids && (

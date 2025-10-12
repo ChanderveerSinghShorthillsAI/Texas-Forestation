@@ -2,8 +2,8 @@
 
 .carbon-button {
   position: fixed !important;
-  top: 140px !important;
-  right: 20px !important;
+  top: 500px !important;
+  left: 20px !important;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -15,7 +15,7 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  z-index: 10000 !important;
+  z-index: 9999 !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   transition: all 0.3s ease;
   min-width: 140px;

@@ -74,10 +74,10 @@ const ComparisonStats = ({ data }) => {
                 <span className="stat-label">Satellite:</span>
                 <span className="stat-value">{image1.satellite_id || 'N/A'}</span>
               </div>
-              <div className="stat-row">
+              {/* <div className="stat-row">
                 <span className="stat-label">Image ID:</span>
                 <span className="stat-value small">{image1.id}</span>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -142,10 +142,10 @@ const ComparisonStats = ({ data }) => {
                 <span className="stat-label">Satellite:</span>
                 <span className="stat-value">{image2.satellite_id || 'N/A'}</span>
               </div>
-              <div className="stat-row">
+              {/* <div className="stat-row">
                 <span className="stat-label">Image ID:</span>
                 <span className="stat-value small">{image2.id}</span>
-              </div>
+              </div> */}
             </div>
           </div>
         </div>
