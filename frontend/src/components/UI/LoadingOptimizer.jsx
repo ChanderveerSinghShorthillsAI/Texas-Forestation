@@ -11,7 +11,8 @@ const LoadingOptimizer = ({ isVisible = true, onComplete = null }) => {
     { id: 'boundaries', name: 'Texas Boundaries', status: 'pending', progress: 0 },
     { id: 'grid', name: 'Grid System', status: 'pending', progress: 0 },
     { id: 'layers', name: 'Map Layers', status: 'pending', progress: 0 },
-    { id: 'services', name: 'Backend Services', status: 'pending', progress: 0 }
+    { id: 'services', name: 'Backend Services', status: 'pending', progress: 0 },
+    { id: 'carbon', name: 'Carbon Data Cache (257 Counties)', status: 'pending', progress: 0 }
   ]);
 
   const [currentTask, setCurrentTask] = useState('auth');

@@ -15,6 +15,10 @@ from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import HTTPException, status
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from .auth_models import UserInfo, TokenData, LoginResponse
 from .user_database import user_db_service

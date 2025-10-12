@@ -45,6 +45,9 @@ from encroachment_api_routes import router as encroachment_router
 from satellite_comparison_api_routes import router as satellite_comparison_router
 from sentinel_hub_api_routes import router as sentinel_hub_router
 
+# Import GeoJSON S3 service
+from geojson_s3_service import get_geojson_service
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -122,10 +125,12 @@ async def lifespan(app: FastAPI):
             logger.info("✅ User database connection successful")
             
             # Check if default user exists, create if not
-            default_user = user_db_service.get_user_by_username("user1234")
+            default_username = os.getenv("DEFAULT_USERNAME", "user1234")
+            default_password = os.getenv("DEFAULT_PASSWORD", "pass123456")
+            default_user = user_db_service.get_user_by_username(default_username)
             if not default_user:
                 logger.info("🔧 Creating default user...")
-                default_user = user_db_service.create_user("user1234", "pass123456")
+                default_user = user_db_service.create_user(default_username, default_password)
                 if default_user:
                     logger.info("✅ Default user created successfully")
                 else:
@@ -138,27 +143,20 @@ async def lifespan(app: FastAPI):
         logger.error(f"⚠️ Authentication database initialization failed: {e}")
         logger.info("🔄 App will continue with authentication features disabled")
     
+    # NOTE: Auto-population of data has been disabled since we're using online PostgreSQL database
+    # Data should be migrated once using the migrate_to_postgres.py script
     # Force rebuild if requested
     if args.rebuild_db:
-        logger.info("🔄 Forcing database rebuild...")
-        spatial_service.force_rebuild = True
-    
-    # Load GeoJSON data into spatial database
-    geojson_dir = Path("../frontend/public/Texas_Geojsons/Texas_Geojsons")
-    if geojson_dir.exists():
-        await spatial_service.initialize_spatial_data(geojson_dir)
-        logger.info("✅ Spatial data initialization complete")
+        logger.warning("⚠️ --rebuild-db flag is deprecated. All data is now in PostgreSQL.")
+        logger.warning("⚠️ Local GeoJSON files have been migrated to S3.")
+        logger.warning("⚠️ If you need to reload data, use the migration scripts with S3 sources.")
     else:
-        logger.warning("⚠️ GeoJSON directory not found, spatial queries may not work")
+        logger.info("ℹ️ Skipping GeoJSON data loading (data already in PostgreSQL and S3)")
+        logger.info("ℹ️ All GeoJSON files are served from S3 via backend API")
 
-    # Build county carbon cache once for instant frontend rendering
-    try:
-        logger.info("🧮 Building county carbon cache (one-time)...")
-        carbon_service = CarbonEstimationService()
-        written = carbon_service.build_county_carbon_cache(force_rebuild=False)
-        logger.info(f"✅ County carbon cache ready ({written} new rows)")
-    except Exception as e:
-        logger.error(f"⚠️ Failed to prepare county carbon cache: {e}")
+    # Skip automatic carbon cache building - data should already be in PostgreSQL from migration
+    logger.info("ℹ️ Skipping carbon cache building (data should already be in PostgreSQL)")
+    logger.info("ℹ️ To rebuild cache, use the carbon estimation API or run rebuild script")
     
     yield
     
@@ -176,10 +174,15 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
 # Configure CORS
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -486,6 +489,119 @@ async def get_layer_stats(layer_id: str):
     except Exception as e:
         logger.error(f"❌ Failed to get layer stats: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get layer stats: {str(e)}")
+
+# ========== GeoJSON S3 API Endpoints ==========
+
+@app.get("/api/geojson/{layer_type}/{filename}")
+async def get_geojson(layer_type: str, filename: str):
+    """
+    Fetch GeoJSON file from S3 and serve to frontend
+    
+    Args:
+        layer_type: 'main' or 'fire'
+        filename: GeoJSON filename (e.g., 'texas.geojson')
+    
+    Returns:
+        GeoJSON object
+    """
+    try:
+        # Validate layer type
+        if layer_type not in ['main', 'fire']:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid layer_type. Must be 'main' or 'fire'"
+            )
+        
+        # Get GeoJSON service
+        geojson_service = get_geojson_service()
+        
+        # Fetch from S3
+        result = geojson_service.fetch_geojson(filename, layer_type)
+        
+        if not result['success']:
+            raise HTTPException(
+                status_code=404 if 'not found' in result['error'].lower() else 500,
+                detail=result['error']
+            )
+        
+        # Return GeoJSON data
+        return result['data']
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to fetch GeoJSON {filename}: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to fetch GeoJSON: {str(e)}"
+        )
+
+@app.get("/api/geojson/list/{layer_type}")
+async def list_geojson_files(layer_type: str):
+    """
+    List all GeoJSON files available in S3
+    
+    Args:
+        layer_type: 'main' or 'fire'
+    
+    Returns:
+        List of available files
+    """
+    try:
+        # Validate layer type
+        if layer_type not in ['main', 'fire']:
+            raise HTTPException(
+                status_code=400, 
+                detail="Invalid layer_type. Must be 'main' or 'fire'"
+            )
+        
+        # Get GeoJSON service
+        geojson_service = get_geojson_service()
+        
+        # List files
+        files = geojson_service.list_geojson_files(layer_type)
+        
+        return {
+            "layer_type": layer_type,
+            "count": len(files),
+            "files": files
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Failed to list GeoJSON files: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to list files: {str(e)}"
+        )
+
+@app.get("/api/geojson/health")
+async def geojson_health_check():
+    """Check GeoJSON S3 service health"""
+    try:
+        geojson_service = get_geojson_service()
+        
+        # Test S3 connection by listing files
+        main_files = geojson_service.list_geojson_files('main')
+        fire_files = geojson_service.list_geojson_files('fire')
+        
+        return {
+            "status": "healthy",
+            "bucket": geojson_service.bucket_name,
+            "region": geojson_service.s3_client._client_config.region_name,
+            "main_files_count": len(main_files),
+            "fire_files_count": len(fire_files),
+            "total_files": len(main_files) + len(fire_files)
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
+
+# ========== End GeoJSON S3 API Endpoints ==========
 
 @app.websocket("/ws/citizen_chatbot/")
 async def websocket_chatbot_endpoint(websocket: WebSocket):

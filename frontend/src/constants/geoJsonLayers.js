@@ -880,6 +880,8 @@ export const GEOJSON_LAYERS = [
   },
 
   // ===== FIRE MANAGEMENT =====
+  // Note: Fire GeoJSON files are fetched from backend API (backend fetches from S3)
+  // basePath removed - files will be fetched via FIRE_GEOJSON_API_URL
   {
     id: 'dispatch-boundaries',
     name: 'National Dispatch Boundaries',
@@ -890,8 +892,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#ef4444',
     fillOpacity: 0.15,
     weight: 2,
-    description: 'National dispatch boundaries for fire management',
-    basePath: '/texas_fire_geojsons/'
+    description: 'National dispatch boundaries for fire management'
   },
   {
     id: 'dispatch-locations',
@@ -904,8 +905,7 @@ export const GEOJSON_LAYERS = [
     radius: 6,
     weight: 2,
     fillOpacity: 0.8,
-    description: 'National dispatch location points for fire management',
-    basePath: '/texas_fire_geojsons/'
+    description: 'National dispatch location points for fire management'
   },
   {
     id: 'gacc-boundaries',
@@ -917,8 +917,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#ef4444',
     fillOpacity: 0.15,
     weight: 2,
-    description: 'Geographic Area Coordination Center boundaries',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Geographic Area Coordination Center boundaries'
   },
   {
     id: 'psa-boundaries',
@@ -930,8 +929,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#ef4444',
     fillOpacity: 0.15,
     weight: 2,
-    description: 'Predictive Service Area boundaries for fire weather',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Predictive Service Area boundaries for fire weather'
   },
   {
     id: 'incident-locations-recent',
@@ -944,8 +942,7 @@ export const GEOJSON_LAYERS = [
     radius: 8,
     weight: 2,
     fillOpacity: 0.9,
-    description: 'Most recent fire incident locations',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Most recent fire incident locations'
   },
   {
     id: 'modis-thermal-48h',
@@ -958,8 +955,7 @@ export const GEOJSON_LAYERS = [
     radius: 4,
     weight: 1,
     fillOpacity: 0.8,
-    description: 'MODIS thermal anomalies from the last 48 hours',
-    basePath: '/texas_fire_geojsons/'
+    description: 'MODIS thermal anomalies from the last 48 hours'
   },
   {
     id: 'modis-thermal-7days',
@@ -972,8 +968,7 @@ export const GEOJSON_LAYERS = [
     radius: 4,
     weight: 1,
     fillOpacity: 0.8,
-    description: 'MODIS thermal anomalies from the last 7 days',
-    basePath: '/texas_fire_geojsons/'
+    description: 'MODIS thermal anomalies from the last 7 days'
   },
   {
     id: 'raws-stations',
@@ -986,8 +981,7 @@ export const GEOJSON_LAYERS = [
     radius: 5,
     weight: 2,
     fillOpacity: 0.8,
-    description: 'Remote Automated Weather Stations for fire weather monitoring',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Remote Automated Weather Stations for fire weather monitoring'
   },
   {
     id: 'wfigs-incidents-24h',
@@ -1000,8 +994,7 @@ export const GEOJSON_LAYERS = [
     radius: 6,
     weight: 2,
     fillOpacity: 0.9,
-    description: 'Wildland Fire Information and GIS incidents from the last 24 hours',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Wildland Fire Information and GIS incidents from the last 24 hours'
   },
   {
     id: 'interagency-perimeters',
@@ -1013,8 +1006,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#ef4444',
     fillOpacity: 0.25,
     weight: 2,
-    description: 'Current interagency fire perimeters',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Current interagency fire perimeters'
   },
   {
     id: 'interagency-perimeters-ytd',
@@ -1026,8 +1018,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#dc2626',
     fillOpacity: 0.2,
     weight: 2,
-    description: 'Year-to-date interagency fire perimeters',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Year-to-date interagency fire perimeters'
   },
   {
     id: 'imsr-incident-locations-json',
@@ -1040,8 +1031,7 @@ export const GEOJSON_LAYERS = [
     radius: 7,
     weight: 2,
     fillOpacity: 0.9,
-    description: 'IMSR incident locations data in JSON format',
-    basePath: '/texas_fire_geojsons/'
+    description: 'IMSR incident locations data in JSON format'
   },
   {
     id: 'incident-location-recent-json',
@@ -1054,8 +1044,7 @@ export const GEOJSON_LAYERS = [
     radius: 7,
     weight: 2,
     fillOpacity: 0.9,
-    description: 'Most recent incident locations in JSON format',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Most recent incident locations in JSON format'
   },
   {
     id: 'incident-locations-current-json',
@@ -1068,8 +1057,7 @@ export const GEOJSON_LAYERS = [
     radius: 7,
     weight: 2,
     fillOpacity: 0.9,
-    description: 'Current incident locations in JSON format',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Current incident locations in JSON format'
   },
   {
     id: 'incident-locations-current-2-json',
@@ -1082,8 +1070,7 @@ export const GEOJSON_LAYERS = [
     radius: 7,
     weight: 2,
     fillOpacity: 0.9,
-    description: 'Current incident locations dataset 2 in JSON format',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Current incident locations dataset 2 in JSON format'
   },
   {
     id: 'interagency-perimeter-current-json',
@@ -1095,8 +1082,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#ef4444',
     fillOpacity: 0.25,
     weight: 2,
-    description: 'Current interagency fire perimeters in JSON format',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Current interagency fire perimeters in JSON format'
   },
   {
     id: 'interagency-perimeter-ytd-json',
@@ -1108,8 +1094,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#dc2626',
     fillOpacity: 0.2,
     weight: 2,
-    description: 'Year-to-date interagency fire perimeters in JSON format',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Year-to-date interagency fire perimeters in JSON format'
   },
   {
     id: 'interagency-perimeters-current-2-json',
@@ -1121,8 +1106,7 @@ export const GEOJSON_LAYERS = [
     fillColor: '#ef4444',
     fillOpacity: 0.25,
     weight: 2,
-    description: 'Current interagency fire perimeters dataset 2 in JSON format',
-    basePath: '/texas_fire_geojsons/'
+    description: 'Current interagency fire perimeters dataset 2 in JSON format'
   }
 ];
 

@@ -1,7 +1,5 @@
+from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
-import weaviate
-from weaviate.classes.init import Auth
-from weaviate.collections.classes.config import Property, DataType
 import os
 from tqdm import tqdm
 import json
@@ -9,21 +7,21 @@ from dotenv import load_dotenv
 
 # Load .env from parent directory (backend)
 load_dotenv("../.env")
-weaviate_url = os.getenv("WEAVIATE_CLUSTER_URL")  # Updated to match config.py
-weaviate_api_key = os.getenv("WEAVIATE_API_KEY")   # Updated to match config.py
+pinecone_api_key = os.getenv("PINECONE_API_KEY")
+pinecone_environment = os.getenv("PINECONE_ENVIRONMENT", "us-east-1")
+pinecone_cloud = os.getenv("PINECONE_CLOUD", "aws")
+index_name = os.getenv("PINECONE_INDEX_NAME", "texas-plantation-kb")
+embed_model = os.getenv("PINECONE_EMBED_MODEL", "llama-text-embed-v2")
+namespace = os.getenv("PINECONE_NAMESPACE", "texas-kb")
 
 # Check if environment variables are loaded
-if not weaviate_url or not weaviate_api_key:
-    print("❌ Error: Missing Weaviate credentials!")
+if not pinecone_api_key:
+    print("❌ Error: Missing Pinecone API key!")
     print("Please update your .env file or config.py with:")
-    print("WEAVIATE_CLUSTER_URL=your_cluster_url.weaviate.cloud")
-    print("WEAVIATE_API_KEY=your_api_key")
-    print("Current values:")
-    print(f"WEAVIATE_CLUSTER_URL: {weaviate_url}")
-    print(f"WEAVIATE_API_KEY: {'***' if weaviate_api_key else 'None'}")
+    print("PINECONE_API_KEY=your_api_key")
     exit(1)
 
-print(f"✅ Using Weaviate cluster: {weaviate_url}")
+print(f"✅ Using Pinecone API key: {'***' + pinecone_api_key[-8:] if pinecone_api_key else 'None'}")
 
 # --- Load your chunked data ---
 chunks = []
@@ -31,7 +29,7 @@ try:
     with open("kb_chunks.jsonl", "r", encoding="utf-8") as f:
         content = f.read().strip()
         if not content:
-            print("📁 Empty kb_chunks.jsonl file - will create empty collection for testing")
+            print("📁 Empty kb_chunks.jsonl file - will create empty index for testing")
             chunks = []
         else:
             # Process non-empty file
@@ -93,94 +91,104 @@ except Exception as e:
         f.write("")
     chunks = []
 
-# --- Connect to Weaviate Cloud ---
-print("🔗 Connecting to Weaviate Cloud...")
+# --- Connect to Pinecone ---
+print("🔗 Connecting to Pinecone...")
 try:
-    client = weaviate.connect_to_wcs(
-        cluster_url=weaviate_url,
-        auth_credentials=Auth.api_key(weaviate_api_key),
-    )
-    
-    if not client.is_ready():
-        print("❌ Weaviate client not ready!")
-        exit(1)
-        
-    print("✅ Connected to Weaviate!")
+    pc = Pinecone(api_key=pinecone_api_key)
+    print("✅ Connected to Pinecone!")
 except Exception as e:
-    print(f"❌ Failed to connect to Weaviate: {e}")
+    print(f"❌ Failed to connect to Pinecone: {e}")
     exit(1)
 
 # --- Initialize embedding model ---
-print("🤖 Loading embedding model...")
-model = SentenceTransformer("all-MiniLM-L6-v2")
-print("✅ Embedding model loaded!")
+print("🤖 Loading embedding model (all-MiniLM-L6-v2)...")
+embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+embedding_dim = 384  # all-MiniLM-L6-v2 produces 384-dim embeddings
+print(f"✅ Embedding model loaded! Dimension: {embedding_dim}")
 
-# --- Create Weaviate collection (if not exists) ---
-CLASS_NAME = "texas_10_year_plan_embeddings"
-print(f"🏗️  Checking collection: {CLASS_NAME}")
+# --- Create index if not exists ---
+print(f"🏗️  Checking index: {index_name}")
 
-if client.collections.exists(CLASS_NAME):
-    print("✅ Collection already exists.")
-    collection = client.collections.get(CLASS_NAME)
+existing_indexes = [idx.name for idx in pc.list_indexes()]
+
+if index_name not in existing_indexes:
+    print(f"🆕 Creating new serverless index...")
+    try:
+        pc.create_index(
+            name=index_name,
+            dimension=embedding_dim,  # 384 for all-MiniLM-L6-v2
+            metric="cosine",
+            spec=ServerlessSpec(
+                cloud=pinecone_cloud,
+                region=pinecone_environment
+            )
+        )
+        print("✅ Pinecone serverless index created.")
+    except Exception as e:
+        print(f"❌ Failed to create index: {e}")
+        exit(1)
 else:
-    print("🆕 Creating new collection...")
-    client.collections.create(
-        name=CLASS_NAME,
-        properties=[
-            Property(name="content", data_type=DataType.TEXT),
-            Property(name="source", data_type=DataType.TEXT),
-            Property(name="page", data_type=DataType.INT),
-        ],
-        vectorizer_config=None,   # Manual embeddings
-    )
-    print("✅ Weaviate collection created.")
-    collection = client.collections.get(CLASS_NAME)
+    print("✅ Index already exists.")
 
-# --- Upload embeddings and chunks ---
+# Get the index
+index = pc.Index(index_name)
+
+# --- Upload chunks to Pinecone ---
 if len(chunks) == 0:
-    print("⚠️  No chunks to upload. Creating empty collection for testing.")
+    print("⚠️  No chunks to upload. Index ready for future use.")
 else:
-    print(f"📤 Uploading {len(chunks)} chunks...")
+    print(f"📤 Uploading {len(chunks)} chunks to namespace '{namespace}'...")
     
-    for idx, chunk in enumerate(tqdm(chunks, desc="Uploading chunks")):
+    # Prepare vectors for upsert
+    vectors_to_upsert = []
+    for idx, chunk in enumerate(tqdm(chunks, desc="Generating embeddings")):
         try:
             content = chunk.get("content", "")
             meta = chunk.get("metadata", {})
             
             if not content.strip():
-                print(f"⚠️  Skipping empty chunk {idx+1}")
                 continue
-                
-            # Generate embedding
-            emb = model.encode(content, show_progress_bar=False).tolist()
             
-            # Prepare object
-            obj = {
-                "content": content,
-                "source": meta.get("source", "unknown"),
-                "page": meta.get("page", -1),
-            }
+            # Generate embedding using SentenceTransformer
+            embedding = embedding_model.encode(content).tolist()
             
-            # Upload to Weaviate
-            collection.data.insert(properties=obj, vector=emb)
+            # Prepare vector in Pinecone format: (id, vector, metadata)
+            vector_data = (
+                f"chunk_{idx}",  # id
+                embedding,  # vector
+                {
+                    "content": content,
+                    "source": meta.get("source", "unknown"),
+                    "page": meta.get("page", -1)
+                }  # metadata
+            )
             
-            if (idx + 1) % 100 == 0:
-                print(f"📤 Uploaded {idx+1}/{len(chunks)} chunks...")
-                
+            vectors_to_upsert.append(vector_data)
+            
         except Exception as e:
-            print(f"❌ Error uploading chunk {idx+1}: {e}")
+            print(f"❌ Error preparing chunk {idx+1}: {e}")
             continue
+    
+    # Upsert vectors in batches
+    batch_size = 100
+    total_batches = (len(vectors_to_upsert) - 1) // batch_size + 1
+    
+    for i in range(0, len(vectors_to_upsert), batch_size):
+        batch = vectors_to_upsert[i:i+batch_size]
+        try:
+            index.upsert(vectors=batch, namespace=namespace)
+            print(f"📤 Uploaded batch {i//batch_size + 1}/{total_batches}")
+        except Exception as e:
+            print(f"❌ Error uploading batch: {e}")
+            continue
+    
+    print("✅ All chunks uploaded to Pinecone!")
 
-print("✅ All chunks uploaded to Weaviate!")
-
-# --- Verify collection ---
+# --- Verify index ---
 try:
-    # Get collection stats
-    collection_info = collection.aggregate.over_all(total_count=True)
-    print(f"📊 Collection stats: {collection_info.total_count} total objects")
+    stats = index.describe_index_stats()
+    print(f"📊 Index stats: {stats}")
 except Exception as e:
-    print(f"⚠️  Could not get collection stats: {e}")
+    print(f"⚠️  Could not get index stats: {e}")
 
-# --- Close connection ---
-client.close()
-print("🎉 Complete! Your Weaviate knowledge base is ready!")
+print("🎉 Complete! Your Pinecone knowledge base is ready!")

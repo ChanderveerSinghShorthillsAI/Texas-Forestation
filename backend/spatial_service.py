@@ -1,4 +1,6 @@
-import sqlite3
+import psycopg2
+from psycopg2 import sql
+from psycopg2.extras import execute_batch
 import json
 import time
 import asyncio
@@ -21,32 +23,54 @@ from models import (
     LayerInfo,
     LayerStats
 )
+from postgres_config import get_connection, release_connection
 
 logger = logging.getLogger(__name__)
 
 class SpatialQueryService:
-    """High-performance spatial query service using SQLite with spatial functions"""
+    """High-performance spatial query service using PostgreSQL"""
     
     def __init__(self):
-        self.db_path = "spatial_data.db"  # Persistent database file
         self.conn = None
         self.layer_metadata = {}
         self.force_rebuild = False  # Flag to force database rebuild
+        self._ensure_connection()  # Ensure connection on initialization
+        
+    def _ensure_connection(self):
+        """Ensure database connection is established and alive"""
+        # Check if connection is None or closed
+        needs_reconnect = False
+        
+        if self.conn is None:
+            needs_reconnect = True
+            logger.info("🔌 Connection is None, establishing new connection...")
+        else:
+            # Check if connection is closed
+            try:
+                if self.conn.closed:
+                    needs_reconnect = True
+                    logger.warning("⚠️ Connection was closed, reconnecting...")
+                    self.conn = None
+            except Exception as e:
+                needs_reconnect = True
+                logger.warning(f"⚠️ Connection check failed: {e}, reconnecting...")
+                self.conn = None
+        
+        if needs_reconnect:
+            try:
+                self.conn = get_connection()
+                self.conn.autocommit = False
+                logger.info("✅ Spatial service connected to PostgreSQL database")
+            except Exception as e:
+                logger.error(f"❌ Failed to connect to PostgreSQL: {e}")
+                raise
         
     async def initialize_spatial_data(self, geojson_dir: Path):
         """Initialize spatial database with GeoJSON data"""
         logger.info("🔧 Initializing spatial database...")
         
-        # Connect to database
-        self.conn = sqlite3.connect(self.db_path, check_same_thread=False)
-        self.conn.enable_load_extension(True)
-        
-        # Enable spatial functions (if available)
-        try:
-            self.conn.load_extension("mod_spatialite")
-            logger.info("✅ SpatiaLite loaded successfully")
-        except Exception:
-            logger.warning("⚠️ SpatiaLite not available, using custom spatial functions")
+        # Ensure connection is established
+        self._ensure_connection()
         
         # Always create basic tables even if no GeoJSON data available
         await self._create_tables()
@@ -88,12 +112,12 @@ class SpatialQueryService:
     
     async def _create_tables(self):
         """Create database tables for spatial data"""
-        cursor = self.conn.cursor() # it is a cIursor object that allows us to execute SQL commands on the database 
+        cursor = self.conn.cursor()
         
         # Polygon features table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS polygon_features (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 layer_id TEXT NOT NULL,
                 layer_name TEXT NOT NULL,
                 properties TEXT,
@@ -108,7 +132,7 @@ class SpatialQueryService:
         # Point features table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS point_features (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                id SERIAL PRIMARY KEY,
                 layer_id TEXT NOT NULL,
                 layer_name TEXT NOT NULL,
                 properties TEXT,
@@ -183,7 +207,7 @@ class SpatialQueryService:
                     cursor.execute("""
                         INSERT INTO polygon_features 
                         (layer_id, layer_name, properties, geometry_wkt, min_lon, min_lat, max_lon, max_lat)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """, (
                         layer_id, layer_name, properties_json, geom.wkt,
                         bounds[0], bounds[1], bounds[2], bounds[3]
@@ -205,7 +229,7 @@ class SpatialQueryService:
                         cursor.execute("""
                             INSERT INTO point_features 
                             (layer_id, layer_name, properties, longitude, latitude)
-                            VALUES (?, ?, ?, ?, ?)
+                            VALUES (%s, %s, %s, %s, %s)
                         """, (
                             layer_id, layer_name, properties_json, longitude, latitude
                         ))
@@ -217,7 +241,7 @@ class SpatialQueryService:
                             cursor.execute("""
                                 INSERT INTO point_features 
                                 (layer_id, layer_name, properties, longitude, latitude)
-                                VALUES (?, ?, ?, ?, ?)
+                                VALUES (%s, %s, %s, %s, %s)
                             """, (
                                 layer_id, layer_name, properties_json, longitude, latitude
                             ))
@@ -232,7 +256,7 @@ class SpatialQueryService:
                     cursor.execute("""
                         INSERT INTO point_features 
                         (layer_id, layer_name, properties, longitude, latitude)
-                        VALUES (?, ?, ?, ?, ?)
+                        VALUES (%s, %s, %s, %s, %s)
                     """, (
                         layer_id, layer_name, properties_json, longitude, latitude
                     ))
@@ -254,7 +278,7 @@ class SpatialQueryService:
         if polygon_count > 0: # if there are any polygons in the layer , we need to calculate the bounds of the layer 
             cursor.execute("""
                 SELECT MIN(min_lon), MIN(min_lat), MAX(max_lon), MAX(max_lat)
-                FROM polygon_features WHERE layer_id = ?
+                FROM polygon_features WHERE layer_id = %s
             """, (layer_id,))
             bounds_result = cursor.fetchone() # it is a tuple that contains the bounds of the layer 
             bounds = {
@@ -266,7 +290,7 @@ class SpatialQueryService:
         elif point_count > 0: # if there are any points in the layer , we need to calculate the bounds of the layer 
             cursor.execute("""
                 SELECT MIN(longitude), MIN(latitude), MAX(longitude), MAX(latitude)
-                FROM point_features WHERE layer_id = ?
+                FROM point_features WHERE layer_id = %s
             """, (layer_id,))
             bounds_result = cursor.fetchone() # it is a tuple that contains the bounds of the layer 
             bounds = {
@@ -281,7 +305,7 @@ class SpatialQueryService:
         cursor.execute("""
             INSERT INTO layer_metadata 
             (layer_id, layer_name, layer_type, feature_count, file_size_mb, bounds_json)
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (%s, %s, %s, %s, %s, %s)
         """, (
             layer_id, layer_name, layer_type, total_features, file_size_mb, json.dumps(bounds)
         ))
@@ -312,14 +336,14 @@ class SpatialQueryService:
     
     async def _is_database_current(self, geojson_dir: Path) -> bool:
         """Check if database exists and is current with GeoJSON files"""
-        if not os.path.exists(self.db_path):
-            return False
-        
         try:
             cursor = self.conn.cursor()
             
             # Check if tables exist
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='layer_metadata'")
+            cursor.execute("""
+                SELECT tablename FROM pg_tables 
+                WHERE schemaname = 'public' AND tablename = 'layer_metadata'
+            """)
             if not cursor.fetchone():
                 return False
             
@@ -329,7 +353,10 @@ class SpatialQueryService:
                 return False
             
             # Check if checksum table exists and matches current files
-            cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='database_checksum'")
+            cursor.execute("""
+                SELECT tablename FROM pg_tables 
+                WHERE schemaname = 'public' AND tablename = 'database_checksum'
+            """)
             if not cursor.fetchone():
                 return False
             
@@ -367,7 +394,7 @@ class SpatialQueryService:
         # Create checksum table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS database_checksum (
-                id INTEGER PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 checksum TEXT,
                 created_at TEXT
             )
@@ -378,7 +405,7 @@ class SpatialQueryService:
         cursor.execute("DELETE FROM database_checksum")
         cursor.execute("""
             INSERT INTO database_checksum (checksum, created_at)
-            VALUES (?, ?)
+            VALUES (%s, %s)
         """, (checksum, datetime.now().isoformat()))
         
         self.conn.commit()
@@ -397,14 +424,16 @@ class SpatialQueryService:
         """Clear all existing data from database"""
         cursor = self.conn.cursor()
         
-        # Get all table names
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        # Get all table names from public schema
+        cursor.execute("""
+            SELECT tablename FROM pg_tables 
+            WHERE schemaname = 'public'
+        """)
         tables = cursor.fetchall()
         
         # Drop all tables
         for table in tables:
-            if table[0] != 'sqlite_sequence':  # Don't drop SQLite system table
-                cursor.execute(f"DROP TABLE IF EXISTS {table[0]}")
+            cursor.execute(f"DROP TABLE IF EXISTS {table[0]} CASCADE")
         
         self.conn.commit()
         logger.info("🗑️ Cleared existing database tables")
@@ -437,6 +466,7 @@ class SpatialQueryService:
                          max_distance_km: float = 100, 
                          max_nearest_points: int = 10) -> SpatialQueryResponse:
         """Perform spatial query for a given point"""
+        self._ensure_connection()  # Ensure connection before querying
         start_time = time.time()
         
         query_point = Point(longitude, latitude)
@@ -475,7 +505,7 @@ class SpatialQueryService:
         cursor.execute("""
             SELECT layer_id, layer_name, properties, geometry_wkt
             FROM polygon_features
-            WHERE min_lon <= ? AND max_lon >= ? AND min_lat <= ? AND max_lat >= ?
+            WHERE min_lon <= %s AND max_lon >= %s AND min_lat <= %s AND max_lat >= %s
         """, (query_point.x, query_point.x, query_point.y, query_point.y))
         
         candidates = cursor.fetchall()
@@ -488,7 +518,7 @@ class SpatialQueryService:
                 polygon = wkt.loads(geometry_wkt)
                 
                 if polygon.contains(query_point):
-                    properties = json.loads(properties_json)
+                    properties = properties_json  # JSONB returns native Python dict
                     matches.append(PolygonMatch(
                         properties=properties,
                         layer_id=layer_id,
@@ -510,7 +540,7 @@ class SpatialQueryService:
         cursor.execute("""
             SELECT layer_id, layer_name, properties, longitude, latitude
             FROM point_features
-            WHERE longitude BETWEEN ? AND ? AND latitude BETWEEN ? AND ?
+            WHERE longitude BETWEEN %s AND %s AND latitude BETWEEN %s AND %s
         """, (
             query_point.x - degree_buffer, query_point.x + degree_buffer,
             query_point.y - degree_buffer, query_point.y + degree_buffer
@@ -526,7 +556,7 @@ class SpatialQueryService:
                 distance_km = query_point.distance(point) * 111.0  # Rough conversion
                 
                 if distance_km <= max_distance_km:
-                    properties = json.loads(properties_json)
+                    properties = properties_json  # JSONB returns native Python dict
                     
                     # Debug logging for parks
                     if 'park' in layer_name.lower():
@@ -552,6 +582,7 @@ class SpatialQueryService:
     
     async def get_stats(self) -> Dict[str, Any]:
         """Get database statistics"""
+        self._ensure_connection()  # Ensure connection is alive before querying
         cursor = self.conn.cursor()
         
         cursor.execute("SELECT COUNT(*) FROM layer_metadata")
@@ -576,6 +607,7 @@ class SpatialQueryService:
     
     async def get_layers_info(self) -> List[LayerInfo]:
         """Get information about all layers"""
+        self._ensure_connection()  # Ensure connection is alive before querying
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT layer_id, layer_name, layer_type, feature_count, file_size_mb
@@ -598,11 +630,12 @@ class SpatialQueryService:
     
     async def get_layer_stats(self, layer_id: str) -> Optional[LayerStats]:
         """Get detailed statistics for a specific layer"""
+        self._ensure_connection()  # Ensure connection is alive before querying
         cursor = self.conn.cursor()
         
         cursor.execute("""
             SELECT layer_name, feature_count, bounds_json
-            FROM layer_metadata WHERE layer_id = ?
+            FROM layer_metadata WHERE layer_id = %s
         """, (layer_id,))
         
         result = cursor.fetchone()
@@ -614,20 +647,20 @@ class SpatialQueryService:
         
         # Get geometry types
         geometry_types = []
-        cursor.execute("SELECT COUNT(*) FROM polygon_features WHERE layer_id = ?", (layer_id,))
+        cursor.execute("SELECT COUNT(*) FROM polygon_features WHERE layer_id = %s", (layer_id,))
         if cursor.fetchone()[0] > 0:
             geometry_types.append("Polygon")
             
-        cursor.execute("SELECT COUNT(*) FROM point_features WHERE layer_id = ?", (layer_id,))
+        cursor.execute("SELECT COUNT(*) FROM point_features WHERE layer_id = %s", (layer_id,))
         if cursor.fetchone()[0] > 0:
             geometry_types.append("Point")
         
         # Get sample properties
         sample_properties = {}
         cursor.execute("""
-            SELECT properties FROM polygon_features WHERE layer_id = ? LIMIT 1
+            SELECT properties FROM polygon_features WHERE layer_id = %s LIMIT 1
             UNION
-            SELECT properties FROM point_features WHERE layer_id = ? LIMIT 1
+            SELECT properties FROM point_features WHERE layer_id = %s LIMIT 1
         """, (layer_id, layer_id))
         
         result = cursor.fetchone()
@@ -646,5 +679,6 @@ class SpatialQueryService:
     async def cleanup(self):
         """Cleanup database connections"""
         if self.conn:
-            self.conn.close()
-            logger.info("🧹 Database connection closed") 
+            release_connection(self.conn)
+            self.conn = None
+            logger.info("🧹 Database connection released") 

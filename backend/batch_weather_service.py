@@ -10,6 +10,11 @@ from typing import List, Dict, Optional, Any, Tuple
 import json
 from dataclasses import dataclass
 import time
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from texas_grid_service import GridCell, GridFireRisk, texas_grid_service
 from wildfire_weather_service import WildfireWeatherService
@@ -27,8 +32,8 @@ class BatchWeatherService:
     """Service for efficient batch weather data fetching"""
     
     def __init__(self):
-        self.base_url = "https://api.open-meteo.com/v1/forecast"
-        self.timeout = 60.0  # Increased timeout for batch requests
+        self.base_url = os.getenv("OPEN_METEO_BASE_URL", "https://api.open-meteo.com/v1/forecast")
+        self.timeout = float(os.getenv("BATCH_WEATHER_TIMEOUT", "60.0"))  # Increased timeout for batch requests
         self.max_locations_per_request = 100  # Open-Meteo batch limit
         self.max_concurrent_batches = 5  # Limit concurrent batch requests
         self.request_delay = 0.5  # Delay between requests to avoid rate limiting

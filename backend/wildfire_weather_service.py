@@ -6,9 +6,14 @@ import asyncio
 import httpx
 import logging
 import math
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from collections import deque
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +21,8 @@ class WildfireWeatherService:
     """Service for fetching weather data and calculating wildfire risk"""
     
     def __init__(self):
-        self.base_url = "https://api.open-meteo.com/v1/forecast"
-        self.timeout = 30.0
+        self.base_url = os.getenv("OPEN_METEO_BASE_URL", "https://api.open-meteo.com/v1/forecast")
+        self.timeout = float(os.getenv("WEATHER_API_TIMEOUT", "30.0"))
         
         # Texas coordinate bounds for validation
         self.texas_bounds = {

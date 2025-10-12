@@ -3,9 +3,11 @@
  * Handles communication with NASA FIRMS fire detection API
  */
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+
 class FireTrackingService {
   constructor() {
-    this.baseUrl = 'http://localhost:8000/api/fire';
+    this.baseUrl = `${API_BASE_URL}/api/fire`;
     this.cache = new Map();
     this.loadingPromises = new Map();
     this.cacheExpiry = new Map();

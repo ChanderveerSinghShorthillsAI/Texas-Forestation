@@ -404,6 +404,7 @@ const TexasMap = ({ onInitializationChange }) => {
   const [isQuerying, setIsQuerying] = useState(false);
   const [queryProgress, setQueryProgress] = useState(null);
   const [currentQueryId, setCurrentQueryId] = useState(null);
+  const [queriedCoordinates, setQueriedCoordinates] = useState(null);
   const [yoloDataLoaded, setYoloDataLoaded] = useState(false);
   const [nonCultivableAlert, setNonCultivableAlert] = useState(null); // New state for alert
   const [outsideTexasAlert, setOutsideTexasAlert] = useState(null); // Alert for clicks outside Texas
@@ -412,7 +413,7 @@ const TexasMap = ({ onInitializationChange }) => {
   const [showCarbonPanel, setShowCarbonPanel] = useState(false);
   const [selectedCountyForCarbon, setSelectedCountyForCarbon] = useState(null);
   const [countyLayerData, setCountyLayerData] = useState(null);
-  const [isCountyColorVisible, setIsCountyColorVisible] = useState(true);
+  const [isCountyColorVisible, setIsCountyColorVisible] = useState(false); // Start with default counties visible
   const [currentZoom, setCurrentZoom] = useState(5.8);
   const [mapBounds, setMapBounds] = useState(null);
   
@@ -443,7 +444,8 @@ const TexasMap = ({ onInitializationChange }) => {
     boundaries: false,
     grid: false,
     layers: false,
-    services: false
+    services: false,
+    carbon: false  // Added: Carbon cache preload
   });
   
   const {
@@ -483,7 +485,7 @@ const TexasMap = ({ onInitializationChange }) => {
         console.log('🔍 Found boundary layer:', boundaryLayer);
         
         if (boundaryLayer) {
-          const boundaryUrl = `/Texas_Geojsons/Texas_Geojsons/${boundaryLayer.file}`;
+          const boundaryUrl = `/default_geojsons/${boundaryLayer.file}`;
           console.log('📡 Fetching boundary from:', boundaryUrl);
           
           try {
@@ -560,9 +562,33 @@ const TexasMap = ({ onInitializationChange }) => {
         if (window.updateLoadingTask) {
           window.updateLoadingTask('services', { status: 'completed', progress: 100 });
           window.updateLoadingTask('layers', { status: 'completed', progress: 100 });
+          window.updateLoadingTask('carbon', { status: 'in-progress', progress: 0 });
         }
 
-        // 6. Final delay before showing the map
+        // 6. Preload carbon cache for instant hover
+        console.log('⚡ Step 4: Preloading carbon data for 257 counties...');
+        try {
+          performanceMonitor.startTracking('carbon_preload', 'Carbon Cache Preload');
+          await carbonEstimationService.preloadAllCountiesCache();
+          performanceMonitor.stopTracking('carbon_preload');
+          
+          console.log('✅ Carbon cache preloaded - hovering will be instant!');
+          setLoadingTasks(prev => ({ ...prev, carbon: true }));
+          
+          if (window.updateLoadingTask) {
+            window.updateLoadingTask('carbon', { status: 'completed', progress: 100 });
+          }
+        } catch (error) {
+          console.warn('⚠️ Failed to preload carbon cache:', error?.message);
+          console.log('ℹ️ Carbon data will be fetched on-demand instead');
+          setLoadingTasks(prev => ({ ...prev, carbon: true })); // Continue anyway
+          
+          if (window.updateLoadingTask) {
+            window.updateLoadingTask('carbon', { status: 'completed', progress: 100 });
+          }
+        }
+
+        // 7. Final delay before showing the map
         await new Promise(resolve => setTimeout(resolve, 200));
         
         // Stop performance tracking and log results
@@ -601,7 +627,7 @@ const TexasMap = ({ onInitializationChange }) => {
       try {
         const countyLayer = GEOJSON_LAYERS.find(layer => layer.id === 'counties');
         if (!countyLayer) return;
-        const response = await fetch(`/Texas_Geojsons/Texas_Geojsons/${countyLayer.file}`);
+        const response = await fetch(`/default_geojsons/${countyLayer.file}`);
         if (response.ok) {
           const data = await response.json();
           setCountyLayerData(data);
@@ -611,12 +637,13 @@ const TexasMap = ({ onInitializationChange }) => {
       }
     };
     initCountyLayer();
+    
+    // Note: Carbon cache preload is now handled in the main initialization sequence above
+    // to ensure the loader waits for it to complete
   }, []);
 
-  // Keep carbon layer always visible - region-specific hiding is now handled in CarbonVisualizationLayer
-  useEffect(() => {
-    setIsCountyColorVisible(true); // Always keep the layer enabled, regional hiding is handled per-feature
-  }, []);
+  // Carbon layer visibility is now controlled by user via button
+  // (Removed auto-enable to allow default counties layer to show first)
 
   // Remove the separate grid loading effect - now handled in the main initialization
 
@@ -656,6 +683,7 @@ const TexasMap = ({ onInitializationChange }) => {
     setQueryProgress({ processed: 0, total: 0 });
     setQueryResults(null);
     setShowQueryResults(true); // Show results panel immediately
+    setQueriedCoordinates(clickCoordinates); // Store the clicked coordinates
     
     try {
       // Perform backend spatial query
@@ -698,13 +726,19 @@ const TexasMap = ({ onInitializationChange }) => {
     backendSpatialQueryService.cancelQuery();
     setIsQuerying(false);
     setQueryProgress(null);
+    setShowQueryResults(false);
+    setQueryResults(null);
+    setQueriedCoordinates(null);
   };
 
   /**
    * Handle carbon button click
    */
   const handleCarbonButtonClick = () => {
-    setShowCarbonPanel(!showCarbonPanel);
+    const newState = !showCarbonPanel;
+    setShowCarbonPanel(newState);
+    // Toggle carbon visualization layer when panel opens/closes
+    setIsCountyColorVisible(newState);
   };
 
   /**
@@ -1180,7 +1214,7 @@ const TexasMap = ({ onInitializationChange }) => {
       </MapContainer>
 
       {/* Layer control panel - Only show when map is fully initialized */}
-      {!isInitializing && !showHistoricalData && !showCarbonPanel &&(
+      {!isInitializing && !showHistoricalData && !showCarbonPanel && !showQueryResults && (
         <LayerSelector
           isLayerActive={isLayerActive}
           isLayerLoading={isLayerLoading}
@@ -1320,56 +1354,100 @@ const TexasMap = ({ onInitializationChange }) => {
         <p>Data sources: Texas state government & Esri satellite imagery</p>
       </div> */}
 
-      {/* Stylish Center Loading Indicator with Blurred Background */}
+      {/* Simple Center Loading Indicator with Round Spinner */}
       {isQuerying && (
-        <div className="stylish-loading-overlay">
-          <div className="stylish-loading-modal">
-            <div className="stylish-loading-header">
-              <div className="stylish-loading-icon">🔍</div>
-              <h3 className="stylish-loading-title">Analyzing Location</h3>
-              <p className="stylish-loading-subtitle">Processing spatial data layers...</p>
-            </div>
-            
-            <div className="stylish-progress-container">
-              <div className="stylish-progress-info">
-                <span className="stylish-progress-text">
-                  {queryProgress ? queryProgress.processed : 0} of {queryProgress ? queryProgress.total : 0} layers
-                </span>
-                <span className="stylish-progress-percentage">
-                  {queryProgress ? Math.round((queryProgress.processed / queryProgress.total) * 100) : 0}%
-                </span>
-              </div>
-              
-              <div className="stylish-progress-bar">
-                <div 
-                  className="stylish-progress-fill"
-                  style={{
-                    width: queryProgress ? `${(queryProgress.processed / queryProgress.total) * 100}%` : '0%'
-                  }}
-                ></div>
-                <div className="stylish-progress-glow"></div>
-              </div>
-              
-              <div className="stylish-loading-dots">
-                <div className="stylish-dot"></div>
-                <div className="stylish-dot"></div>
-                <div className="stylish-dot"></div>
-              </div>
-            </div>
-            
-            <button 
-              className="stylish-cancel-button"
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+        }}>
+           <div style={{
+             display: 'flex',
+             flexDirection: 'column',
+             alignItems: 'center',
+             gap: '20px',
+           }}>
+             {/* Round Spinner */}
+             <div style={{
+               width: '60px',
+               height: '60px',
+               border: '6px solid rgba(255, 255, 255, 0.2)',
+               borderTop: '6px solid #4ade80',
+               borderRadius: '50%',
+               animation: 'spin 1s linear infinite',
+             }} />
+             
+             {/* Coordinates Text */}
+             {queriedCoordinates && queriedCoordinates.length === 2 && (
+               <div style={{
+                 color: 'white',
+                 fontSize: '0.95rem',
+                 textAlign: 'center',
+                 fontWeight: '500',
+               }}>
+                 <div style={{ marginBottom: '5px' }}>
+                   Fetching data for coordinates:
+                 </div>
+                 <div style={{ 
+                   color: '#4ade80',
+                   fontFamily: 'monospace',
+                   fontSize: '0.9rem',
+                   fontWeight: '600',
+                 }}>
+                   {queriedCoordinates[0].toFixed(6)}, {queriedCoordinates[1].toFixed(6)}
+                 </div>
+               </div>
+             )}
+             
+             {/* Cancel Button */}
+             <button
               onClick={handleAbortQuery}
               title="Cancel Analysis"
+              style={{
+                padding: '12px 24px',
+                backgroundColor: 'rgba(220, 38, 38, 0.9)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '0.95rem',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(185, 28, 28, 0.95)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(220, 38, 38, 0.9)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
             >
-              <span>Cancel</span>
+              Cancel
             </button>
           </div>
+          
+          {/* Keyframe animation for spinner */}
+          <style>{`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       )}
 
       {/* Action Buttons - Only show when map is fully initialized */}
-      {!isInitializing && !showHistoricalData && !showCarbonPanel && !isLayerSelectorOpen && (
+      {!isInitializing && !showHistoricalData && !showCarbonPanel && !isLayerSelectorOpen && !showQueryResults && (
         <>
           {/* Carbon Analysis Button */}
           <CarbonButton 
@@ -1407,7 +1485,10 @@ const TexasMap = ({ onInitializationChange }) => {
       <CarbonEstimationPanel
         selectedCounty={selectedCountyForCarbon}
         isVisible={showCarbonPanel}
-        onClose={() => setShowCarbonPanel(false)}
+        onClose={() => {
+          setShowCarbonPanel(false);
+          setIsCountyColorVisible(false); // Hide carbon layer when panel closes
+        }}
         onCountySelect={handleCountySelection}
       />
 

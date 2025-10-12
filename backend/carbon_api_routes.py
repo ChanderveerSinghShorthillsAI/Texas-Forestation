@@ -51,10 +51,46 @@ async def get_county_carbon(
         )
     
     try:
-        # Always use full calculation to ensure complete data
-        # The get_county_carbon_estimate function handles its own caching
-        logger.info(f"Calculating carbon data for {county_name or county_fips}")
+        # Use cache for fast response if requested
+        if use_cache:
+            service = CarbonEstimationService()
+            
+            # Try to match cache with flexible county name (with or without "County" suffix)
+            search_name = county_name
+            if county_name:
+                # Try exact match first
+                cached_result = service.get_cached_county_carbon_full(
+                    county_name=county_name,
+                    county_fips=county_fips
+                )
+                
+                # If not found and name has "County" suffix, try without it
+                if not cached_result and " County" in county_name:
+                    search_name = county_name.replace(" County", "").replace(" COUNTY", "").replace(" county", "")
+                    cached_result = service.get_cached_county_carbon_full(
+                        county_name=search_name,
+                        county_fips=county_fips
+                    )
+            else:
+                # Only FIPS provided
+                cached_result = service.get_cached_county_carbon_full(
+                    county_name=None,
+                    county_fips=county_fips
+                )
+            
+            if cached_result:
+                logger.info(f"✅ Returning cached carbon data for {county_name or county_fips}")
+                return {
+                    "success": True,
+                    "data": cached_result,
+                    "cached": True,
+                    "message": f"Carbon estimation for {cached_result['county_name']} County (cached)"
+                }
+            else:
+                logger.info(f"⚠️ No cache found for {county_name or county_fips}, calculating...")
         
+        # Calculate if cache disabled or not found
+        logger.info(f"Calculating carbon data for {county_name or county_fips}")
         result = get_county_carbon_estimate(
             county_name=county_name,
             county_fips=county_fips
@@ -73,6 +109,7 @@ async def get_county_carbon(
         return {
             "success": True,
             "data": result,
+            "cached": False,
             "message": f"Carbon estimation for {result['county_name']} County completed successfully{message_suffix}"
         }
         

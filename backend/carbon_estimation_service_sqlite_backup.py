@@ -6,15 +6,12 @@ This service provides carbon stock estimation capabilities using available
 biomass, soil, and wetland data across Texas counties.
 """
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import sqlite3
 import json
 import logging
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from datetime import datetime
-
-from postgres_config import get_connection, release_connection
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +80,7 @@ class CarbonEstimationService:
     }
     
     def __init__(self):
+        self.db_path = "spatial_data.db"
         # Ensure cache table exists on service init
         try:
             self._ensure_county_carbon_table()
@@ -93,14 +91,13 @@ class CarbonEstimationService:
         """
         Estimate carbon stocks for a specific county
         """
-        conn = None
         try:
-            conn = get_connection()
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
             # Build query condition with flexible county name matching
             if county_fips:
-                condition = f"properties->>'Fips' = '{county_fips}'"
+                condition = f"JSON_EXTRACT(properties, '$.Fips') = '{county_fips}'"
             elif county_name:
                 # Try multiple variations of county name with case handling
                 county_base = county_name.replace(' County', '').replace(' COUNTY', '').replace(' county', '')
@@ -109,7 +106,7 @@ class CarbonEstimationService:
                 
                 # Use a simpler, more reliable condition that matches the actual database format
                 # Based on database analysis, the Name field stores county names without "County" suffix
-                condition = f"properties->>'Name' = '{county_base_title}'"
+                condition = f"JSON_EXTRACT(properties, '$.Name') = '{county_base_title}'"
                 logger.info(f"Looking for county with flexible matching: '{county_name}' -> '{county_base_title}' / '{county_with_county}'")
             else:
                 logger.error("Must provide either county_name or county_fips")
@@ -158,28 +155,25 @@ class CarbonEstimationService:
                 methodology_notes=self._get_methodology_notes()
             )
             
+            conn.close()
             return result
             
         except Exception as e:
             logger.error(f"Error estimating county carbon: {e}")
             return None
-        finally:
-            if conn:
-                release_connection(conn)
     
     def estimate_statewide_carbon(self) -> TexasStateCarbon:
         """
         Estimate carbon stocks for all Texas counties
         """
-        conn = None
         try:
-            conn = get_connection()
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             
             # Get all counties with biomass data
             cursor.execute("""
-                SELECT DISTINCT properties->>'Name' as county_name,
-                       properties->>'Fips' as county_fips
+                SELECT DISTINCT JSON_EXTRACT(properties, '$.Name') as county_name,
+                       JSON_EXTRACT(properties, '$.Fips') as county_fips
                 FROM polygon_features 
                 WHERE layer_id = 'biomass-woodmill-residue-biomass'
             """)
@@ -218,21 +212,19 @@ class CarbonEstimationService:
                 calculation_timestamp=datetime.now()
             )
             
+            conn.close()
             return statewide_result
             
         except Exception as e:
             logger.error(f"Error estimating statewide carbon: {e}")
-            return None
-        finally:
-            if conn:
-                release_connection(conn)
+            raise
 
     # =========================
     # County Carbon Cache Table
     # =========================
     def _ensure_county_carbon_table(self):
         """Create county_carbon cache table if it doesn't exist."""
-        conn = get_connection()
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -253,108 +245,93 @@ class CarbonEstimationService:
             """
         )
         conn.commit()
-        release_connection(conn)
+        conn.close()
 
     def _is_county_carbon_populated(self) -> bool:
         """Check if the cache table has sufficient rows (200+ counties)."""
         try:
-            conn = get_connection()
+            conn = sqlite3.connect(self.db_path)
             cursor = conn.cursor()
             cursor.execute("SELECT COUNT(1) FROM county_carbon")
             count = cursor.fetchone()[0]
-            release_connection(conn)
+            conn.close()
             return count >= 200
         except Exception:
             return False
 
     def build_county_carbon_cache(self, force_rebuild: bool = False) -> int:
         """Build or rebuild the county carbon cache. Returns number of rows written."""
-        conn = None
-        try:
-            conn = get_connection()
-            cursor = conn.cursor()
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
 
-            if force_rebuild:
-                logger.info("Forcing rebuild of county_carbon cache table")
-                cursor.execute("DELETE FROM county_carbon")
-                conn.commit()
-
-            # If already populated sufficiently, skip
-            if not force_rebuild and self._is_county_carbon_populated():
-                logger.info("county_carbon table already populated; skipping rebuild")
-                return 0
-
-            # Get list of counties from biomass layer
-            cursor.execute(
-                """
-                SELECT DISTINCT properties->>'Name' as county_name,
-                                properties->>'Fips' as county_fips
-                FROM polygon_features 
-                WHERE layer_id = 'biomass-woodmill-residue-biomass'
-                """
-            )
-            counties = cursor.fetchall()
-            logger.info(f"Building county_carbon cache for {len(counties)} counties...")
-
-            rows_written = 0
-            for county_name, county_fips in counties:
-                try:
-                    result = self.estimate_county_carbon(county_name=county_name)
-                    if not result:
-                        continue
-                    cursor.execute(
-                        """
-                        INSERT INTO county_carbon (
-                            county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
-                            biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
-                            wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres,
-                            calculation_timestamp
-                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (county_name) DO UPDATE SET
-                            county_fips = EXCLUDED.county_fips,
-                            total_carbon_tons = EXCLUDED.total_carbon_tons,
-                            total_co2_equivalent_tons = EXCLUDED.total_co2_equivalent_tons,
-                            biomass_carbon_tons = EXCLUDED.biomass_carbon_tons,
-                            soil_carbon_potential_tons = EXCLUDED.soil_carbon_potential_tons,
-                            wetland_carbon_potential_tons = EXCLUDED.wetland_carbon_potential_tons,
-                            wood_biomass_tons = EXCLUDED.wood_biomass_tons,
-                            crop_residue_tons = EXCLUDED.crop_residue_tons,
-                            secondary_residue_tons = EXCLUDED.secondary_residue_tons,
-                            wetland_acres = EXCLUDED.wetland_acres,
-                            calculation_timestamp = EXCLUDED.calculation_timestamp
-                        """,
-                        (
-                            result.county_name,
-                            result.county_fips,
-                            float(result.total_carbon_tons),
-                            float(result.total_co2_equivalent_tons),
-                            float(result.biomass_carbon_tons),
-                            float(result.soil_carbon_potential_tons),
-                            float(result.wetland_carbon_potential_tons),
-                            float(result.wood_biomass_tons),
-                            float(result.crop_residue_tons),
-                            float(result.secondary_residue_tons),
-                            float(result.wetland_acres),
-                            result.calculation_timestamp.isoformat()
-                        )
-                    )
-                    rows_written += 1
-                except Exception as e:
-                    logger.warning(f"Failed to cache county {county_name}: {e}")
-
+        if force_rebuild:
+            logger.info("Forcing rebuild of county_carbon cache table")
+            cursor.execute("DELETE FROM county_carbon")
             conn.commit()
-            logger.info(f"county_carbon cache build complete: {rows_written} rows written")
-            return rows_written
-        finally:
-            if conn:
-                release_connection(conn)
+
+        # If already populated sufficiently, skip
+        if not force_rebuild and self._is_county_carbon_populated():
+            logger.info("county_carbon table already populated; skipping rebuild")
+            conn.close()
+            return 0
+
+        # Get list of counties from biomass layer
+        cursor.execute(
+            """
+            SELECT DISTINCT JSON_EXTRACT(properties, '$.Name') as county_name,
+                            JSON_EXTRACT(properties, '$.Fips') as county_fips
+            FROM polygon_features 
+            WHERE layer_id = 'biomass-woodmill-residue-biomass'
+            """
+        )
+        counties = cursor.fetchall()
+        logger.info(f"Building county_carbon cache for {len(counties)} counties...")
+
+        rows_written = 0
+        for county_name, county_fips in counties:
+            try:
+                result = self.estimate_county_carbon(county_name=county_name)
+                if not result:
+                    continue
+                cursor.execute(
+                    """
+                    INSERT OR REPLACE INTO county_carbon (
+                        county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
+                        biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
+                        wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres,
+                        calculation_timestamp
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        result.county_name,
+                        result.county_fips,
+                        float(result.total_carbon_tons),
+                        float(result.total_co2_equivalent_tons),
+                        float(result.biomass_carbon_tons),
+                        float(result.soil_carbon_potential_tons),
+                        float(result.wetland_carbon_potential_tons),
+                        float(result.wood_biomass_tons),
+                        float(result.crop_residue_tons),
+                        float(result.secondary_residue_tons),
+                        float(result.wetland_acres),
+                        result.calculation_timestamp.isoformat()
+                    )
+                )
+                rows_written += 1
+            except Exception as e:
+                logger.warning(f"Failed to cache county {county_name}: {e}")
+
+        conn.commit()
+        conn.close()
+        logger.info(f"county_carbon cache build complete: {rows_written} rows written")
+        return rows_written
 
     def get_all_county_carbon(self, ensure_cache: bool = True) -> List[Dict[str, Any]]:
         """Return carbon data for all counties from the cache table. Optionally build cache if empty."""
         if ensure_cache and not self._is_county_carbon_populated():
             self.build_county_carbon_cache(force_rebuild=False)
 
-        conn = get_connection()
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -363,7 +340,7 @@ class CarbonEstimationService:
             """
         )
         rows = cursor.fetchall()
-        release_connection(conn)
+        conn.close()
         return [
             {
                 'county_name': row[0],
@@ -379,7 +356,7 @@ class CarbonEstimationService:
         if ensure_cache and not self._is_county_carbon_populated():
             self.build_county_carbon_cache(force_rebuild=False)
 
-        conn = get_connection()
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
             """
@@ -390,7 +367,7 @@ class CarbonEstimationService:
             """
         )
         rows = cursor.fetchall()
-        release_connection(conn)
+        conn.close()
         return [
             {
                 'county_name': row[0],
@@ -410,14 +387,14 @@ class CarbonEstimationService:
 
     def get_cached_county_carbon(self, county_name: str) -> Optional[Dict[str, Any]]:
         """Get a single county's carbon data from cache if available (summary only)."""
-        conn = get_connection()
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons FROM county_carbon WHERE county_name = %s",
+            "SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons FROM county_carbon WHERE county_name = ?",
             (county_name,)
         )
         row = cursor.fetchone()
-        release_connection(conn)
+        conn.close()
         if not row:
             return None
         return {
@@ -427,28 +404,21 @@ class CarbonEstimationService:
             'total_co2_equivalent_tons': round(row[3], 2) if row[3] is not None else None
         }
     
-    def get_cached_county_carbon_full(self, county_name: str = None, county_fips: str = None) -> Optional[Dict[str, Any]]:
+    def get_cached_county_carbon_full(self, county_name: str) -> Optional[Dict[str, Any]]:
         """Get a single county's full carbon data from cache if available."""
-        if not county_name and not county_fips:
-            return None
-            
-        conn = get_connection()
+        conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        # Build flexible query based on what's provided
-        if county_name and county_fips:
-            query = "SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons, biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons, wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres, calculation_timestamp FROM county_carbon WHERE county_name = %s OR county_fips = %s"
-            params = (county_name, county_fips)
-        elif county_name:
-            query = "SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons, biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons, wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres, calculation_timestamp FROM county_carbon WHERE county_name = %s"
-            params = (county_name,)
-        else:  # county_fips
-            query = "SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons, biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons, wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres, calculation_timestamp FROM county_carbon WHERE county_fips = %s"
-            params = (county_fips,)
-        
-        cursor.execute(query, params)
+        cursor.execute(
+            """SELECT county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
+                      biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
+                      wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres,
+                      calculation_timestamp
+               FROM county_carbon 
+               WHERE county_name = ? OR county_fips = ?""",
+            (county_name, county_name)
+        )
         row = cursor.fetchone()
-        release_connection(conn)
+        conn.close()
         if not row:
             return None
         return {
@@ -477,7 +447,7 @@ class CarbonEstimationService:
         cursor.execute(query)
         result = cursor.fetchone()
         if result:
-            data = result[0]  # JSONB returns native Python dict
+            data = json.loads(result[0])
             logger.info(f"Found wood biomass data with keys: {list(data.keys())}")
             return data
         else:
@@ -492,7 +462,7 @@ class CarbonEstimationService:
         """)
         result = cursor.fetchone()
         if result:
-            return result[0]  # JSONB returns native Python dict
+            return json.loads(result[0])
         return None
     
     def _calculate_wood_carbon(self, wood_data: Optional[Dict]) -> Dict[str, float]:
@@ -534,14 +504,14 @@ class CarbonEstimationService:
         cursor.execute("""
             SELECT properties FROM polygon_features 
             WHERE layer_id = 'wetlands' 
-            AND properties->>'Countyname' = %s
+            AND JSON_EXTRACT(properties, '$.Countyname') = ?
         """, (county_name,))
         
         results = cursor.fetchall()
         logger.info(f"Found {len(results)} wetland records for {county_name}")
         wetlands = []
         for result in results:
-            props = result[0]  # JSONB returns native Python dict
+            props = json.loads(result[0])
             wetlands.append(props)
         
         return wetlands
@@ -673,28 +643,16 @@ def get_county_carbon_estimate(county_name: str = None, county_fips: str = None)
     if result:
         # Also upsert into cache for future fast loads
         try:
-            conn = get_connection()
+            conn = sqlite3.connect(service.db_path)
             cursor = conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO county_carbon (
+                INSERT OR REPLACE INTO county_carbon (
                     county_name, county_fips, total_carbon_tons, total_co2_equivalent_tons,
                     biomass_carbon_tons, soil_carbon_potential_tons, wetland_carbon_potential_tons,
                     wood_biomass_tons, crop_residue_tons, secondary_residue_tons, wetland_acres,
                     calculation_timestamp
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (county_name) DO UPDATE SET
-                    county_fips = EXCLUDED.county_fips,
-                    total_carbon_tons = EXCLUDED.total_carbon_tons,
-                    total_co2_equivalent_tons = EXCLUDED.total_co2_equivalent_tons,
-                    biomass_carbon_tons = EXCLUDED.biomass_carbon_tons,
-                    soil_carbon_potential_tons = EXCLUDED.soil_carbon_potential_tons,
-                    wetland_carbon_potential_tons = EXCLUDED.wetland_carbon_potential_tons,
-                    wood_biomass_tons = EXCLUDED.wood_biomass_tons,
-                    crop_residue_tons = EXCLUDED.crop_residue_tons,
-                    secondary_residue_tons = EXCLUDED.secondary_residue_tons,
-                    wetland_acres = EXCLUDED.wetland_acres,
-                    calculation_timestamp = EXCLUDED.calculation_timestamp
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     result.county_name,
@@ -712,7 +670,7 @@ def get_county_carbon_estimate(county_name: str = None, county_fips: str = None)
                 )
             )
             conn.commit()
-            release_connection(conn)
+            conn.close()
         except Exception as e:
             logger.warning(f"Failed to upsert county into cache: {e}")
         

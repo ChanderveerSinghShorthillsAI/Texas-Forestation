@@ -4,12 +4,12 @@ check_api_keys.py
 
 Quick connectivity checker for:
 - Google Gemini (via GOOGLE_API_KEY)
-- Weaviate Cloud (via WEAVIATE_CLUSTER_URL and WEAVIATE_API_KEY)
+- Pinecone (via PINECONE_API_KEY)
 
 Usage:
   python check_api_keys.py            # checks both
   python check_api_keys.py --gemini   # check only Gemini
-  python check_api_keys.py --weaviate # check only Weaviate
+  python check_api_keys.py --pinecone # check only Pinecone
 
 Exits with non-zero status if any requested check fails.
 """
@@ -25,8 +25,7 @@ from config import config
 
 # External deps
 import google.generativeai as genai
-import weaviate
-from weaviate.classes.init import Auth
+from pinecone import Pinecone
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger("api-key-checker")
@@ -71,7 +70,7 @@ def check_gemini(timeout_s: int = 20) -> Tuple[bool, str]:
             return False, "GOOGLE_API_KEY is missing"
         genai.configure(api_key=config.GOOGLE_API_KEY)
         # Prefer configured model, fallback to a lightweight one
-        model_name = getattr(config, 'PLAN_GENERATION_MODEL', None) or 'gemini-1.5-flash'
+        model_name = getattr(config, 'PLAN_GENERATION_MODEL', None) or 'gemini-2.0-flash'
         model = genai.GenerativeModel(model_name)
         logger.info("Connecting to Gemini model: %s (key: %s)", model_name, _mask(config.GOOGLE_API_KEY))
         # Minimal test call
@@ -86,43 +85,35 @@ def check_gemini(timeout_s: int = 20) -> Tuple[bool, str]:
         return False, f"Gemini check failed: {e}"
 
 
-def check_weaviate(timeout_s: int = 15) -> Tuple[bool, str]:
+def check_pinecone(timeout_s: int = 15) -> Tuple[bool, str]:
     try:
-        if not config.WEAVIATE_CLUSTER_URL:
-            return False, "WEAVIATE_CLUSTER_URL is missing"
-        if not config.WEAVIATE_API_KEY:
-            return False, "WEAVIATE_API_KEY is missing"
+        if not config.PINECONE_API_KEY:
+            return False, "PINECONE_API_KEY is missing"
         logger.info(
-            "Connecting to Weaviate: %s (key: %s)",
-            config.WEAVIATE_CLUSTER_URL,
-            _mask(config.WEAVIATE_API_KEY),
+            "Connecting to Pinecone (key: %s)",
+            _mask(config.PINECONE_API_KEY),
         )
-        client = weaviate.connect_to_wcs(
-            cluster_url=config.WEAVIATE_CLUSTER_URL,
-            auth_credentials=Auth.api_key(config.WEAVIATE_API_KEY),
-        )
+        client = Pinecone(api_key=config.PINECONE_API_KEY)
         try:
-            if not client.is_ready():
-                return False, "Weaviate client not ready"
-            _ = client.collections.list_all()
-            return True, "Weaviate key/connection OK"
-        finally:
-            try:
-                client.close()
-            except Exception:
-                pass
+            # Try to list indexes to verify connection
+            indexes = client.list_indexes()
+            index_names = [idx.name for idx in indexes]
+            logger.info(f"Found {len(index_names)} Pinecone indexes")
+            return True, f"Pinecone key/connection OK ({len(index_names)} indexes)"
+        except Exception as e:
+            return False, f"Pinecone operation failed: {e}"
     except Exception as e:
-        return False, f"Weaviate check failed: {e}"
+        return False, f"Pinecone check failed: {e}"
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Check API keys for Gemini and Weaviate")
+    parser = argparse.ArgumentParser(description="Check API keys for Gemini and Pinecone")
     parser.add_argument("--gemini", action="store_true", help="Only check Google Gemini")
-    parser.add_argument("--weaviate", action="store_true", help="Only check Weaviate")
+    parser.add_argument("--pinecone", action="store_true", help="Only check Pinecone")
     args = parser.parse_args()
 
-    do_gemini = args.gemini or not (args.gemini or args.weaviate)
-    do_weaviate = args.weaviate or not (args.gemini or args.weaviate)
+    do_gemini = args.gemini or not (args.gemini or args.pinecone)
+    do_pinecone = args.pinecone or not (args.gemini or args.pinecone)
 
     overall_ok = True
 
@@ -134,8 +125,8 @@ def main():
             logger.error("❌ %s", msg)
         overall_ok = overall_ok and ok
 
-    if do_weaviate:
-        ok, msg = check_weaviate()
+    if do_pinecone:
+        ok, msg = check_pinecone()
         if ok:
             logger.info("✅ %s", msg)
         else:

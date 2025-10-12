@@ -900,7 +900,7 @@ const EncroachmentMap = ({
   useEffect(() => {
     const loadTexasBoundary = async () => {
       try {
-        const response = await fetch('/Texas_Geojsons/Texas_Geojsons/texas.geojson');
+        const response = await fetch('/default_geojsons/texas.geojson');
         if (response.ok) {
           const data = await response.json();
           setTexasBoundaryData(data);
@@ -1234,13 +1234,13 @@ const EncroachmentMap = ({
             </div>
             <div class="popup-content">
               <div class="popup-field">
-                <strong>Date:</strong> ${alert.date}
+                <strong style="color: white;">Date:</strong> <span style="color: white;">${alert.date}</span>
               </div>
               <div class="popup-field">
-                <strong>Location:</strong> ${alert.latitude.toFixed(6)}, ${alert.longitude.toFixed(6)}
+                <strong style="color: white;">Location:</strong> <span style="color: white;">${alert.latitude.toFixed(6)}, ${alert.longitude.toFixed(6)}</span>
               </div>
               <div class="popup-field">
-                <strong>Alert ID:</strong> ${alert.alert_id || 'N/A'}
+                <strong style="color: white;">Alert ID:</strong> <span style="color: white;">${alert.alert_id || 'N/A'}</span>
               </div>
             </div>
             <div class="popup-actions">

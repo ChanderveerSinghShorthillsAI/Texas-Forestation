@@ -129,7 +129,7 @@ const LocationSelector = ({ onLocationSelect, selectedLocation }) => {
   useEffect(() => {
     const loadTexasBoundary = async () => {
       try {
-        const response = await fetch('/Texas_Geojsons/Texas_Geojsons/texas.geojson');
+        const response = await fetch('/default_geojsons/texas.geojson');
         if (response.ok) {
           const data = await response.json();
           setTexasBoundaryData(data);

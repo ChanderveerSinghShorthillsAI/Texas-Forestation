@@ -7,6 +7,7 @@ class CarbonEstimationService {
   constructor() {
     this.baseURL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
     this.cache = new Map();
+    this.cacheTimers = new Map(); // Track setTimeout timers for cleanup
     this.abortController = null;
   }
 
@@ -65,8 +66,7 @@ class CarbonEstimationService {
       
       if (result.success) {
         // Cache the result for 60 minutes
-        this.cache.set(cacheKey, result.data);
-        setTimeout(() => this.cache.delete(cacheKey), 60 * 60 * 1000);
+        this._setCacheWithTTL(cacheKey, result.data, 60 * 60 * 1000);
         return result.data;
       } else {
         throw new Error(result.message || 'Failed to get county carbon data');
@@ -78,101 +78,6 @@ class CarbonEstimationService {
         return null;
       }
       console.error('[CarbonService] Error fetching county carbon:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get statewide carbon estimation for all Texas counties
-   * @returns {Promise<Object>} Statewide carbon data
-   */
-  async getStatewideCarbon() {
-    const cacheKey = 'statewide_carbon';
-    
-    // Check cache first
-    if (this.cache.has(cacheKey)) {
-      console.log('[CarbonService] Using cached statewide data');
-      return this.cache.get(cacheKey);
-    }
-
-    try {
-      console.log('[CarbonService] Fetching statewide carbon data');
-      const startTime = performance.now();
-      
-      const response = await fetch(`${this.baseURL}/api/carbon/statewide`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      const duration = (performance.now() - startTime).toFixed(0);
-      console.log(`[CarbonService] Statewide data received in ${duration}ms`);
-      
-      if (result.success) {
-        // Cache for 60 minutes (statewide data doesn't change frequently)
-        this.cache.set(cacheKey, result.data);
-        setTimeout(() => this.cache.delete(cacheKey), 60 * 60 * 1000);
-        return result.data;
-      } else {
-        throw new Error(result.message || 'Failed to get statewide carbon data');
-      }
-
-    } catch (error) {
-      console.error('[CarbonService] Error fetching statewide carbon:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Get top carbon-rich counties
-   * @param {number} limit - Number of top counties to return (default: 10)
-   * @returns {Promise<Object>} Top counties data
-   */
-  async getTopCarbonCounties(limit = 10) {
-    const cacheKey = `top_counties_${limit}`;
-    
-    // Check cache first
-    if (this.cache.has(cacheKey)) {
-      console.log(`[CarbonService] Using cached top ${limit} counties`);
-      return this.cache.get(cacheKey);
-    }
-
-    try {
-      console.log(`[CarbonService] Fetching top ${limit} counties`);
-      const startTime = performance.now();
-      
-      const response = await fetch(`${this.baseURL}/api/carbon/counties/top?limit=${limit}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      const duration = (performance.now() - startTime).toFixed(0);
-      console.log(`[CarbonService] Top counties received in ${duration}ms`);
-      
-      if (result.success) {
-        // Cache for 60 minutes
-        this.cache.set(cacheKey, result.data);
-        setTimeout(() => this.cache.delete(cacheKey), 60 * 60 * 1000);
-        return result.data;
-      } else {
-        throw new Error(result.message || 'Failed to get top carbon counties');
-      }
-
-    } catch (error) {
-      console.error('[CarbonService] Error fetching top carbon counties:', error);
       throw error;
     }
   }
@@ -206,6 +111,232 @@ class CarbonEstimationService {
       console.error('Error fetching all counties carbon:', error);
       throw error;
     }
+  }
+
+  /**
+   * Preload all counties carbon data into frontend cache for instant hover
+   * Call this on page load to populate cache with all 257 counties
+   * @returns {Promise<number>} Number of counties cached
+   */
+  async preloadAllCountiesCache() {
+    console.log('[CarbonService] 🚀 Preloading all counties carbon data...');
+    const startTime = performance.now();
+    
+    try {
+      // Fetch full details for all counties
+      const response = await fetch(`${this.baseURL}/api/carbon/counties/all?summary_only=false`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        const counties = result.data?.counties || [];
+        
+        // Populate frontend cache with each county's full data
+        // Set TTL to 2 hours (longer than individual calls since it's bulk data)
+        const TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
+        
+        counties.forEach(county => {
+          if (county && county.county_name) {
+            // Cache by county name (with TTL)
+            const cacheKey = `county_${county.county_name}`;
+            this._setCacheWithTTL(cacheKey, county, TTL_MS);
+            
+            // Also cache with "County" suffix for flexible matching (with TTL)
+            const cacheKeyWithSuffix = `county_${county.county_name} County`;
+            this._setCacheWithTTL(cacheKeyWithSuffix, county, TTL_MS);
+            
+            // Cache by FIPS if available (with TTL)
+            if (county.county_fips) {
+              const fipsCacheKey = `county_${county.county_fips}`;
+              this._setCacheWithTTL(fipsCacheKey, county, TTL_MS);
+            }
+          }
+        });
+        
+        const duration = (performance.now() - startTime).toFixed(0);
+        console.log(`[CarbonService] ✅ Preloaded ${counties.length} counties in ${duration}ms`);
+        console.log(`[CarbonService] 💾 Frontend cache now has ${this.cache.size} entries`);
+        
+        return counties.length;
+      }
+      
+      throw new Error(result.message || 'Failed to preload counties');
+    } catch (error) {
+      console.error('[CarbonService] ❌ Error preloading counties:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get statewide carbon data from frontend cache (instant!)
+   * If cache not populated, falls back to API
+   * @returns {Promise<Object>} Statewide carbon data
+   */
+  async getStatewideCarbon() {
+    console.log('[CarbonService] 📊 Getting statewide data...');
+    
+    // Check if we have preloaded cache data
+    const cachedCounties = this._getAllCachedCounties();
+    
+    if (cachedCounties.length > 0) {
+      console.log(`[CarbonService] ✅ Computing statewide from ${cachedCounties.length} cached counties (INSTANT!)`);
+      
+      // Compute statewide stats from cached data
+      const totalCarbon = cachedCounties.reduce((sum, county) => sum + (county.total_carbon_tons || 0), 0);
+      const totalCO2 = cachedCounties.reduce((sum, county) => sum + (county.total_co2_equivalent_tons || 0), 0);
+      const avgCarbon = totalCarbon / cachedCounties.length;
+      
+      // Get top 10 counties
+      const topCounties = [...cachedCounties]
+        .sort((a, b) => (b.total_carbon_tons || 0) - (a.total_carbon_tons || 0))
+        .slice(0, 10);
+      
+      return {
+        total_counties: cachedCounties.length,
+        total_carbon_tons: totalCarbon,
+        total_co2_equivalent_tons: totalCO2,
+        average_carbon_per_county: avgCarbon,
+        top_carbon_counties: topCounties,
+        cached: true
+      };
+    }
+    
+    // Fallback to API if cache not ready
+    console.log('[CarbonService] ⚠️ Cache not ready, fetching from API...');
+    const cacheKey = 'statewide_carbon';
+    
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    try {
+      console.log('[CarbonService] Fetching statewide carbon data');
+      const startTime = performance.now();
+      
+      const response = await fetch(`${this.baseURL}/api/carbon/statewide`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const duration = (performance.now() - startTime).toFixed(0);
+      console.log(`[CarbonService] Statewide data received in ${duration}ms`);
+      
+      if (result.success) {
+        this._setCacheWithTTL(cacheKey, result.data, 60 * 60 * 1000);
+        return result.data;
+      } else {
+        throw new Error(result.message || 'Failed to get statewide data');
+      }
+
+    } catch (error) {
+      console.error('[CarbonService] Error fetching statewide carbon:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get top carbon counties from frontend cache (instant!)
+   * If cache not populated, falls back to API
+   * @param {number} limit - Number of top counties to return
+   * @returns {Promise<Object>} Top counties data
+   */
+  async getTopCarbonCounties(limit = 15) {
+    console.log(`[CarbonService] 🏆 Getting top ${limit} counties...`);
+    
+    // Check if we have preloaded cache data
+    const cachedCounties = this._getAllCachedCounties();
+    
+    if (cachedCounties.length > 0) {
+      console.log(`[CarbonService] ✅ Computing top counties from ${cachedCounties.length} cached counties (INSTANT!)`);
+      
+      // Sort by total carbon and take top N
+      const topCounties = [...cachedCounties]
+        .sort((a, b) => (b.total_carbon_tons || 0) - (a.total_carbon_tons || 0))
+        .slice(0, limit);
+      
+      return {
+        top_counties: topCounties,
+        total_counties: cachedCounties.length,
+        cached: true
+      };
+    }
+    
+    // Fallback to API if cache not ready
+    console.log('[CarbonService] ⚠️ Cache not ready, fetching from API...');
+    const cacheKey = `top_counties_${limit}`;
+    
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey);
+    }
+
+    try {
+      console.log(`[CarbonService] Fetching top ${limit} carbon counties`);
+      const startTime = performance.now();
+      
+      const response = await fetch(`${this.baseURL}/api/carbon/counties/top?limit=${limit}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const duration = (performance.now() - startTime).toFixed(0);
+      console.log(`[CarbonService] Top counties received in ${duration}ms`);
+      
+      if (result.success) {
+        this._setCacheWithTTL(cacheKey, result.data, 60 * 60 * 1000);
+        return result.data;
+      } else {
+        throw new Error(result.message || 'Failed to get top counties');
+      }
+
+    } catch (error) {
+      console.error('[CarbonService] Error fetching top counties:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all cached counties (internal helper)
+   * @returns {Array} Array of cached county objects
+   * @private
+   */
+  _getAllCachedCounties() {
+    const counties = [];
+    const seen = new Set();
+    
+    // Iterate through cache and collect unique counties
+    for (const [key, value] of this.cache.entries()) {
+      // Only process county entries (not statewide, methodology, etc.)
+      if (key.startsWith('county_') && value && value.county_name) {
+        // Avoid duplicates (we cache with multiple keys per county)
+        if (!seen.has(value.county_name)) {
+          seen.add(value.county_name);
+          counties.push(value);
+        }
+      }
+    }
+    
+    return counties;
   }
 
   /**
@@ -342,10 +473,46 @@ class CarbonEstimationService {
   }
 
   /**
-   * Clear all cached data
+   * Set cache entry with TTL (Time-To-Live)
+   * @param {string} key - Cache key
+   * @param {*} value - Value to cache
+   * @param {number} ttlMs - Time-to-live in milliseconds
+   * @private
+   */
+  _setCacheWithTTL(key, value, ttlMs) {
+    // Clear existing timer if any
+    if (this.cacheTimers.has(key)) {
+      clearTimeout(this.cacheTimers.get(key));
+    }
+    
+    // Set cache entry
+    this.cache.set(key, value);
+    
+    // Set timer to delete entry after TTL
+    const timer = setTimeout(() => {
+      this.cache.delete(key);
+      this.cacheTimers.delete(key);
+      console.log(`[CarbonService] 🗑️ Cache expired for: ${key}`);
+    }, ttlMs);
+    
+    // Store timer reference
+    this.cacheTimers.set(key, timer);
+  }
+
+  /**
+   * Clear all cached data and timers
    */
   clearCache() {
+    // Clear all timers first
+    for (const timer of this.cacheTimers.values()) {
+      clearTimeout(timer);
+    }
+    
+    // Clear cache and timers
     this.cache.clear();
+    this.cacheTimers.clear();
+    
+    console.log('[CarbonService] 🧹 Cache cleared completely');
   }
 
   /**

@@ -12,6 +12,10 @@ from pathlib import Path
 import base64
 from fastapi import HTTPException
 import re
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 

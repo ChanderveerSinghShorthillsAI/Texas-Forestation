@@ -22,6 +22,10 @@ os.chdir(str(backend_dir))
 
 from login.user_database import user_db_service
 from login.user_models import User
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -35,9 +39,9 @@ def setup_default_user():
     but stores it securely with proper hashing.
     """
     
-    # Default user credentials (as per original requirements)
-    DEFAULT_USERNAME = "user1234"
-    DEFAULT_PASSWORD = "pass123456"
+    # Default user credentials (from environment variables or defaults)
+    DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME", "user1234")
+    DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD", "pass123456")
     
     try:
         logger.info("🔧 Setting up default user for Texas Forestation System...")
@@ -121,8 +125,8 @@ def test_authentication():
     try:
         logger.info("🧪 Testing authentication flow...")
         
-        DEFAULT_USERNAME = "user1234"
-        DEFAULT_PASSWORD = "pass123456"
+        DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME", "user1234")
+        DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD", "pass123456")
         
         # Test successful authentication
         user = user_db_service.authenticate_user(DEFAULT_USERNAME, DEFAULT_PASSWORD)

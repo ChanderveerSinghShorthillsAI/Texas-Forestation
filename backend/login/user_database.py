@@ -2,16 +2,21 @@
 User Database Service for Texas Forestation Authentication System
 
 Professional database service with connection management, 
-error handling, and user operations for spatial_data.db
+error handling, and user operations for PostgreSQL
 """
 
 import os
+import sys
 import logging
 from typing import Optional, List
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from contextlib import contextmanager
+
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from postgres_config import get_database_url
 
 from .user_models import Base, User
 
@@ -30,15 +35,8 @@ class UserDatabaseService:
         Initialize database service
         
         Args:
-            db_path: Path to the SQLite database file
+            db_path: Deprecated parameter, kept for backwards compatibility
         """
-        if db_path is None:
-            # Always use the main spatial database in the backend directory
-            import os
-            backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            db_path = os.path.join(backend_dir, "spatial_data.db")
-        
-        self.db_path = db_path
         self.engine = None
         self.Session = None
         self._initialize_database()
@@ -46,12 +44,14 @@ class UserDatabaseService:
     def _initialize_database(self):
         """Initialize database connection and create tables"""
         try:
-            # Create SQLAlchemy engine with connection pooling
-            database_url = f"sqlite:///{self.db_path}"
+            # Create SQLAlchemy engine for PostgreSQL with connection pooling
+            database_url = get_database_url()
             self.engine = create_engine(
                 database_url,
                 pool_pre_ping=True,  # Verify connections before use
                 pool_recycle=300,    # Recycle connections every 5 minutes
+                pool_size=10,
+                max_overflow=20,
                 echo=False           # Set to True for SQL debugging
             )
             

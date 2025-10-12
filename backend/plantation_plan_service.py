@@ -11,8 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional
 import re
 
-import weaviate
-from weaviate.classes.init import Auth
+from pinecone import Pinecone, ServerlessSpec
 from sentence_transformers import SentenceTransformer
 import google.generativeai as genai
 from reportlab.lib.pagesizes import A4
@@ -44,22 +43,17 @@ class PlantationPlanService:
     
     def __init__(self):
         """Initialize the plantation plan service"""
-        # Force 384-dim primary encoder
+        # Initialize SentenceTransformer for embeddings (same as before with Weaviate)
         self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        # Fallback model not needed when forcing 384, keep placeholder for compatibility
-        self.embedding_model_fallback_384 = None
-        self.weaviate_client = None
+        self.pinecone_client = None
+        self.pinecone_index = None
         self.is_initialized = False
+        # all-MiniLM-L6-v2 uses 384 dimensions
         self.current_embedding_dim: int = 384
         # Cancellation registry: request_id -> asyncio.Event
         self._cancellations: Dict[str, asyncio.Event] = {}
         # Plan storage: plan_id -> plan_data for preview functionality
         self._stored_plans: Dict[str, Dict[str, Any]] = {}
-        # Try both collection name variants to maximize compatibility
-        self.collection_name_candidates = [
-            "Texas_10_year_plan_embeddings",
-            "texas_10_year_plan_embeddings",
-        ]
         
         # Configure Gemini
         genai.configure(api_key=config.GOOGLE_API_KEY)
@@ -184,209 +178,42 @@ class PlantationPlanService:
                 ),
             ),
         }
-    def _pick_target_collection_name(self, available_names):
-        """Choose the collection to use based on candidates or fallback to the first."""
-        for cand in self.collection_name_candidates:
-            if cand in available_names:
-                return cand
-        return next(iter(available_names), None)
-    
-    def _infer_dims_from_sample_object(self, class_name: str) -> Optional[int]:
-        """
-        Try to fetch one object with vectors and infer the dimension from its vector length.
-        Works even when schema doesn't expose vectorDimensions.
-        """
-        try:
-            import requests
-            base = config.WEAVIATE_CLUSTER_URL.rstrip("/")
-            if not base.startswith("http"):
-                base = "https://" + base
-            # Ask for 1 object, include vectors
-            # Some clusters return "_vectors" (multi-vector) or "vector".
-            params = {
-                "class": class_name,
-                "limit": 1,
-                "include": "vector"
-            }
-            headers = {"Authorization": f"Bearer {config.WEAVIATE_API_KEY}"}
-            r = requests.get(f"{base}/v1/objects", params=params, headers=headers, timeout=15)
-            r.raise_for_status()
-            data = r.json()
-            objs = (data or {}).get("objects", []) or []
-            if not objs:
-                return None
-            obj = objs[0]
-            # Try multi-vector first
-            vecs = obj.get("_vectors")
-            if isinstance(vecs, dict) and vecs:
-                # Pick the first vector space
-                first_vec = next(iter(vecs.values()))
-                if isinstance(first_vec, list):
-                    return len(first_vec)
-            # Fallback: single vector
-            vec = obj.get("vector")
-            if isinstance(vec, list):
-                return len(vec)
-            return None
-        except Exception as e:
-            logger.warning(f"Could not infer vector dims from sample object: {e}")
-            return None
 
-
-    def _set_encoder_for_dimension(self, dim: int):
-        """Force select the 384-dim embedding model regardless of requested dimension."""
-        self.current_embedding_dim = 384
-        # Ensure 384 encoder is loaded and set as primary
-        if self.embedding_model is None or getattr(self.embedding_model, 'get_sentence_embedding_dimension', lambda: 384)() != 384:
-            self._ensure_fallback_encoder()
-            self.embedding_model = self.embedding_model_fallback_384
-        logger.info("🔧 Forcing encoder: all-MiniLM-L6-v2 (384 dims)")
-
-    def _http_fetch_schema(self) -> Optional[dict]:
-        """Fallback: fetch /v1/schema via HTTP if SDK shape varies."""
-        try:
-            import requests
-            url = config.WEAVIATE_CLUSTER_URL.rstrip('/')
-            if not url.startswith("http"):
-                url = "https://" + url
-            resp = requests.get(
-                f"{url}/v1/schema",
-                headers={"Authorization": f"Bearer {config.WEAVIATE_API_KEY}"}, timeout=15
-            )
-            resp.raise_for_status()
-            return resp.json()
-        except Exception as e:
-            logger.error(f"HTTP schema fetch failed: {e}")
-            return None
-
-    def _extract_dims_from_schema_json(self, schema_json: dict) -> dict:
-        """
-        Return {collection_name: {'dims': int|None, 'vectorizer': str|None}} from /v1/schema shape.
-        Works with classic /v1/schema output.
-        """
-        out = {}
-        classes = (schema_json or {}).get("classes", []) or []
-        for c in classes:
-            name = c.get("class")
-            vectorizer = c.get("vectorizer")
-            dims = None
-            # Newer servers often expose 'vectorIndexConfig' or 'moduleConfig' with dims
-            vic = c.get("vectorIndexConfig", {}) or {}
-            # Some versions put it as 'vectorDimensions'
-            dims = vic.get("vectorDimensions", dims)
-            # Some module configs (e.g., text2vec-openai) may carry dims:
-            mc = c.get("moduleConfig", {}) or {}
-            for m_name, m_cfg in mc.items():
-                if isinstance(m_cfg, dict):
-                    dims = m_cfg.get("vectorDimensions", dims)
-            out[name] = {"dims": dims, "vectorizer": vectorizer}
-        return out
-
-    def _collect_collection_dims(self) -> dict:
-        """
-        Try SDK-first (v4), then fallback to HTTP schema.
-        Return {name: {'dims': int|None, 'vectorizer': str|None}}
-        """
-        # --- SDK path (v4) ---
-        try:
-            # list_all gives lightweight refs; get(name).config.get() returns config object
-            refs = self.weaviate_client.collections.list_all()
-            results = {}
-            for ref in refs:
-                name = getattr(ref, "name", str(ref))
-                coll = self.weaviate_client.collections.get(name)
-                cfg = coll.config.get()
-                # Different client versions expose these differently; try both
-                dims = None
-                vectorizer = None
-                try:
-                    # Typed attributes (preferred, v4+)
-                    vectorizer = getattr(cfg, "vectorizer", None)
-                except Exception:
-                    pass
-                try:
-                    dims = getattr(getattr(cfg, "vectorizer_config", None), "vector_dimensions", None)
-                except Exception:
-                    pass
-                # Try dict-style fallbacks
-                try:
-                    as_dict = cfg.to_dict() if hasattr(cfg, "to_dict") else dict(cfg)
-                    vectorizer = vectorizer or as_dict.get("vectorizer")
-                    dims = dims or as_dict.get("vectorizer_config", {}).get("vectorDimensions")
-                    dims = dims or as_dict.get("vectorIndexConfig", {}).get("vectorDimensions")
-                except Exception:
-                    pass
-                results[name] = {"dims": dims, "vectorizer": vectorizer}
-            if results:
-                return results
-        except Exception as e:
-            logger.warning(f"SDK schema inspection failed, will try HTTP schema: {e}")
-
-        # --- HTTP fallback (/v1/schema) ---
-        schema_json = self._http_fetch_schema()
-        if schema_json:
-            return self._extract_dims_from_schema_json(schema_json)
-
-        return {}
-
-    
-    # async def initialize(self):
-    #     """Initialize connections and validate setup"""
-    #     try:
-    #         # Connect to Weaviate
-    #         self.weaviate_client = weaviate.connect_to_weaviate_cloud(
-    #             cluster_url=config.WEAVIATE_CLUSTER_URL,
-    #             auth_credentials=Auth.api_key(config.WEAVIATE_API_KEY)
-    #         )
-            
-    #         # Verify connection
-    #         if not self.weaviate_client.is_ready():
-    #             raise ConnectionError("Failed to connect to Weaviate cluster")
-            
-    #         # Test embedding model
-    #         test_embedding = self.embedding_model.encode("test")
-    #         if len(test_embedding) != config.EMBEDDING_DIMENSION:
-    #             logger.warning(f"Embedding dimension mismatch: expected {config.EMBEDDING_DIMENSION}, got {len(test_embedding)}")
-    #         else:
-    #             logger.info(f"✅ Embedding model validated - dimension: {len(test_embedding)}")
-            
-    #         self.is_initialized = True
-    #         logger.info("✅ Plantation Plan Service initialized successfully")
-            
-    #     except Exception as e:
-    #         logger.error(f"❌ Failed to initialize Plantation Plan Service: {e}")
-    #         raise
     
     async def initialize(self):
-        """Initialize connections and validate setup; force 384-dim encoder."""
+        """Initialize connections to Pinecone"""
         try:
-            # Connect to Weaviate (with gRPC disabled to avoid connectivity issues)
-            from weaviate.config import AdditionalConfig
-            additional_config = AdditionalConfig(
-                timeout=(5, 15)  # 5s connection, 15s read timeout
-            )
+            # Initialize Pinecone client
+            self.pinecone_client = Pinecone(api_key=config.PINECONE_API_KEY)
             
-            self.weaviate_client = weaviate.connect_to_wcs(
-                cluster_url=config.WEAVIATE_CLUSTER_URL,
-                auth_credentials=Auth.api_key(config.WEAVIATE_API_KEY),
-                additional_config=additional_config
-            )
-
-            # Verify connection
-            if not self.weaviate_client.is_ready():
-                raise ConnectionError("Failed to connect to Weaviate cluster")
-
-            logger.info("✅ Connected to Weaviate; forcing vector dimension to 384 for queries...")
-
-            # Force encoder to 384 regardless of collection metadata
-            self._set_encoder_for_dimension(384)
-
-            # Validate the active encoder locally
+            # Get or create index
+            index_name = config.PINECONE_INDEX_NAME
+            existing_indexes = [idx.name for idx in self.pinecone_client.list_indexes()]
+            
+            if index_name not in existing_indexes:
+                logger.info(f"🆕 Creating Pinecone index: {index_name}")
+                self.pinecone_client.create_index(
+                    name=index_name,
+                    dimension=config.EMBEDDING_DIMENSION,
+                    metric="cosine",
+                    spec=ServerlessSpec(
+                        cloud=config.PINECONE_CLOUD,
+                        region=config.PINECONE_ENVIRONMENT
+                    )
+                )
+                logger.info("✅ Created serverless index")
+            else:
+                logger.info(f"✅ Using existing index: {index_name}")
+            
+            # Connect to the index
+            self.pinecone_index = self.pinecone_client.Index(index_name)
+            
+            # Test embedding model
             test_embedding = self.embedding_model.encode("test")
-            logger.info(f"✅ Local encoder ready - dimension: {len(test_embedding)}")
+            logger.info(f"✅ Embedding model validated - dimension: {len(test_embedding)}")
 
             self.is_initialized = True
-            logger.info("✅ Plantation Plan Service initialized successfully")
+            logger.info("✅ Plantation Plan Service initialized successfully with Pinecone")
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize Plantation Plan Service: {e}")
@@ -395,11 +222,12 @@ class PlantationPlanService:
 
     async def cleanup(self):
         """Clean up resources"""
-        if self.weaviate_client:
-            self.weaviate_client.close()
-            logger.info("🛑 Weaviate connection closed")
+        # Pinecone client doesn't need explicit cleanup
+        self.pinecone_client = None
+        self.pinecone_index = None
         # Clear stored plans
         self._stored_plans.clear()
+        logger.info("🛑 Pinecone client cleaned up")
 
     async def store_plan_for_preview(self, plan_data: Dict[str, Any]):
         """Store plan data for later preview and PDF generation"""
@@ -412,24 +240,6 @@ class PlantationPlanService:
         """Retrieve stored plan data by ID"""
         return self._stored_plans.get(plan_id)
 
-    def _get_collection(self):
-        """Try to fetch the Weaviate collection using candidate names"""
-        last_exc = None
-        for name in self.collection_name_candidates:
-            try:
-                collection = self.weaviate_client.collections.get(name)
-                logger.info(f"✅ Using Weaviate collection: {name}")
-                return collection
-            except Exception as e:
-                last_exc = e
-                continue
-        raise last_exc if last_exc else RuntimeError("Weaviate collection could not be found")
-
-    def _ensure_fallback_encoder(self):
-        """Lazy load the 384-dim encoder if needed (used as primary)."""
-        if self.embedding_model_fallback_384 is None:
-            logger.info("⚠️ Loading 384-dim embedding model: all-MiniLM-L6-v2")
-            self.embedding_model_fallback_384 = SentenceTransformer('all-MiniLM-L6-v2')
 
     def _format_spatial_data(self, spatial_data: Dict[str, Any]) -> Dict[str, str]:
         """Format spatial query results for prompt inclusion"""
@@ -558,33 +368,38 @@ class PlantationPlanService:
         return {"facts": facts, "markdown": "\n".join(lines) if lines else "- No explicit site facts detected in spatial properties"}
 
     async def _retrieve_knowledge_base_context(self, query: str, top_k: int = 15) -> List[Dict[str, Any]]:
-        """Retrieve relevant context from Weaviate knowledge base using 384-dim vectors"""
+        """Retrieve relevant context from Pinecone knowledge base"""
         try:
             if not self.is_initialized:
                 await self.initialize()
             
-            # Generate query embedding (384-dim)
+            namespace = config.PINECONE_NAMESPACE
+            
+            # Generate query embedding using SentenceTransformer
             query_embedding = self.embedding_model.encode(query).tolist()
-            self.current_embedding_dim = len(query_embedding)
-            logger.info(f"🔢 Using embedding dimension: {self.current_embedding_dim}")
-            collection = self._get_collection()
-            results = collection.query.near_vector(
-                near_vector=query_embedding,
-                limit=top_k,
-                return_properties=["content", "source", "page"]
+            logger.info(f"🔍 Generated query embedding, dimension: {len(query_embedding)}")
+            
+            # Query Pinecone with vector
+            results = self.pinecone_index.query(
+                vector=query_embedding,
+                top_k=top_k,
+                namespace=namespace,
+                include_metadata=True
             )
             
             # Format results
             knowledge_chunks = []
-            for obj in results.objects:
+            if hasattr(results, 'matches'):
+                for match in results.matches:
+                    metadata = match.metadata if hasattr(match, 'metadata') else {}
                 chunk = {
-                    "content": obj.properties.get("content", ""),
-                    "source": obj.properties.get("source", "Unknown"),
-                    "page": obj.properties.get("page", -1)
+                        "content": metadata.get("content", ""),
+                        "source": metadata.get("source", "Unknown"),
+                        "page": metadata.get("page", -1)
                 }
                 knowledge_chunks.append(chunk)
             
-            logger.info(f"✅ Retrieved {len(knowledge_chunks)} knowledge chunks from Weaviate")
+            logger.info(f"✅ Retrieved {len(knowledge_chunks)} knowledge chunks from Pinecone")
             return knowledge_chunks
             
         except Exception as e:

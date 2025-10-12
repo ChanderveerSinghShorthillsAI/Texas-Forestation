@@ -2,11 +2,15 @@ from ultralytics import YOLO
 import os
 import glob
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # ==== CONFIG ====
-IMAGE_DIR = "/home/shtlp_0078/Desktop/Texas-Forestation/backend/Texas_satellite_images"  # Folder with images
-OUT_DIR = "/home/shtlp_0078/Desktop/Texas-Forestation/backend/yolo_results"  # Output folder
-MODEL_PATH = "/home/shtlp_0078/Desktop/Texas-Forestation/backend/runs/classify/train/weights/best.pt"  # Trained model
+IMAGE_DIR = os.getenv("YOLO_IMAGE_DIR", "/home/shtlp_0078/Desktop/Texas-Forestation/backend/Texas_satellite_images")  # Folder with images
+OUT_DIR = os.getenv("YOLO_OUT_DIR", "/home/shtlp_0078/Desktop/Texas-Forestation/backend/yolo_results")  # Output folder
+MODEL_PATH = os.getenv("YOLO_MODEL_PATH", "/home/shtlp_0078/Desktop/Texas-Forestation/backend/runs/classify/train/weights/best.pt")  # Trained model
 
 # ==== SETUP ====
 os.makedirs(OUT_DIR, exist_ok=True)

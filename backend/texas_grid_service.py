@@ -5,13 +5,15 @@ Manages the grid-based fire prediction system for complete Texas coverage
 import csv
 import asyncio
 import logging
-import sqlite3
+import psycopg2
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any, Tuple
 from pathlib import Path
 import json
 from dataclasses import dataclass
 import math
+
+from postgres_config import get_connection, release_connection
 
 logger = logging.getLogger(__name__)
 
@@ -59,9 +61,8 @@ class GridFireRisk:
 class TexasGridService:
     """Service for managing Texas-wide grid-based fire prediction"""
     
-    def __init__(self, grid_csv_path: str = None, db_path: str = "texas_fire_grid.db"):
+    def __init__(self, grid_csv_path: str = None, db_path: str = None):
         self.grid_csv_path = grid_csv_path or "../frontend/public/texas_grid_cells.csv"
-        self.db_path = db_path
         self.grid_cells: List[GridCell] = []
         self.total_cells = 0
         
@@ -74,38 +75,42 @@ class TexasGridService:
         self._init_database()
         
     def _init_database(self):
-        """Initialize SQLite database for caching grid fire risk data"""
+        """Initialize PostgreSQL database for caching grid fire risk data"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS grid_fire_risk (
-                        grid_index INTEGER PRIMARY KEY,
-                        lat REAL NOT NULL,
-                        lng REAL NOT NULL,
-                        fire_risk_score REAL NOT NULL,
-                        risk_category TEXT NOT NULL,
-                        risk_color TEXT NOT NULL,
-                        max_risk_24h REAL NOT NULL,
-                        avg_risk_24h REAL NOT NULL,
-                        forecast_timestamp TEXT NOT NULL,
-                        weather_data TEXT NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_grid_timestamp 
-                    ON grid_fire_risk(forecast_timestamp)
-                """)
-                
-                conn.execute("""
-                    CREATE INDEX IF NOT EXISTS idx_grid_risk_score 
-                    ON grid_fire_risk(fire_risk_score)
-                """)
-                
-                logger.info("Grid fire risk database initialized")
-                
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS grid_fire_risk (
+                    grid_index INTEGER PRIMARY KEY,
+                    lat REAL NOT NULL,
+                    lng REAL NOT NULL,
+                    fire_risk_score REAL NOT NULL,
+                    risk_category TEXT NOT NULL,
+                    risk_color TEXT NOT NULL,
+                    max_risk_24h REAL NOT NULL,
+                    avg_risk_24h REAL NOT NULL,
+                    forecast_timestamp TEXT NOT NULL,
+                    weather_data TEXT NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_grid_timestamp 
+                ON grid_fire_risk(forecast_timestamp)
+            """)
+            
+            cursor.execute("""
+                CREATE INDEX IF NOT EXISTS idx_grid_risk_score 
+                ON grid_fire_risk(fire_risk_score)
+            """)
+            
+            conn.commit()
+            release_connection(conn)
+            logger.info("Grid fire risk database initialized")
+            
         except Exception as e:
             logger.error(f"Error initializing database: {str(e)}")
             raise
@@ -314,32 +319,34 @@ class TexasGridService:
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=max_age_hours)
             
-            with sqlite3.connect(self.db_path) as conn:
-                conn.row_factory = sqlite3.Row
-                cursor = conn.execute("""
-                    SELECT * FROM grid_fire_risk 
-                    WHERE datetime(forecast_timestamp) > datetime(?)
-                    ORDER BY fire_risk_score DESC
-                """, (cutoff_time.isoformat(),))
-                
-                cached_risks = []
-                for row in cursor.fetchall():
-                    risk = GridFireRisk(
-                        grid_index=row['grid_index'],
-                        lat=row['lat'],
-                        lng=row['lng'],
-                        fire_risk_score=row['fire_risk_score'],
-                        risk_category=row['risk_category'],
-                        risk_color=row['risk_color'],
-                        max_risk_24h=row['max_risk_24h'],
-                        avg_risk_24h=row['avg_risk_24h'],
-                        forecast_timestamp=datetime.fromisoformat(row['forecast_timestamp']),
-                        weather_data=json.loads(row['weather_data'])
-                    )
-                    cached_risks.append(risk)
-                
-                logger.info(f"Retrieved {len(cached_risks)} cached fire risk records")
-                return cached_risks
+            conn = get_connection()
+            from psycopg2.extras import RealDictCursor
+            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor.execute("""
+                SELECT * FROM grid_fire_risk 
+                WHERE CAST(forecast_timestamp AS TIMESTAMP) > %s
+                ORDER BY fire_risk_score DESC
+            """, (cutoff_time.isoformat(),))
+            
+            cached_risks = []
+            for row in cursor.fetchall():
+                risk = GridFireRisk(
+                    grid_index=row['grid_index'],
+                    lat=row['lat'],
+                    lng=row['lng'],
+                    fire_risk_score=row['fire_risk_score'],
+                    risk_category=row['risk_category'],
+                    risk_color=row['risk_color'],
+                    max_risk_24h=row['max_risk_24h'],
+                    avg_risk_24h=row['avg_risk_24h'],
+                    forecast_timestamp=datetime.fromisoformat(row['forecast_timestamp']),
+                    weather_data=json.loads(row['weather_data'])
+                )
+                cached_risks.append(risk)
+            
+            release_connection(conn)
+            logger.info(f"Retrieved {len(cached_risks)} cached fire risk records")
+            return cached_risks
                 
         except Exception as e:
             logger.error(f"Error retrieving cached fire risk data: {str(e)}")
@@ -353,33 +360,47 @@ class TexasGridService:
             fire_risks: List of grid fire risk data to save
         """
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                # Clear old data first
-                conn.execute("DELETE FROM grid_fire_risk")
-                
-                # Insert new data
-                for risk in fire_risks:
-                    conn.execute("""
-                        INSERT OR REPLACE INTO grid_fire_risk (
-                            grid_index, lat, lng, fire_risk_score, risk_category,
-                            risk_color, max_risk_24h, avg_risk_24h, forecast_timestamp,
-                            weather_data, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                    """, (
-                        risk.grid_index,
-                        risk.lat,
-                        risk.lng,
-                        risk.fire_risk_score,
-                        risk.risk_category,
-                        risk.risk_color,
-                        risk.max_risk_24h,
-                        risk.avg_risk_24h,
-                        risk.forecast_timestamp.isoformat(),
-                        json.dumps(risk.weather_data)
-                    ))
-                
-                conn.commit()
-                logger.info(f"Saved {len(fire_risks)} fire risk records to cache")
+            conn = get_connection()
+            cursor = conn.cursor()
+            
+            # Clear old data first
+            cursor.execute("DELETE FROM grid_fire_risk")
+            
+            # Insert new data
+            for risk in fire_risks:
+                cursor.execute("""
+                    INSERT INTO grid_fire_risk (
+                        grid_index, lat, lng, fire_risk_score, risk_category,
+                        risk_color, max_risk_24h, avg_risk_24h, forecast_timestamp,
+                        weather_data, updated_at
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (grid_index) DO UPDATE SET
+                        lat = EXCLUDED.lat,
+                        lng = EXCLUDED.lng,
+                        fire_risk_score = EXCLUDED.fire_risk_score,
+                        risk_category = EXCLUDED.risk_category,
+                        risk_color = EXCLUDED.risk_color,
+                        max_risk_24h = EXCLUDED.max_risk_24h,
+                        avg_risk_24h = EXCLUDED.avg_risk_24h,
+                        forecast_timestamp = EXCLUDED.forecast_timestamp,
+                        weather_data = EXCLUDED.weather_data,
+                        updated_at = CURRENT_TIMESTAMP
+                """, (
+                    risk.grid_index,
+                    risk.lat,
+                    risk.lng,
+                    risk.fire_risk_score,
+                    risk.risk_category,
+                    risk.risk_color,
+                    risk.max_risk_24h,
+                    risk.avg_risk_24h,
+                    risk.forecast_timestamp.isoformat(),
+                    json.dumps(risk.weather_data)
+                ))
+            
+            conn.commit()
+            release_connection(conn)
+            logger.info(f"Saved {len(fire_risks)} fire risk records to cache")
                 
         except Exception as e:
             logger.error(f"Error saving fire risk data: {str(e)}")
@@ -388,13 +409,14 @@ class TexasGridService:
     def clear_cache(self):
         """Clear all cached fire risk data from database"""
         try:
-            with sqlite3.connect(self.db_path) as conn:
-                cursor = conn.cursor()
-                cursor.execute("DELETE FROM grid_fire_risk")
-                deleted_count = cursor.rowcount
-                conn.commit()
-                logger.info(f"🧹 Cleared {deleted_count} cached fire risk records from database")
-                return deleted_count
+            conn = get_connection()
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM grid_fire_risk")
+            deleted_count = cursor.rowcount
+            conn.commit()
+            release_connection(conn)
+            logger.info(f"🧹 Cleared {deleted_count} cached fire risk records from database")
+            return deleted_count
                 
         except Exception as e:
             logger.error(f"Error clearing cache: {str(e)}")

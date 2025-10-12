@@ -14,23 +14,34 @@ class Config:
     # Google Gemini API Configuration
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     
-    # Weaviate Cloud Configuration
-    WEAVIATE_CLUSTER_URL = os.getenv(
-        "WEAVIATE_CLUSTER_URL",  
-        "YOUR_NEW_CLUSTER_URL.weaviate.cloud"  # Replace with your new cluster URL
+    # Pinecone Configuration
+    PINECONE_API_KEY = os.getenv(
+        "PINECONE_API_KEY",
+        "pcsk_45dUYY_ShcerydwjW3afP668vKmVNELU4pDT54cJWt7h9xB8diqhrsnxEEzp7MGRsHtwMk"
     )
-    WEAVIATE_API_KEY = os.getenv(
-        "WEAVIATE_API_KEY",
-        "YOUR_NEW_API_KEY"  # Replace with your new API key
+    PINECONE_ENVIRONMENT = os.getenv(
+        "PINECONE_ENVIRONMENT",
+        "us-east-1"  # AWS region
+    )
+    PINECONE_CLOUD = os.getenv(
+        "PINECONE_CLOUD",
+        "aws"  # Cloud provider
+    )
+    PINECONE_INDEX_NAME = os.getenv(
+        "PINECONE_INDEX_NAME",
+        "texas-plantation-kb"  # Index name
     )
     
     # Plan Generation Settings
-    PLAN_GENERATION_MODEL = os.getenv("PLAN_GENERATION_MODEL", "gemini-1.5-flash")
+    PLAN_GENERATION_MODEL = os.getenv("PLAN_GENERATION_MODEL", "gemini-2.0-flash")
     PLAN_GENERATION_MODEL_FALLBACK = os.getenv("PLAN_GENERATION_MODEL_FALLBACK", "gemini-1.5-flash")
     MAX_PLAN_PAGES = int(os.getenv("MAX_PLAN_PAGES", "25"))
+    # Using all-MiniLM-L6-v2 model (384 dimensions)
     EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "384"))
     GEN_MAX_RETRIES = int(os.getenv("GEN_MAX_RETRIES", "3"))
     GEN_RETRY_BACKOFF_SECONDS = float(os.getenv("GEN_RETRY_BACKOFF_SECONDS", "2.0"))
+    # Pinecone namespace
+    PINECONE_NAMESPACE = os.getenv("PINECONE_NAMESPACE", "texas-kb")
     
     # PDF Generation Settings
     PDF_TEMPLATE_PATH = Path("templates")

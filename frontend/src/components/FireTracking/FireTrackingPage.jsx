@@ -220,7 +220,7 @@ const FireTrackingPage = () => {
       const boundaryLayer = GEOJSON_LAYERS.find(layer => layer.id === 'texas-boundary');
       
       if (boundaryLayer) {
-        const boundaryUrl = `${process.env.PUBLIC_URL}/Texas_Geojsons/Texas_Geojsons/${boundaryLayer.file}`;
+        const boundaryUrl = `${process.env.PUBLIC_URL}/default_geojsons/${boundaryLayer.file}`;
         console.log('🗺️ Loading Texas boundary from:', boundaryUrl);
         
         const response = await fetch(boundaryUrl);

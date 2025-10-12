@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PlantationPlanGenerator from './PlantationPlanGenerator';
 import './SpatialQueryResults.css';
 
@@ -9,6 +9,14 @@ const SpatialQueryResults = ({ queryResults, onClose, isVisible }) => {
   const [activeTab, setActiveTab] = useState('polygons');
   const [showPlanGenerator, setShowPlanGenerator] = useState(false);
   const [generatedPlan, setGeneratedPlan] = useState(null);
+
+  // Clear generated plan when query results change (new point clicked)
+  useEffect(() => {
+    if (queryResults) {
+      setGeneratedPlan(null);
+      setShowPlanGenerator(false);
+    }
+  }, [queryResults]);
 
   if (!isVisible || !queryResults) return null;
 
@@ -144,10 +152,10 @@ const SpatialQueryResults = ({ queryResults, onClose, isVisible }) => {
 
               {generatedPlan && (
                 <div className="previous-plan-info">
-                  <p>
-                    ✅ <strong>Plan Generated:</strong> {generatedPlan.title}
+                  <p style={{ color: 'white' }}>
+                    ✅ <strong style={{ color: 'white' }}>Plan Generated:</strong> {generatedPlan.title}
                     <br />
-                    <small>Generated: {new Date(generatedPlan.generated_at).toLocaleString()}</small>
+                    <small style={{ color: 'white' }}>Generated: {new Date(generatedPlan.generated_at).toLocaleString()}</small>
                   </p>
                 </div>
               )}

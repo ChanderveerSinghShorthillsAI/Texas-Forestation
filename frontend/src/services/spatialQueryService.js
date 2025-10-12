@@ -36,8 +36,12 @@ class SpatialQueryService {
     }
 
     try {
+      // Import geoJsonService to get proper URL
+      const { geoJsonService } = await import('./geoJsonService');
+      const url = geoJsonService.getGeoJsonUrl(layerConfig.file, layerConfig.basePath);
+      
       // Try to get just the header/metadata if possible
-      const response = await fetch(`/Texas_Geojsons/Texas_Geojsons/${layerConfig.file}`, {
+      const response = await fetch(url, {
         method: 'HEAD'
       });
       
@@ -48,7 +52,8 @@ class SpatialQueryService {
       return estimatedSize;
     } catch (error) {
       console.warn(`Could not get size estimate for ${layerId}:`, error);
-      return 0;
+      // Return a default estimate based on layer type
+      return layerConfig.type === 'polygon' ? 1000000 : 100000; // 1MB for polygons, 100KB for others
     }
   }
 

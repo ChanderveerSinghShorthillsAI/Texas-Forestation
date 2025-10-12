@@ -11,6 +11,11 @@ import httpx
 from fastapi import HTTPException
 import json
 from pathlib import Path
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +24,11 @@ class FireTrackingService:
     
     def __init__(self):
         # NASA FIRMS API configuration
-        self.MAP_KEY = "38b1aa410c517a0d17f0180ea5b75d9e"  # Your provided API key
+        self.MAP_KEY = os.getenv("NASA_FIRMS_MAP_KEY", "38b1aa410c517a0d17f0180ea5b75d9e")
         self.BASE_URL = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
         
         # Texas bounding box (West, South, East, North)
-        self.TEXAS_BBOX = "-106.65,25.84,-93.51,36.50"
+        self.TEXAS_BBOX = os.getenv("TEXAS_BBOX", "-106.65,25.84,-93.51,36.50")
         
         # Available datasets
         self.DATASETS = {

@@ -9,6 +9,10 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 import base64
 from io import BytesIO
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 from sentinelhub import (
     SHConfig,

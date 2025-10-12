@@ -1,11 +1,16 @@
 import httpx
 import json
 import asyncio
+import os
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 import logging
 from shapely.geometry import shape, Point
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -14,8 +19,8 @@ class EncroachmentService:
     """Service for fetching encroachment data directly from Global Forest Watch API"""
     
     def __init__(self):
-        self.api_url = "https://data-api.globalforestwatch.org/dataset/umd_glad_dist_alerts/latest/query/json"
-        self.api_key = "782a188f-e7b1-4b3f-bc10-afad443b66e4"
+        self.api_url = os.getenv("GLOBAL_FOREST_WATCH_API_URL", "https://data-api.globalforestwatch.org/dataset/umd_glad_dist_alerts/latest/query/json")
+        self.api_key = os.getenv("GLOBAL_FOREST_WATCH_API_KEY", "782a188f-e7b1-4b3f-bc10-afad443b66e4")
         self.headers = {
             "origin": "http://localhost",
             "x-api-key": self.api_key,
@@ -61,12 +66,12 @@ class EncroachmentService:
     def _load_texas_boundary(self):
         """Load the actual Texas GeoJSON boundary for precise point filtering"""
         try:
-            # Try multiple possible paths
+            # Try multiple possible paths (using default_geojsons - not gitignored)
             possible_paths = [
-                Path(__file__).parent.parent / "frontend" / "public" / "Texas_Geojsons" / "Texas_Geojsons" / "texas.geojson",
-                Path(__file__).parent / ".." / "frontend" / "public" / "Texas_Geojsons" / "Texas_Geojsons" / "texas.geojson",
-                Path("frontend/public/Texas_Geojsons/Texas_Geojsons/texas.geojson"),
-                Path("../frontend/public/Texas_Geojsons/Texas_Geojsons/texas.geojson")
+                Path(__file__).parent.parent / "frontend" / "public" / "default_geojsons" / "texas.geojson",
+                Path(__file__).parent / ".." / "frontend" / "public" / "default_geojsons" / "texas.geojson",
+                Path("frontend/public/default_geojsons/texas.geojson"),
+                Path("../frontend/public/default_geojsons/texas.geojson")
             ]
             
             geojson_path = None

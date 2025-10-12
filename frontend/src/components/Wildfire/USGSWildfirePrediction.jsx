@@ -285,7 +285,7 @@ const USGSWildfirePrediction = () => {
             
             // Load Texas boundary GeoJSON, available times, and service health in parallel
             const [boundaryResponse, times, health] = await Promise.all([
-                fetch('/Texas_Geojsons/Texas_Geojsons/texas.geojson'),
+                fetch('/default_geojsons/texas.geojson'),
                 usgsWfpiService.fetchAvailableTimes(currentLayer),
                 usgsWfpiService.checkServiceHealth()
             ]);

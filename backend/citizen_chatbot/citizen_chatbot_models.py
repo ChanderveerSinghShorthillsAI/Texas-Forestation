@@ -114,20 +114,20 @@ class ConfidentialQuery(Base):
     session = relationship("ChatSession")
 
 # Database configuration
-# Use absolute path to ensure single database file in backend root
-if not os.getenv("DATABASE_URL"):
-    backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    db_path = os.path.join(backend_dir, "texas_chatbot.db")
-    DATABASE_URL = f"sqlite:///{db_path}"
-else:
-    DATABASE_URL = os.getenv("DATABASE_URL")
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from postgres_config import get_database_url
+
+DATABASE_URL = get_database_url()
 
 # Create engine and session factory
 engine = create_engine(
     DATABASE_URL,
     echo=False,  # Set to True for SQL debugging
     pool_size=10,
-    max_overflow=20
+    max_overflow=20,
+    pool_pre_ping=True,
+    pool_recycle=300
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
