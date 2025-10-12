@@ -11,6 +11,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import './AuthHeader.css';
+import { FaSpinner } from 'react-icons/fa';
 
 const AuthHeader = () => {
   const { user, logout, getTimeUntilExpiry, isAuthenticated } = useAuth();
@@ -111,9 +112,9 @@ const AuthHeader = () => {
             title="Sign out of Texas Forestation System"
           >
             {isLoggingOut ? (
-              <div className="logout-loading">
-                <div className="loading-spinner-small"></div>
-                Signing Out...
+              <div className="loading-container">
+               <FaSpinner className="loading-spinner-icon" />
+               <p>Signing Out...</p>
               </div>
             ) : (
               <>

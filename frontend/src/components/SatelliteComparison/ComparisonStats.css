@@ -90,7 +90,7 @@
 }
 
 .image1-card .card-header {
-  background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
 }
 
 /* Comparison Card - Center Column */
@@ -164,7 +164,7 @@
 }
 
 .image2-card .card-header {
-  background: linear-gradient(135deg, #66bb6a 0%, #388e3c 100%);
+  background: linear-gradient(135deg, #4caf50 0%, #2e7d32 100%);
 }
 
 /* Card Header */
@@ -398,7 +398,7 @@
 }
 
 .info-text {
-  color: #000000 !important;
+  color: #000000;
   font-size: 1rem;
   font-weight: 700;
   line-height: 1.7;

@@ -176,7 +176,10 @@ const LandingPage = () => {
         <div className="nav-content">
           <div className="nav-logo">
             <FaLeaf className="logo-icon" />
+            <div style={{display: "flex", flexDirection: "column"}}>
             <span className="logo-text">Texas Vanrakshak</span>
+            <span style={{color: "white", fontSize: "12px", textAlign: "end"}}>Powered By Shorthills AI</span>
+            </div>
           </div>
           <div className="nav-user">
             <FaUser className="user-icon" />
@@ -393,7 +396,10 @@ const LandingPage = () => {
         <div className="footer-content">
           <div className="footer-logo">
             <FaLeaf className="footer-logo-icon" />
-            <span>Texas Vanrakshak</span>
+            <div style={{display: "flex", flexDirection: "column"}}>
+            <span className="logo-text">Texas Vanrakshak</span>
+            <span style={{color: "white", fontSize: "12px", textAlign: "end"}}>Powered By Shorthills AI</span>
+            </div>
           </div>
           <p className="footer-text">
             Protecting Texas forests through technology and innovation

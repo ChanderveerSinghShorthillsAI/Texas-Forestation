@@ -151,7 +151,7 @@
 /* Panel Header */
 .panel-header {
   padding: 1.75rem 2rem;
-  background: linear-gradient(135deg, #81c784 0%, #66bb6a 100%);
+  background: linear-gradient(135deg, #66bb6a 0%, #388e3c 100%);
   color: white;
   display: flex;
   align-items: center;

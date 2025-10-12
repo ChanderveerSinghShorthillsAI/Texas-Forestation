@@ -715,6 +715,65 @@ L.Icon.Default.mergeOptions({
   shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
 
+/**
+ * Build a "world-with-hole" feature from the Texas boundary GeoJSON
+ * Creates a mask that darkens everything outside Texas
+ */
+function buildOutsideTexasMask(texasGeojson) {
+  if (!texasGeojson) return null;
+  
+  // Handle both FeatureCollection and single Feature formats
+  let features = [];
+  if (texasGeojson?.type === 'FeatureCollection' && texasGeojson?.features?.length) {
+    features = texasGeojson.features;
+  } else if (texasGeojson?.type === 'Feature' && texasGeojson?.geometry) {
+    features = [texasGeojson];
+  } else {
+    return null;
+  }
+
+  // A world-size outer ring (lon, lat) that encloses the whole map
+  const worldRing = [
+    [-179.9999, -89.9999],
+    [-179.9999,  89.9999],
+    [ 179.9999,  89.9999],
+    [ 179.9999, -89.9999],
+    [-179.9999, -89.9999],
+  ];
+
+  // Collect all Texas rings (holes). Works for Polygon and MultiPolygon.
+  const texasHoles = [];
+
+  for (const f of features) {
+    const g = f.geometry;
+    if (!g) continue;
+
+    if (g.type === 'Polygon') {
+      const outer = g.coordinates?.[0];
+      if (outer && outer.length >= 4) texasHoles.push(outer);
+    } else if (g.type === 'MultiPolygon') {
+      for (const poly of g.coordinates || []) {
+        const outer = poly?.[0];
+        if (outer && outer.length >= 4) texasHoles.push(outer);
+      }
+    }
+  }
+
+  if (texasHoles.length === 0) {
+    return null;
+  }
+
+  // One big polygon: outer = world, inners = all Texas outers (as holes)
+  return {
+    type: 'Feature',
+    properties: { role: 'outside-texas-mask' },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [worldRing, ...texasHoles],
+    },
+  };
+}
+
 const EncroachmentMap = ({ 
   alerts = [], 
   selectedAlert, 
@@ -732,6 +791,7 @@ const EncroachmentMap = ({
   const currentRenderIdRef = useRef(0); // Track render cycles
   const onAlertSelectRef = useRef(onAlertSelect); // Stable ref for callback
   const texasBoundaryLayerRef = useRef(null);
+  const outsideTexasMaskLayerRef = useRef(null); // Add ref for mask layer
   const [texasBoundaryData, setTexasBoundaryData] = useState(null);
   const performanceStatsRef = useRef({
     renderTime: 0,
@@ -901,6 +961,29 @@ const EncroachmentMap = ({
 
     mapInstanceRef.current = map;
 
+    // Add outside Texas mask if boundary is loaded
+    if (texasBoundaryData && !outsideTexasMaskLayerRef.current) {
+      try {
+        const maskFeature = buildOutsideTexasMask(texasBoundaryData);
+        if (maskFeature) {
+          const maskLayer = L.geoJSON(maskFeature, {
+            style: {
+              stroke: false,
+              fillColor: '#000000',
+              fillOpacity: 0.65
+            },
+            interactive: false,
+            pane: 'tilePane' // Add to tile pane so it's above tiles but below markers
+          });
+          maskLayer.addTo(map);
+          outsideTexasMaskLayerRef.current = maskLayer;
+          console.log('✅ Outside Texas mask added during map initialization');
+        }
+      } catch (error) {
+        console.error('❌ Error adding outside Texas mask:', error);
+      }
+    }
+
     // Add boundary if already loaded
     if (texasBoundaryData && !texasBoundaryLayerRef.current) {
       const boundaryStyle = {
@@ -932,6 +1015,12 @@ const EncroachmentMap = ({
       // Clear markers
       clearMarkers();
       
+      // Clear outside Texas mask layer
+      if (outsideTexasMaskLayerRef.current && mapInstanceRef.current) {
+        mapInstanceRef.current.removeLayer(outsideTexasMaskLayerRef.current);
+        outsideTexasMaskLayerRef.current = null;
+      }
+      
       // Clear Texas boundary layer
       if (texasBoundaryLayerRef.current && mapInstanceRef.current) {
         mapInstanceRef.current.removeLayer(texasBoundaryLayerRef.current);
@@ -946,10 +1035,33 @@ const EncroachmentMap = ({
   }, [clearMarkers]);
 
   /**
-   * Add Texas GeoJSON boundary to map when data is loaded
+   * Add Texas GeoJSON boundary and mask to map when data is loaded
    */
   useEffect(() => {
     if (!mapInstanceRef.current || !texasBoundaryData || isUnmountingRef.current) return;
+    
+    // Add outside Texas mask first (if not already added)
+    if (!outsideTexasMaskLayerRef.current) {
+      try {
+        const maskFeature = buildOutsideTexasMask(texasBoundaryData);
+        if (maskFeature) {
+          const maskLayer = L.geoJSON(maskFeature, {
+            style: {
+              stroke: false,
+              fillColor: '#000000',
+              fillOpacity: 0.65
+            },
+            interactive: false,
+            pane: 'tilePane'
+          });
+          maskLayer.addTo(mapInstanceRef.current);
+          outsideTexasMaskLayerRef.current = maskLayer;
+          console.log('✅ Outside Texas mask added dynamically');
+        }
+      } catch (error) {
+        console.error('❌ Error adding outside Texas mask dynamically:', error);
+      }
+    }
     
     // Skip if boundary already added
     if (texasBoundaryLayerRef.current) {

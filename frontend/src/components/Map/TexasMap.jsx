@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMapEvents, useMap, Pane } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import {FaSpinner} from 'react-icons/fa';
 
 import GeoJsonLayer from './GeoJsonLayer';
 import GridLayer from './GridLayer';
@@ -98,13 +99,46 @@ const MapEventTracker = ({ setCurrentZoom, setMapBounds }) => {
 /**
  * Component to handle map click events for spatial queries
  */
-const MapClickHandler = ({ onMapClick, gridData, yoloDataLoaded, setNonCultivableAlert }) => {
+const MapClickHandler = ({ 
+  onMapClick, 
+  gridData, 
+  yoloDataLoaded, 
+  setNonCultivableAlert,
+  texasBoundaryData,
+  setOutsideTexasAlert 
+}) => {
   useMapEvents({
     click: (e) => {
       const { lat, lng } = e.latlng;
       const clickCoords = [lng, lat];
       
-      // Check if click is on a non-cultivable grid area (only if YOLO data is loaded)
+      console.log(`🖱️ Map click detected at: [${lng}, ${lat}]`);
+      
+      // STEP 1: Check if click is within Texas boundary (highest priority)
+      const isInTexas = isPointInTexasBoundary(lng, lat, texasBoundaryData);
+      
+      if (!isInTexas) {
+        console.log(`🚫 Click BLOCKED: Outside Texas boundary at [${lng}, ${lat}]`);
+        
+        // Show alert for clicking outside Texas
+        setOutsideTexasAlert({
+          coordinates: { 
+            lat: lat.toFixed(6), 
+            lng: lng.toFixed(6) 
+          }
+        });
+        
+        // Auto-hide the alert after 5 seconds
+        setTimeout(() => {
+          setOutsideTexasAlert(null);
+        }, 5000);
+        
+        return; // Block the click - don't proceed with any query
+      }
+      
+      console.log(`✅ Click is INSIDE Texas boundary at [${lng}, ${lat}]`);
+      
+      // STEP 2: Check if click is on a non-cultivable grid area (only if YOLO data is loaded)
       if (gridData && yoloDataLoaded) {
         const clickedGrid = findGridAtCoordinates(gridData, lng, lat);
         if (clickedGrid) {
@@ -112,7 +146,7 @@ const MapClickHandler = ({ onMapClick, gridData, yoloDataLoaded, setNonCultivabl
           const cultivability = yoloResultsService.getCultivability(gridIndex);
           
           if (cultivability === 0) {
-            console.log(`🚫 Click blocked: Coordinates ${lng}, ${lat} are in non-cultivable grid ${gridIndex}`);
+            console.log(`🚫 Click BLOCKED: Non-cultivable grid ${gridIndex} at [${lng}, ${lat}]`);
             
             // Show custom notification for non-cultivable grid
             setNonCultivableAlert({
@@ -128,12 +162,13 @@ const MapClickHandler = ({ onMapClick, gridData, yoloDataLoaded, setNonCultivabl
             return; // Don't trigger spatial query for black grids
           }
           
-          console.log(`✅ Click allowed: Coordinates ${lng}, ${lat} are in cultivable grid ${gridIndex}`);
+          console.log(`✅ Click in cultivable grid ${gridIndex} at [${lng}, ${lat}]`);
         }
       }
       
-      console.log('🔍 Map clicked at:', clickCoords);
-      onMapClick(clickCoords); // Only trigger for cultivable areas or areas without grid data
+      // STEP 3: All checks passed - proceed with spatial query
+      console.log(`🔍 Proceeding with spatial query at [${lng}, ${lat}]`);
+      onMapClick(clickCoords);
     }
   });
   return null;
@@ -158,17 +193,98 @@ const findGridAtCoordinates = (gridData, lng, lat) => {
 };
 
 /**
- * Helper function to check if a point is inside a polygon
+ * Helper function to check if a point is inside a polygon using ray-casting algorithm
+ * @param {number} lng - Longitude of the point
+ * @param {number} lat - Latitude of the point
+ * @param {Array} polygon - Array of [lng, lat] coordinates
+ * @returns {boolean} - True if point is inside polygon
  */
 const isPointInPolygon = (lng, lat, polygon) => {
+  if (!polygon || polygon.length < 3) return false;
+  
   let inside = false;
   for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    if (((polygon[i][1] > lat) !== (polygon[j][1] > lat)) &&
-        (lng < (polygon[j][0] - polygon[i][0]) * (lat - polygon[i][1]) / (polygon[j][1] - polygon[i][1]) + polygon[i][0])) {
-      inside = !inside;
-    }
+    const xi = polygon[i][0];
+    const yi = polygon[i][1];
+    const xj = polygon[j][0];
+    const yj = polygon[j][1];
+    
+    const intersect = ((yi > lat) !== (yj > lat)) &&
+                     (lng < (xj - xi) * (lat - yi) / (yj - yi) + xi);
+    
+    if (intersect) inside = !inside;
   }
   return inside;
+};
+
+/**
+ * Check if a point is within Texas boundary
+ * Handles Polygon and MultiPolygon geometries with holes
+ * @param {number} lng - Longitude
+ * @param {number} lat - Latitude  
+ * @param {Object} texasBoundaryData - Texas boundary GeoJSON
+ * @returns {boolean} - True if point is within Texas
+ */
+const isPointInTexasBoundary = (lng, lat, texasBoundaryData) => {
+  if (!texasBoundaryData) {
+    console.warn('⚠️ Texas boundary data not available');
+    return true; // Allow clicks if boundary data is not loaded yet
+  }
+
+  // Handle both FeatureCollection and single Feature
+  let features = [];
+  if (texasBoundaryData.type === 'FeatureCollection' && texasBoundaryData.features) {
+    features = texasBoundaryData.features;
+  } else if (texasBoundaryData.type === 'Feature' && texasBoundaryData.geometry) {
+    features = [texasBoundaryData];
+  } else {
+    console.warn('⚠️ Invalid Texas boundary data format');
+    return true; // Allow clicks if data format is unexpected
+  }
+
+  // Check each feature
+  for (const feature of features) {
+    const geometry = feature.geometry;
+    if (!geometry) continue;
+
+    if (geometry.type === 'Polygon') {
+      // Check outer ring (index 0)
+      const outerRing = geometry.coordinates[0];
+      if (isPointInPolygon(lng, lat, outerRing)) {
+        // Point is in outer ring, now check if it's in any holes (inner rings)
+        let inHole = false;
+        for (let i = 1; i < geometry.coordinates.length; i++) {
+          if (isPointInPolygon(lng, lat, geometry.coordinates[i])) {
+            inHole = true;
+            break;
+          }
+        }
+        if (!inHole) {
+          return true; // Point is in Texas
+        }
+      }
+    } else if (geometry.type === 'MultiPolygon') {
+      // Check each polygon in the MultiPolygon
+      for (const polygonCoords of geometry.coordinates) {
+        const outerRing = polygonCoords[0];
+        if (isPointInPolygon(lng, lat, outerRing)) {
+          // Check if point is in any holes
+          let inHole = false;
+          for (let i = 1; i < polygonCoords.length; i++) {
+            if (isPointInPolygon(lng, lat, polygonCoords[i])) {
+              inHole = true;
+              break;
+            }
+          }
+          if (!inHole) {
+            return true; // Point is in Texas
+          }
+        }
+      }
+    }
+  }
+
+  return false; // Point is not in any Texas polygon
 };
 
 // Build a "world-with-hole" feature from the Texas boundary GeoJSON
@@ -276,7 +392,7 @@ const OutsideTexasMask = ({ texasGeojson, opacity = 0.6 }) => {
 /**
  * Main Texas Map Component with Grid Cells
  */
-const TexasMap = () => {
+const TexasMap = ({ onInitializationChange }) => {
   const mapRef = useRef();
   const [texasBoundaryData, setTexasBoundaryData] = useState(null);
   const [gridData, setGridData] = useState(null);
@@ -290,6 +406,7 @@ const TexasMap = () => {
   const [currentQueryId, setCurrentQueryId] = useState(null);
   const [yoloDataLoaded, setYoloDataLoaded] = useState(false);
   const [nonCultivableAlert, setNonCultivableAlert] = useState(null); // New state for alert
+  const [outsideTexasAlert, setOutsideTexasAlert] = useState(null); // Alert for clicks outside Texas
   
   // Carbon estimation states
   const [showCarbonPanel, setShowCarbonPanel] = useState(false);
@@ -317,6 +434,9 @@ const TexasMap = () => {
   // Historical data states
   const [showHistoricalData, setShowHistoricalData] = useState(false);
   
+  // Layer selector state
+  const [isLayerSelectorOpen, setIsLayerSelectorOpen] = useState(false);
+  
   // Loading optimization states
   const [isInitializing, setIsInitializing] = useState(true);
   const [loadingTasks, setLoadingTasks] = useState({
@@ -338,6 +458,11 @@ const TexasMap = () => {
 
   // Optimized sequential loading to prevent overwhelming the browser
   useEffect(() => {
+    // Notify parent that initialization is starting
+    if (onInitializationChange) {
+      onInitializationChange(true);
+    }
+
     const initializeMapComponents = async () => {
       try {
         // Start performance tracking
@@ -446,10 +571,18 @@ const TexasMap = () => {
         
         console.log('🎉 Map initialization complete!');
         setIsInitializing(false);
+        // Notify parent that initialization is complete
+        if (onInitializationChange) {
+          onInitializationChange(false);
+        }
 
       } catch (error) {
         console.error('❌ Map initialization failed:', error);
         setIsInitializing(false); // Show map anyway with limited functionality
+        // Notify parent that initialization is complete (even if failed)
+        if (onInitializationChange) {
+          onInitializationChange(false);
+        }
       }
     };
 
@@ -709,21 +842,162 @@ const TexasMap = () => {
     setShowHistoricalData(false);
   };
 
-  // Show loading optimizer during initialization
+  // Show professional loading screen during initialization
   if (isInitializing) {
     return (
-      <>
-        <LoadingOptimizer
-          isVisible={true}
-          onComplete={() => setIsInitializing(false)}
-        />
-        {/* Carbon Button should still be visible during loading */}
-        <CarbonButton 
-          onClick={handleCarbonButtonClick}
-          isActive={showCarbonPanel}
-          disabled={true}
-        />
-      </>
+      // <div style={{
+      //   position: 'fixed',
+      //   top: 0,
+      //   left: 0,
+      //   right: 0,
+      //   bottom: 0,
+      //   display: 'flex',
+      //   flexDirection: 'column',
+      //   justifyContent: 'center',
+      //   alignItems: 'center',
+      //   background: '#2d5016',
+      //   zIndex: 9999
+      // }}>
+      //   {/* Animated logo/icon container */}
+      //   <div style={{
+      //     position: 'relative',
+      //     marginBottom: '40px'
+      //   }}>
+      //     {/* Outer rotating ring */}
+      //     <div style={{
+      //       position: 'absolute',
+      //       top: '50%',
+      //       left: '50%',
+      //       transform: 'translate(-50%, -50%)',
+      //       width: '120px',
+      //       height: '120px',
+      //       border: '4px solid rgba(255, 255, 255, 0.2)',
+      //       borderTop: '4px solid #fff',
+      //       borderRadius: '50%',
+      //       animation: 'spin 1.5s linear infinite'
+      //     }}></div>
+          
+      //     {/* Inner pulsing circle */}
+      //     <div style={{
+      //       position: 'relative',
+      //       width: '100px',
+      //       height: '100px',
+      //       background: 'rgba(255, 255, 255, 0.95)',
+      //       borderRadius: '50%',
+      //       display: 'flex',
+      //       alignItems: 'center',
+      //       justifyContent: 'center',
+      //       boxShadow: '0 10px 40px rgba(0, 0, 0, 0.3)',
+      //       animation: 'pulse 2s ease-in-out infinite'
+      //     }}>
+      //       <span style={{
+      //         fontSize: '48px',
+      //         animation: 'float 3s ease-in-out infinite'
+      //       }}>
+      //         🌲
+      //       </span>
+      //     </div>
+      //   </div>
+
+      //   {/* Loading text */}
+      //   <div style={{
+      //     textAlign: 'center',
+      //     color: '#fff'
+      //   }}>
+      //     <h1 style={{
+      //       fontSize: '42px',
+      //       fontWeight: '700',
+      //       margin: '0 0 16px 0',
+      //       textShadow: '0 2px 20px rgba(0, 0, 0, 0.3)',
+      //       letterSpacing: '1px'
+      //     }}>
+      //       Loading...
+      //     </h1>
+          
+      //     <p style={{
+      //       fontSize: '18px',
+      //       fontWeight: '400',
+      //       margin: '0 0 30px 0',
+      //       opacity: 0.9,
+      //       textShadow: '0 1px 10px rgba(0, 0, 0, 0.2)'
+      //     }}>
+      //       Initializing Texas Forestation System
+      //     </p>
+
+      //     {/* Animated dots */}
+      //     <div style={{
+      //       display: 'flex',
+      //       justifyContent: 'center',
+      //       gap: '12px',
+      //       marginTop: '20px'
+      //     }}>
+      //       <div style={{
+      //         width: '12px',
+      //         height: '12px',
+      //         background: '#fff',
+      //         borderRadius: '50%',
+      //         animation: 'bounce 1.4s ease-in-out infinite',
+      //         animationDelay: '0s'
+      //       }}></div>
+      //       <div style={{
+      //         width: '12px',
+      //         height: '12px',
+      //         background: '#fff',
+      //         borderRadius: '50%',
+      //         animation: 'bounce 1.4s ease-in-out infinite',
+      //         animationDelay: '0.2s'
+      //       }}></div>
+      //       <div style={{
+      //         width: '12px',
+      //         height: '12px',
+      //         background: '#fff',
+      //         borderRadius: '50%',
+      //         animation: 'bounce 1.4s ease-in-out infinite',
+      //         animationDelay: '0.4s'
+      //       }}></div>
+      //     </div>
+      //   </div>
+
+      //   {/* Progress hint */}
+      //   <div style={{
+      //     position: 'absolute',
+      //     bottom: '60px',
+      //     fontSize: '14px',
+      //     color: 'rgba(255, 255, 255, 0.8)',
+      //     textAlign: 'center',
+      //     maxWidth: '500px',
+      //     padding: '0 20px'
+      //   }}>
+      //   </div>
+
+      //   <style>{`
+      //     @keyframes spin {
+      //       0% { transform: translate(-50%, -50%) rotate(0deg); }
+      //       100% { transform: translate(-50%, -50%) rotate(360deg); }
+      //     }
+          
+      //     @keyframes pulse {
+      //       0%, 100% { transform: scale(1); box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); }
+      //       50% { transform: scale(1.05); box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4); }
+      //     }
+          
+      //     @keyframes float {
+      //       0%, 100% { transform: translateY(0px); }
+      //       50% { transform: translateY(-10px); }
+      //     }
+          
+      //     @keyframes bounce {
+      //       0%, 80%, 100% { transform: scale(0); opacity: 0.5; }
+      //       40% { transform: scale(1); opacity: 1; }
+      //     }
+      //   `}</sty
+      // <div className="loading-container">
+      <div className="loading-container">
+          <FaSpinner className="loading-spinner-icon" />
+          <h2 style={{color: "red", fontSize: "2.5rem", fontWeight: "700", margin: "20px 0 10px 0", textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)"}}>Texas Forestation</h2>
+          <p>Initializing Texas Forestation System...</p>
+        </div>
+      // </div>
     );
   }
 
@@ -762,6 +1036,52 @@ const TexasMap = () => {
         wheelPxPerZoomLevel={60}                    // More responsive trackpad zoom
         wheelDebounceTime={40}                      // Faster wheel response
       >
+        {!isInitializing && (
+        <button 
+        onClick={() => window.location.href = '/home'}
+        className="back-button"
+        title="Back to main application"
+        style={{
+          position: 'absolute',
+          top: '20px',
+          left: '60px',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          background: 'rgba(255, 255, 255, 0.15)',
+          border: '2px solid rgba(255, 255, 255, 0.3)',
+          borderRadius: '15px',
+          color: 'white',
+          padding: '12px 24px',
+          fontSize: '15px',
+          fontWeight: '600',
+          cursor: 'pointer',
+          transition: 'all 0.3s ease',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)'
+        }}
+
+        onMouseEnter={(e) => {
+          e.target.style.background = 'rgba(255, 255, 255, 0.25)';
+          e.target.style.borderColor = 'rgba(255, 255, 255, 0.5)';
+          e.target.style.transform = 'translateX(-5px)';
+          e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.3)';
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.background = 'rgba(255, 255, 255, 0.15)';
+          e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+          e.target.style.transform = 'translateX(0)';
+          e.target.style.boxShadow = 'none';
+        }}
+      >
+        <svg stroke="currentColor" fill="currentColor" strokeWidth="0" viewBox="0 0 576 512" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg">
+          <path d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z"></path>
+        </svg>
+        <span>Back to Main</span>
+      </button>
+      )}
+
         {/* Satellite imagery base layer - optimized for performance */}
         <TileLayer
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -849,19 +1169,29 @@ const TexasMap = () => {
         <MapEventTracker setCurrentZoom={setCurrentZoom} setMapBounds={setMapBounds} />
         
         {/* Map click handler for spatial queries */}
-        <MapClickHandler onMapClick={handleMapClick} gridData={gridData} yoloDataLoaded={yoloDataLoaded} setNonCultivableAlert={setNonCultivableAlert} />
+        <MapClickHandler 
+          onMapClick={handleMapClick} 
+          gridData={gridData} 
+          yoloDataLoaded={yoloDataLoaded} 
+          setNonCultivableAlert={setNonCultivableAlert}
+          texasBoundaryData={texasBoundaryData}
+          setOutsideTexasAlert={setOutsideTexasAlert}
+        />
       </MapContainer>
 
-      {/* Layer control panel */}
-      <LayerSelector
-        isLayerActive={isLayerActive}
-        isLayerLoading={isLayerLoading}
-        toggleLayer={toggleLayer}
-        getLayerError={getLayerError}
-        clearAllLayers={clearAllLayers}
-        getActiveLayerCount={getActiveLayerCount}
-        getActiveLayersData={getActiveLayersData}
-      />
+      {/* Layer control panel - Only show when map is fully initialized */}
+      {!isInitializing && !showHistoricalData && !showCarbonPanel &&(
+        <LayerSelector
+          isLayerActive={isLayerActive}
+          isLayerLoading={isLayerLoading}
+          toggleLayer={toggleLayer}
+          getLayerError={getLayerError}
+          clearAllLayers={clearAllLayers}
+          getActiveLayerCount={getActiveLayerCount}
+          getActiveLayersData={getActiveLayersData}
+          onToggle={setIsLayerSelectorOpen}
+        />
+      )}
 
       {/* Map info panel */}
       {/* <div className="map-info">
@@ -1038,30 +1368,40 @@ const TexasMap = () => {
         </div>
       )}
 
-      {/* Carbon Analysis Button */}
-      <CarbonButton 
-        onClick={handleCarbonButtonClick}
-        isActive={showCarbonPanel}
-      />
+      {/* Action Buttons - Only show when map is fully initialized */}
+      {!isInitializing && !showHistoricalData && !showCarbonPanel && !isLayerSelectorOpen && (
+        <>
+          {/* Carbon Analysis Button */}
+          <CarbonButton 
+            onClick={handleCarbonButtonClick}
+            isActive={showCarbonPanel}
+          />
 
-      {/* Fire Tracking Button - Navigates to separate page */}
-      <FireButton />
+          {/* Fire Tracking Button */}
+          {/* <FireButton */}
+            {/* // onClick={handleFireButtonClick}
+            // isActive={showFireLayer}
+            // isLoading={isLoadingFire}
+            // fireCount={fireData?.totalDetections || 0} */}
+          {/* /> */}
 
-      {/* Wildfire Prediction Button - Now with Full Texas Coverage */}
-      <WildfireButton
-        onToggle={handleWildfireToggle}
-        isActive={showWildfireLayer}
-        onDataLoad={handleWildfireDataLoad}
-      />
+          {/* Wildfire Prediction Button - Now with Full Texas Coverage */}
+          <WildfireButton
+            onToggle={handleWildfireToggle}
+            isActive={showWildfireLayer}
+            onDataLoad={handleWildfireDataLoad}
+          />
 
-      {/* USGS Enhanced Wildfire Prediction Button */}
-      <USGSWildfireButton />
+          {/* USGS Enhanced Wildfire Prediction Button */}
+          {/* <USGSWildfireButton /> */}
 
-      {/* Historical Data Button */}
-      <HistoricalDataButton
-        onClick={handleHistoricalDataClick}
-        isActive={showHistoricalData}
-      />
+          {/* Historical Data Button */}
+          <HistoricalDataButton
+            onClick={handleHistoricalDataClick}
+            isActive={showHistoricalData}
+          />
+        </>
+      )}
 
       {/* Carbon Estimation Panel */}
       <CarbonEstimationPanel
@@ -1103,92 +1443,135 @@ const TexasMap = () => {
         onClose={handleCloseQueryResults}
       />
 
-      {/* Carbon Legend */}
-      <CarbonLegend 
-        isVisible={isCountyColorVisible && countyLayerData !== null}
-      />
+      {/* Carbon Legend - Only show when map is fully initialized */}
+      {!isInitializing && (
+        <CarbonLegend 
+          isVisible={isCountyColorVisible && countyLayerData !== null}
+        />
+      )}
 
       {/* Non-cultivable area alert notification */}
       {nonCultivableAlert && (
         <div style={{
           position: 'fixed',
           top: '20px',
-          right: '20px',
-          zIndex: 2000,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999,
           background: '#1f2937',
           color: 'white',
-          padding: '16px 20px',
-          borderRadius: '8px',
-          boxShadow: '0 10px 25px rgba(0, 0, 0, 0.3)',
+          padding: '12px 28px',
+          borderRadius: '50px',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
           border: '2px solid #374151',
-          minWidth: '300px',
-          animation: 'slideInRight 0.3s ease-out'
+          animation: 'slideDownAlert 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px'
         }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '12px'
+          <span style={{
+            fontSize: '15px',
+            fontWeight: '600',
+            whiteSpace: 'nowrap',
+            color: '#f9fafb'
           }}>
-            <div style={{
-              fontSize: '24px',
-              flexShrink: 0,
-              marginTop: '2px'
-            }}>
-              🖤
-            </div>
-            <div style={{
-              flex: 1
-            }}>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: '700',
-                marginBottom: '8px',
-                color: '#f9fafb'
-              }}>
-                Non-Cultivable Area
-              </div>
-              <div style={{
-                fontSize: '14px',
-                lineHeight: '1.5',
-                color: '#d1d5db',
-                marginBottom: '8px'
-              }}>
-                Grid <strong>{nonCultivableAlert.gridIndex}</strong> is not suitable for cultivation.
-              </div>
-              <div style={{
-                fontSize: '12px',
-                color: '#9ca3af',
-                fontFamily: 'monospace'
-              }}>
-                📍 {nonCultivableAlert.coordinates.lat}°, {nonCultivableAlert.coordinates.lng}°
-              </div>
-              <div style={{
-                fontSize: '12px',
-                color: '#9ca3af',
-                marginTop: '4px'
-              }}>
-                Please select a 🌱 green area to perform spatial queries.
-              </div>
-            </div>
-            <button
-              onClick={() => setNonCultivableAlert(null)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#9ca3af',
-                fontSize: '18px',
-                cursor: 'pointer',
-                padding: '4px',
-                lineHeight: 1,
-                borderRadius: '4px',
-                transition: 'color 0.2s'
-              }}
-              onMouseOver={(e) => e.target.style.color = '#f9fafb'}
-              onMouseOut={(e) => e.target.style.color = '#9ca3af'}
-            >
-              ×
-            </button>
-          </div>
+            🖤 Non-Cultivable Area - Please select a green area
+          </span>
+          <button
+            onClick={() => setNonCultivableAlert(null)}
+            style={{
+              background: 'white',
+              border: 'none',
+              color: '#1f2937',
+              fontSize: '13px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              padding: '7px 18px',
+              borderRadius: '25px',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = 'scale(1.05)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)';
+            }}
+            title="Close alert"
+          >
+            Got it!
+          </button>
+        </div>
+      )}
+
+      {/* Outside Texas boundary alert notification */}
+      {outsideTexasAlert && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 10000,
+          background: '#8B0000',
+          color: 'white',
+          padding: '14px 32px',
+          borderRadius: '50px',
+          boxShadow: '0 8px 24px rgba(139, 0, 0, 0.6)',
+          animation: 'slideDownAlert 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '20px'
+        }}>
+          <span style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            whiteSpace: 'nowrap'
+          }}>
+            Please click on the Texas region only.
+          </span>
+          <button
+            onClick={() => setOutsideTexasAlert(null)}
+            style={{
+              background: 'white',
+              border: 'none',
+              color: '#8B0000',
+              fontSize: '14px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              padding: '8px 20px',
+              borderRadius: '25px',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 2px 6px rgba(0, 0, 0, 0.2)',
+              whiteSpace: 'nowrap'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.transform = 'scale(1.05)';
+              e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
+            }}
+            onMouseOut={(e) => {
+              e.target.style.transform = 'scale(1)';
+              e.target.style.boxShadow = '0 2px 6px rgba(0, 0, 0, 0.2)';
+            }}
+            title="Close alert"
+          >
+            Got it!
+          </button>
+          
+          <style>{`
+            @keyframes slideDownAlert {
+              0% {
+                transform: translateX(-50%) translateY(-100px);
+                opacity: 0;
+              }
+              100% {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+              }
+            }
+          `}</style>
         </div>
       )}
     </div>

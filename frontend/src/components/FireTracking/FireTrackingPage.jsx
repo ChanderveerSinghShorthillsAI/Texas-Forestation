@@ -46,6 +46,93 @@ const texasBounds = [
 ];
 
 /**
+ * Build a "world-with-hole" feature from the Texas boundary GeoJSON
+ * Creates a mask that darkens everything outside Texas
+ */
+function buildOutsideTexasMask(texasGeojson) {
+  // Handle both FeatureCollection and single Feature formats
+  let features = [];
+  if (texasGeojson?.type === 'FeatureCollection' && texasGeojson?.features?.length) {
+    features = texasGeojson.features;
+  } else if (texasGeojson?.type === 'Feature' && texasGeojson?.geometry) {
+    features = [texasGeojson];
+  } else {
+    return null;
+  }
+
+  // A world-size outer ring (lon, lat) that encloses the whole map
+  const worldRing = [
+    [-179.9999, -89.9999],
+    [-179.9999,  89.9999],
+    [ 179.9999,  89.9999],
+    [ 179.9999, -89.9999],
+    [-179.9999, -89.9999],
+  ];
+
+  // Collect all Texas rings (holes). Works for Polygon and MultiPolygon.
+  const texasHoles = [];
+
+  for (const f of features) {
+    const g = f.geometry;
+    if (!g) continue;
+
+    if (g.type === 'Polygon') {
+      const outer = g.coordinates?.[0];
+      if (outer && outer.length >= 4) texasHoles.push(outer);
+    } else if (g.type === 'MultiPolygon') {
+      for (const poly of g.coordinates || []) {
+        const outer = poly?.[0];
+        if (outer && outer.length >= 4) texasHoles.push(outer);
+      }
+    }
+  }
+
+  if (texasHoles.length === 0) {
+    return null;
+  }
+
+  // One big polygon: outer = world, inners = all Texas outers (as holes)
+  const maskFeature = {
+    type: 'Feature',
+    properties: { role: 'outside-texas-mask' },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [worldRing, ...texasHoles],
+    },
+  };
+  
+  return maskFeature;
+}
+
+/**
+ * Outside Texas Mask Component
+ * Darkens everything outside Texas boundaries
+ */
+const OutsideTexasMask = ({ texasGeojson, opacity = 0.65 }) => {
+  const maskFeature = React.useMemo(() => {
+    return buildOutsideTexasMask(texasGeojson);
+  }, [texasGeojson]);
+  
+  if (!maskFeature) {
+    return null;
+  }
+
+  return (
+    <Pane name="outside-texas-mask" style={{ zIndex: 350, pointerEvents: 'none' }}>
+      <GeoJSON
+        data={maskFeature}
+        interactive={false}
+        style={{
+          stroke: false,
+          fillColor: '#000000',
+          fillOpacity: opacity,
+        }}
+      />
+    </Pane>
+  );
+};
+
+/**
  * Texas Boundary Component
  * Displays darkened Texas boundary on map
  */
@@ -312,7 +399,7 @@ const FireTrackingPage = () => {
         
         <div className="header-content">
           <button 
-            onClick={() => navigate('/texas-forestation-planner')}
+            onClick={() => navigate('/home')}
             className="back-button"
             title="Back to main application"
           >
@@ -500,15 +587,15 @@ const FireTrackingPage = () => {
                     <div className="legend-items">
                       <div className="legend-item">
                         <div className="legend-marker high-confidence"></div>
-                        <span>High Confidence (80%+)</span>
+                        <span style={{color: "#ffd4a3"}}>High Confidence (80%+)</span>
                       </div>
                       <div className="legend-item">
                         <div className="legend-marker medium-confidence"></div>
-                        <span>Medium (50-80%)</span>
+                        <span style={{color: "#ffd4a3"}}>Medium (50-80%)</span>
                       </div>
                       <div className="legend-item">
                         <div className="legend-marker low-confidence"></div>
-                        <span>Low (&lt;50%)</span>
+                        <span style={{color: "#ffd4a3"}}>Low (&lt;50%)</span>
                       </div>
                     </div>
                     <div className="legend-note">
@@ -560,6 +647,14 @@ const FireTrackingPage = () => {
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 maxZoom={18}
               />
+              
+              {/* Blackout outside Texas only (no effect inside) */}
+              {texasBoundaryData && (
+                <OutsideTexasMask 
+                  texasGeojson={texasBoundaryData} 
+                  opacity={0.65} 
+                />
+              )}
               
               {/* Texas Boundary - Darkened style */}
               <TexasBoundary texasBoundaryData={texasBoundaryData} />

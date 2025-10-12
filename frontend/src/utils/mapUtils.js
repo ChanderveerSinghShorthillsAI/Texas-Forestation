@@ -283,7 +283,7 @@ export const createMeaningfulPopup = (properties, layerType = '') => {
   // Display demographics if available
   if (demographics.length > 0) {
     content += '<div class="popup-section demographics">';
-    content += '<h4 class="section-title">Demographics</h4>';
+    content += '<h5 class="section-title">Demographics</h5>';
     demographics.slice(0, 8).forEach(([key, value]) => {
       const formattedKey = formatPropertyKey(key);
       const formattedValue = formatPropertyValue(value, key);

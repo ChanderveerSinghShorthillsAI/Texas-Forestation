@@ -213,6 +213,7 @@ const EncroachmentTrackingPage = () => {
         </div>
         <div className="loading-container">
           <FaSpinner className="loading-spinner-icon" />
+          <h2 style={{color: "red", fontSize: "2.5rem", fontWeight: "700", margin: "20px 0 10px 0", textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)"}}>Texas Forestation</h2>
           <p>Loading encroachment data...</p>
         </div>
       </div>
@@ -267,7 +268,7 @@ const EncroachmentTrackingPage = () => {
       <div className="encroachment-header">
         <div className="header-top-row">
           <button 
-            onClick={() => navigate('/texas-forestation-planner')}
+            onClick={() => navigate('/home')}
             className="back-button"
             title="Back to main application"
           >
@@ -287,7 +288,7 @@ const EncroachmentTrackingPage = () => {
           {allEncroachmentData?.message && (
             <div className="data-info-card">
               <FaInfoCircle className="info-icon" />
-              <span className="info-text">{allEncroachmentData.message}</span>
+              <span className="info-text" style={{color: "white"}}>{allEncroachmentData.message}</span>
             </div>
           )}
           
@@ -295,8 +296,8 @@ const EncroachmentTrackingPage = () => {
           {healthStatus && (
             <div className={`health-status-card ${healthStatus.status}`}>
               <div className="health-status-item">
-                <span className="health-label">Service:</span>
-                <span className="health-value">
+                <span className="health-label" style={{color: "white"}}>Service:</span>
+                <span className="health-value" style={{color: "white"}}>
                   {healthStatus.status === 'healthy' ? <FaCheckCircle className="status-icon healthy" /> : 
                    healthStatus.status === 'degraded' ? <FaExclamationCircle className="status-icon degraded" /> : 
                    <FaTimesCircle className="status-icon unhealthy" />}
@@ -305,8 +306,8 @@ const EncroachmentTrackingPage = () => {
               </div>
               <div className="health-divider"></div>
               <div className="health-status-item">
-                <span className="health-label">API:</span>
-                <span className="health-value">
+                <span className="health-label" style={{color: "white"}}>API:</span>
+                <span className="health-value" style={{color: "white"}}>
                   {healthStatus.api_accessible ? (
                     <><FaCheckCircle className="status-icon healthy" /> Connected</>
                   ) : (
@@ -316,8 +317,8 @@ const EncroachmentTrackingPage = () => {
               </div>
               <div className="health-divider"></div>
               <div className="health-status-item">
-                <span className="health-label">Cached Alerts:</span>
-                <span className="health-value">
+                <span className="health-label" style={{color: "white"}}>Cached Alerts:</span>
+                <span className="health-value" style={{color: "white"}}>
                   {healthStatus.total_cached_alerts.toLocaleString()}
                   {healthStatus.cache_age_hours && (
                     <span className="cache-age"> ({healthStatus.cache_age_hours.toFixed(1)}h old)</span>
@@ -331,7 +332,7 @@ const EncroachmentTrackingPage = () => {
 
       {/* Navigation Tabs */}
       <div className="view-tabs">
-        <button 
+        <button
           className={`tab ${activeView === 'map' ? 'active' : ''}`}
           onClick={() => setActiveView('map')}
         >

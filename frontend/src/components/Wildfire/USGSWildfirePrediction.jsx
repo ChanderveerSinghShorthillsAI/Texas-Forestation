@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, GeoJSON, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON, useMap, useMapEvents, Pane } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { 
@@ -23,9 +23,9 @@ import {
     FaWind
 } from 'react-icons/fa';
 import { MdLayers } from 'react-icons/md';
-
 import usgsWfpiService from '../../services/usgsWfpiService';
 import './USGSWildfirePrediction.css';
+import { FaSpinner } from 'react-icons/fa';
 
 // Fix for default markers in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -41,6 +41,93 @@ const texasBounds = [
     [25.8371, -106.6456], // Southwest corner
     [36.5007, -93.5083]   // Northeast corner
 ];
+
+/**
+ * Build a "world-with-hole" feature from the Texas boundary GeoJSON
+ * Creates a mask that darkens everything outside Texas
+ */
+function buildOutsideTexasMask(texasGeojson) {
+  // Handle both FeatureCollection and single Feature formats
+  let features = [];
+  if (texasGeojson?.type === 'FeatureCollection' && texasGeojson?.features?.length) {
+    features = texasGeojson.features;
+  } else if (texasGeojson?.type === 'Feature' && texasGeojson?.geometry) {
+    features = [texasGeojson];
+  } else {
+    return null;
+  }
+
+  // A world-size outer ring (lon, lat) that encloses the whole map
+  const worldRing = [
+    [-179.9999, -89.9999],
+    [-179.9999,  89.9999],
+    [ 179.9999,  89.9999],
+    [ 179.9999, -89.9999],
+    [-179.9999, -89.9999],
+  ];
+
+  // Collect all Texas rings (holes). Works for Polygon and MultiPolygon.
+  const texasHoles = [];
+
+  for (const f of features) {
+    const g = f.geometry;
+    if (!g) continue;
+
+    if (g.type === 'Polygon') {
+      const outer = g.coordinates?.[0];
+      if (outer && outer.length >= 4) texasHoles.push(outer);
+    } else if (g.type === 'MultiPolygon') {
+      for (const poly of g.coordinates || []) {
+        const outer = poly?.[0];
+        if (outer && outer.length >= 4) texasHoles.push(outer);
+      }
+    }
+  }
+
+  if (texasHoles.length === 0) {
+    return null;
+  }
+
+  // One big polygon: outer = world, inners = all Texas outers (as holes)
+  const maskFeature = {
+    type: 'Feature',
+    properties: { role: 'outside-texas-mask' },
+    geometry: {
+      type: 'Polygon',
+      coordinates: [worldRing, ...texasHoles],
+    },
+  };
+  
+  return maskFeature;
+}
+
+/**
+ * Outside Texas Mask Component
+ * Darkens everything outside Texas boundaries
+ */
+const OutsideTexasMask = ({ texasGeojson, opacity = 0.65 }) => {
+  const maskFeature = React.useMemo(() => {
+    return buildOutsideTexasMask(texasGeojson);
+  }, [texasGeojson]);
+  
+  if (!maskFeature) {
+    return null;
+  }
+
+  return (
+    <Pane name="outside-texas-mask" style={{ zIndex: 350, pointerEvents: 'none' }}>
+      <GeoJSON
+        data={maskFeature}
+        interactive={false}
+        style={{
+          stroke: false,
+          fillColor: '#000000',
+          fillOpacity: opacity,
+        }}
+      />
+    </Pane>
+  );
+};
 
 /**
  * WMS Layer Component
@@ -376,7 +463,7 @@ const USGSWildfirePrediction = () => {
      * Navigate back to main map
      */
     const handleBackToMap = useCallback(() => {
-        navigate('/texas-forestation-planner');
+        navigate('/home');
     }, [navigate]);
 
     /**
@@ -415,7 +502,7 @@ const USGSWildfirePrediction = () => {
                             onClick={handleBackToMap}
                             title="Back to Main Map"
                         >
-                            <FaArrowLeft /> Back to Map
+                            <FaArrowLeft /> Back to Main
                         </button>
                         <div className="header-info">
                             <h1><FaFire className="header-icon" /> USGS Wildfire Forecast</h1>
@@ -452,9 +539,9 @@ const USGSWildfirePrediction = () => {
 
             {/* Loading State */}
             {loading && (
-                <div className="usgs-loading-overlay">
-                    <div className="usgs-loading-spinner"></div>
-                    <h2 className="usgs-loading-text">Fetching Data...</h2>
+                <div className="loading-container">
+                <FaSpinner className="loading-spinner-icon" />
+                <h2 style={{color: "red", fontSize: "2.5rem", fontWeight: "700", margin: "20px 0 10px 0", textShadow: "2px 2px 4px rgba(0, 0, 0, 0.3)"}}>Texas Forestation</h2>
                     <p className="usgs-loading-subtext">Loading wildfire prediction information</p>
                 </div>
             )}
@@ -556,6 +643,14 @@ const USGSWildfirePrediction = () => {
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
                             
+                            {/* Blackout outside Texas only (no effect inside) */}
+                            {texasBoundaryData && (
+                                <OutsideTexasMask 
+                                    texasGeojson={texasBoundaryData} 
+                                    opacity={0.65} 
+                                />
+                            )}
+                            
                             {/* Texas bounds handler */}
                             <TexasBoundsHandler texasBoundaryData={texasBoundaryData} />
                             
@@ -588,30 +683,31 @@ const USGSWildfirePrediction = () => {
                                     <div className="click-success">
                                         <h4><FaFire /> Wildfire Risk Analysis</h4>
                                         <div className="info-row">
-                                            <span className="info-label"><FaCalendarAlt /> Date:</span>
-                                            <span className="info-value">
+                                            <span className="info-label" style={{color: "#FFDA03"}}><FaCalendarAlt /> Date:</span>
+                                            <span className="info-value" style={{color: "#00A86B"}}>
                                                 {formatDateForDisplay(clickInfo.time)}
                                             </span>
                                         </div>
                                         <div className="info-row">
-                                            <span className="info-label"><FaMapMarkerAlt /> Location:</span>
-                                            <span className="info-value">
+                                            <span className="info-label" style={{color: "#FFDA03"}}><FaMapMarkerAlt /> Location:</span>
+                                            <span className="info-value" style={{color: "#00A86B"}}>
                                                 {clickInfo.coordinates.lat.toFixed(4)}, {clickInfo.coordinates.lng.toFixed(4)}
                                             </span>
                                         </div>
                                         <div className="info-row">
-                                            <span className="info-label"><FaInfoCircle /> WFPI Value:</span>
-                                            <span className="info-value">
+                                            <span className="info-label" style={{color: "#FFDA03"}}><FaInfoCircle /> WFPI Value:</span>
+                                            <span className="info-value" style={{color: "#00A86B"}}>
                                                 {clickInfo.value !== null ? clickInfo.value.toFixed(1) : 'No data'}
                                             </span>
                                         </div>
                                         <div className="info-row">
-                                            <span className="info-label"><FaExclamationTriangle /> Risk Level:</span>
+                                            <span className="info-label" style={{color: "#FFDA03"}}><FaExclamationTriangle /> Risk Level:</span>
                                             <span 
                                                 className="info-value risk-level"
                                                 style={{ 
                                                     color: clickInfo.interpretation.color,
-                                                    fontWeight: 'bold'
+                                                    fontWeight: 'bold',
+                                                    color: "#00A86B"
                                                 }}
                                             >
                                                 {clickInfo.interpretation.label}

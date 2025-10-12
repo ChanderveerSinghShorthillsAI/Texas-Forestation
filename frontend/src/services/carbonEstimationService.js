@@ -33,9 +33,14 @@ class CarbonEstimationService {
       let url = `${this.baseURL}/api/carbon/county`;
       const params = new URLSearchParams();
       
-      if (countyName) params.append('county_name', countyName);
-      if (countyFips) params.append('county_fips', countyFips);
-      params.append('use_cache', useCache.toString());
+      if (countyName) {
+        params.append('county_name', countyName)
+        console.log('countyName', countyName)
+      };
+      if (countyFips) {
+        params.append('county_fips', countyFips)
+        console.log('countyFips', countyFips)
+      };
       
       url += `?${params.toString()}`;
 

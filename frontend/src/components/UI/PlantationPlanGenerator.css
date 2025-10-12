@@ -234,6 +234,9 @@
   padding: 20px;
   margin-bottom: 24px;
   transition: all 0.3s ease;
+  position: relative;
+  width: 100%;
+  clear: both;
 }
 
 .progress-section.error {
@@ -246,6 +249,8 @@
   align-items: center;
   gap: 16px;
   margin-bottom: 12px;
+  width: 100%;
+  position: relative;
 }
 
 .progress-icon {
@@ -255,6 +260,8 @@
 
 .progress-text {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .progress-stage {
@@ -262,6 +269,8 @@
   font-weight: 600;
   color: #1e40af;
   margin-bottom: 4px;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .progress-section.error .progress-stage {
@@ -272,6 +281,9 @@
   font-size: 14px;
   color: #64748b;
   line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
 }
 
 .progress-bar {
