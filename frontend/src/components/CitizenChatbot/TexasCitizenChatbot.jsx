@@ -30,9 +30,16 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [useWebSocket, setUseWebSocket] = useState(true);
+  const [connectionState, setConnectionState] = useState('connecting'); // 'connecting', 'connected', 'http_fallback', 'error'
+  const [messagesRendered, setMessagesRendered] = useState(false);
   const ws = useRef(null);
+  const wsOpenedAtRef = useRef(null);
   const streamingBuffer = useRef("");
   const abortControllerRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
+  const connectionTimeoutRef = useRef(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 3;
 
   // For autoscroll
   const messagesEndRef = useRef(null);
@@ -57,6 +64,21 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
     if (!isOpen) return;
     
     log("Fetching chat history...");
+    
+    // Set a timeout to ensure welcome message appears even if history fetch hangs
+    const historyTimeout = setTimeout(() => {
+      setMessages((currentMessages) => {
+        if (currentMessages.length === 0) {
+          log("⏰ History fetch timeout. Setting default welcome message.");
+          return [{ 
+            role: "assistant", 
+            text: "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?" 
+          }];
+        }
+        return currentMessages;
+      });
+    }, 3000); // 3 second timeout for history
+    
     fetch(HISTORY_URL, {
       method: "GET",
       headers: {
@@ -67,6 +89,7 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
     })
       .then((res) => res.json())
       .then((data) => {
+        clearTimeout(historyTimeout);
         log("Fetched chat history:", data);
         if (data.messages && data.messages.length > 0) {
           setMessages(data.messages);
@@ -78,110 +101,335 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
         }
       })
       .catch((err) => {
+        clearTimeout(historyTimeout);
         log("Failed to fetch chat history:", err);
         setMessages([{ 
           role: "assistant", 
           text: "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?" 
         }]);
       });
+    
+    return () => clearTimeout(historyTimeout);
   }, [isOpen]);
 
-  // WebSocket setup (and auto-fallback to HTTP if failed)
-  useEffect(() => {
-    if (!isOpen || !useWebSocket) {
-      log("❌ WebSocket effect skipped - isOpen:", isOpen, "useWebSocket:", useWebSocket);
+  // WebSocket connection with automatic reconnection
+  const connectWebSocket = useCallback(() => {
+    if (!useWebSocket) {
+      log("❌ WebSocket disabled, using HTTP fallback");
+      setConnectionState('http_fallback');
       return;
     }
-    
-    // Prevent creating multiple connections
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      log("⚡ WebSocket already connected, skipping...");
-      return;
+
+    // Prevent creating multiple connections - STRICT CHECK
+    if (ws.current) {
+      const state = ws.current.readyState;
+      if (state === WebSocket.OPEN) {
+        log("⚡ WebSocket already OPEN, skipping connection attempt");
+        return;
+      } else if (state === WebSocket.CONNECTING) {
+        log("⚡ WebSocket already CONNECTING, skipping connection attempt");
+        return;
+      } else {
+        log(`   Previous WebSocket in state ${state}, creating new connection`);
+        // Clean up old connection
+        ws.current.onopen = null;
+        ws.current.onmessage = null;
+        ws.current.onclose = null;
+        ws.current.onerror = null;
+        ws.current = null;
+      }
     }
     
-    log("🔌 Attempting to connect WebSocket...", WS_URL);
-    ws.current = new WebSocket(WS_URL);
+    log(`🔌 Creating new WebSocket connection (attempt ${reconnectAttemptsRef.current + 1}/${maxReconnectAttempts})`);
+    log(`   URL: ${WS_URL}`);
+    
+    try {
+      const newWs = new WebSocket(WS_URL);
+      ws.current = newWs;
 
-    ws.current.onopen = () => {
-      log("✅ WebSocket connected successfully!");
-    };
-
-    ws.current.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        log("WS message received:", data);
+      newWs.onopen = () => {
+        // Verify this is still the current WebSocket
+        if (ws.current !== newWs) {
+          log("⚠️ Opened WebSocket is not current, ignoring");
+          newWs.close(1000, "Stale connection");
+          return;
+        }
         
-        if (data.type && data.content) {
-          if (data.type === "text" || data.type === "citation" || data.type === "source" || data.type === "sources_header") {
+        log("✅ WebSocket connected successfully!");
+        log("   Ready State:", newWs.readyState);
+        log("   Connection URL:", WS_URL);
+        
+        // Track when this WebSocket opened
+        wsOpenedAtRef.current = Date.now();
+        
+        // Clear the connection timeout since we successfully connected
+        if (connectionTimeoutRef.current) {
+          log("   Clearing connection timeout");
+          clearTimeout(connectionTimeoutRef.current);
+          connectionTimeoutRef.current = null;
+        }
+        
+        reconnectAttemptsRef.current = 0; // Reset reconnect counter on success
+        setConnectionState('connected');
+      };
+
+      newWs.onmessage = (event) => {
+        // Verify this is still the current WebSocket
+        if (ws.current !== newWs) {
+          log("⚠️ Message from stale WebSocket, ignoring");
+          return;
+        }
+        
+        try {
+          const data = JSON.parse(event.data);
+          log("WS message received:", data);
+          
+          if (data.type && data.content) {
+            if (data.type === "text" || data.type === "citation" || data.type === "source" || data.type === "sources_header") {
+              setIsTyping(false);
+              setLoading(false);
+              updateStreamingMessage(data.content);
+            } else if (data.type === "typing") {
+              setIsTyping(true);
+              setLoading(false);
+            }
+          } else if (data.message || data.type === "message") {
             setIsTyping(false);
+            streamingBuffer.current = "";
+            const messageText = data.message || data.content;
+            setMessages((msgs) => {
+              // Do NOT add if same as last assistant message
+              if (
+                msgs.length > 0 &&
+                msgs[msgs.length - 1].role === "assistant" &&
+                msgs[msgs.length - 1].text === messageText
+              ) {
+                return msgs;
+              }
+              return [...msgs, { role: "assistant", text: messageText }];
+            });
             setLoading(false);
-            updateStreamingMessage(data.content);
-          } else if (data.type === "typing") {
-            setIsTyping(true);
+          } else if (data.error) {
+            setIsTyping(false);
+            streamingBuffer.current = "";
+            setMessages((msgs) => [
+              ...msgs,
+              { role: "assistant", text: `❌ Error: ${data.error}` },
+            ]);
             setLoading(false);
           }
-        } else if (data.message || data.type === "message") {
+        } catch (e) {
+          log("Parse error on WebSocket message:", e);
           setIsTyping(false);
-          streamingBuffer.current = "";
-          const messageText = data.message || data.content;
-          setMessages((msgs) => {
-            // Do NOT add if same as last assistant message
-            if (
-              msgs.length > 0 &&
-              msgs[msgs.length - 1].role === "assistant" &&
-              msgs[msgs.length - 1].text === messageText
-            ) {
-              return msgs;
-            }
-            return [...msgs, { role: "assistant", text: messageText }];
-          });
-          setLoading(false);
-        } else if (data.error) {
-          setIsTyping(false);
-          streamingBuffer.current = "";
           setMessages((msgs) => [
             ...msgs,
-            { role: "assistant", text: `❌ Error: ${data.error}` },
+            { role: "assistant", text: `Parse error: ${e.message}` },
           ]);
           setLoading(false);
         }
-      } catch (e) {
-        log("Parse error on WebSocket message:", e);
+      };
+
+      newWs.onerror = (error) => {
+        // Verify this is still the current WebSocket
+        if (ws.current !== newWs) {
+          log("⚠️ Error from stale WebSocket, ignoring");
+          return;
+        }
+        
+        log("❌ WebSocket error occurred");
+        log("   Error type:", error.type);
+        log("   Error target readyState:", error.target?.readyState);
+        log("   This usually means:");
+        log("   - Backend server not running");
+        log("   - WebSocket endpoint not available");
+        log("   - Network/firewall blocking connection");
+        log("   - CORS or connection refused");
+        
         setIsTyping(false);
-        setMessages((msgs) => [
-          ...msgs,
-          { role: "assistant", text: `Parse error: ${e.message}` },
-        ]);
         setLoading(false);
+        // Don't immediately disable - let onclose handle reconnection
+      };
+
+      newWs.onclose = (event) => {
+        // Verify this is still the current WebSocket
+        if (ws.current !== newWs) {
+          log("⚠️ Close event from stale WebSocket, ignoring");
+          return;
+        }
+        
+        log("❌ WebSocket closed - Code:", event.code, "Reason:", event.reason || 'none', "WasClean:", event.wasClean);
+        log("   Common codes: 1000=Normal, 1001=Going Away, 1006=Abnormal, 1011=Server Error");
+        
+        // Clear the current ws reference
+        if (ws.current === newWs) {
+          ws.current = null;
+        }
+        
+        setIsTyping(false);
+        setLoading(false);
+        
+        // Only attempt reconnection for abnormal closures and if under max attempts
+        // Code 1000 is normal closure, don't reconnect
+        if (event.code !== 1000 && !event.wasClean && reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current += 1;
+          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current - 1), 5000); // Exponential backoff
+          log(`🔄 Abnormal closure detected. Reconnecting in ${delay}ms... (attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts})`);
+          
+          // Clear any existing reconnect timeout
+          if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+          }
+          
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectWebSocket();
+          }, delay);
+        } else if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+          log("❌ Max reconnection attempts reached. Switching to HTTP fallback.");
+          setMessages((msgs) => [
+            ...msgs,
+            { role: "assistant", text: "⚠️ Connection unstable. Switched to HTTP mode for reliability." },
+          ]);
+          setUseWebSocket(false);
+          setConnectionState('http_fallback');
+        } else if (event.code === 1000) {
+          log("✅ Normal WebSocket closure (code 1000)");
+        }
+      };
+    } catch (error) {
+      log("❌ Failed to create WebSocket:", error);
+      setUseWebSocket(false);
+      setConnectionState('http_fallback');
+    }
+  }, [useWebSocket, updateStreamingMessage]);
+
+  // WebSocket setup effect - STABLE, only depends on isOpen
+  useEffect(() => {
+    if (!isOpen) {
+      log("❌ Component not open, skipping WebSocket");
+      return;
+    }
+    
+    log("🎬 WebSocket effect starting...");
+    
+    // Set initial connecting state
+    setConnectionState('connecting');
+    
+    // Connect when component opens
+    connectWebSocket();
+    
+    // Set a timeout to fallback to HTTP if WebSocket takes too long
+    // This timeout will be cleared when connection succeeds (in onopen handler)
+    connectionTimeoutRef.current = setTimeout(() => {
+      log("⏰ WebSocket connection timeout (10s). Checking state...");
+      
+      // Only switch to HTTP if still in connecting state AND WebSocket hasn't opened
+      if (ws.current) {
+        const state = ws.current.readyState;
+        log(`   Current WebSocket state: ${state} (0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED)`);
+        
+        if (state === WebSocket.CONNECTING || state === WebSocket.CLOSED) {
+          log("   Switching to HTTP fallback due to timeout");
+          setConnectionState('http_fallback');
+          setUseWebSocket(false);
+          
+          // Clean up the failed WebSocket
+          if (ws.current) {
+            try {
+              ws.current.onopen = null;
+              ws.current.onmessage = null;
+              ws.current.onclose = null;
+              ws.current.onerror = null;
+              if (state === WebSocket.CONNECTING) {
+                ws.current.close(1000, "Connection timeout");
+              }
+            } catch (e) {
+              log("   Error cleaning up timed-out WebSocket:", e);
+            }
+            ws.current = null;
+          }
+        } else if (state === WebSocket.OPEN) {
+          log("   WebSocket is OPEN, timeout ignored");
+        }
+      } else {
+        log("   No WebSocket instance, switching to HTTP fallback");
+        setConnectionState('http_fallback');
+        setUseWebSocket(false);
       }
-    };
-
-    ws.current.onerror = (error) => {
-      log("WebSocket error:", error);
-      setIsTyping(false);
-      setMessages((msgs) => [
-        ...msgs,
-        { role: "assistant", text: "❌ WebSocket error! Switching to HTTP fallback..." },
-      ]);
-      setUseWebSocket(false);
-      setLoading(false);
-    };
-
-    ws.current.onclose = (event) => {
-      log("❌ WebSocket closed - Code:", event.code, "Reason:", event.reason, "WasClean:", event.wasClean);
-      setIsTyping(false);
-      setUseWebSocket(false);
-      setLoading(false);
-    };
+    }, 10000); // Increased to 10 seconds to give more time
 
     return () => {
       log("🧹 WebSocket effect cleanup - closing connection");
-      if (ws.current) {
-        ws.current.close();
-        ws.current = null;
+      
+      // Clear connection timeout
+      if (connectionTimeoutRef.current) {
+        clearTimeout(connectionTimeoutRef.current);
+        connectionTimeoutRef.current = null;
       }
+      
+      // Clear any pending reconnection attempts
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+      
+      // Close WebSocket connection properly
+      if (ws.current) {
+        const currentWs = ws.current;
+        const readyState = currentWs.readyState;
+        
+        log(`   Closing WebSocket (readyState: ${readyState})`);
+        
+        // Check how long the WebSocket has been open
+        if (wsOpenedAtRef.current) {
+          const openDuration = Date.now() - wsOpenedAtRef.current;
+          log(`   WebSocket was open for ${openDuration}ms`);
+          
+          if (openDuration < 1000) {
+            log(`   ⚠️ WARNING: Closing WebSocket that was only open for ${openDuration}ms`);
+            log(`   This might indicate a component lifecycle issue`);
+          }
+        }
+        
+        // Remove event handlers to prevent reconnection attempts during cleanup
+        currentWs.onopen = null;
+        currentWs.onmessage = null;
+        currentWs.onclose = null;
+        currentWs.onerror = null;
+        
+        // Only close if not already closed
+        if (readyState === WebSocket.OPEN || readyState === WebSocket.CONNECTING) {
+          try {
+            currentWs.close(1000, "Component unmounted");
+          } catch (e) {
+            log("   Error closing WebSocket:", e);
+          }
+        }
+        
+        ws.current = null;
+        wsOpenedAtRef.current = null;
+      }
+      
+      // Reset reconnect counter and state
+      reconnectAttemptsRef.current = 0;
+      setConnectionState('connecting');
+      setMessagesRendered(false);
     };
-  }, [isOpen]); // Removed useWebSocket and updateStreamingMessage from deps to prevent re-runs
+  }, [isOpen]); // ONLY depends on isOpen - connectWebSocket is stable via useCallback
+
+  // Track when messages are loaded into state
+  // Note: We check if messages are in state, not physically rendered in DOM
+  // because the DOM elements only render AFTER the loader is hidden
+  useEffect(() => {
+    if (messages.length > 0) {
+      // Small delay to ensure React has processed the state update
+      const timer = setTimeout(() => {
+        log(`✅ ${messages.length} message(s) loaded into state`);
+        setMessagesRendered(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [messages]);
 
   // Autoscroll logic
   useEffect(() => {
@@ -341,9 +589,48 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
     return null;
   }
 
+  // Show loader until ALL conditions are met:
+  // 1. Messages loaded into state
+  // 2. Messages actually rendered in DOM
+  // 3. Connection established (WebSocket or HTTP fallback)
+  const hasMessages = messages.length > 0;
+  const isConnectionReady = connectionState === 'connected' || connectionState === 'http_fallback';
+  const isFullyReady = hasMessages && messagesRendered && isConnectionReady;
+
+  // Determine loader message based on what's pending
+  const getLoaderMessage = () => {
+    if (!hasMessages) {
+      return "Loading chat history...";
+    } else if (!messagesRendered) {
+      return "Rendering messages...";
+    } else if (!isConnectionReady) {
+      return "Establishing secure connection...";
+    }
+    return "Preparing chatbot...";
+  };
+
   return (
     <div className="texas-chatbot-overlay">
       <div className="texas-chatbot-container">
+        {!isFullyReady && (
+          <div className="chatbot-connection-loader">
+            <div className="loader-content">
+              <div className="loader-spinner">
+                <FaLeaf className="spinner-icon" />
+              </div>
+              <h3 className="loader-title">Connecting to TexasForestGuide</h3>
+              <p className="loader-message">{getLoaderMessage()}</p>
+              <div className="loader-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        )}
+        
+        {isFullyReady && (
+          <>
         <div className="texas-chatbot-header">
           <div className="header-title">
             <FaLeaf className="header-icon texas-icon" />
@@ -408,6 +695,8 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
             <FaPaperPlane />
           </button>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

@@ -23,12 +23,19 @@ class ConnectionManager:
         self.active_connections[connection_id] = websocket
         logger.info(f"🔌 WebSocket connected: {connection_id}")
         
-        # Send initial greeting
-        await self.send_message(connection_id, {
-            "type": "message",
-            "content": "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?",
-            "metadata": {"is_greeting": True}
-        })
+        # Small delay to ensure connection is fully established before sending greeting
+        # This helps prevent race conditions with client-side connection handling
+        await asyncio.sleep(0.1)
+        
+        # Send initial greeting only if still connected
+        if websocket.client_state == WebSocketState.CONNECTED:
+            await self.send_message(connection_id, {
+                "type": "message",
+                "content": "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?",
+                "metadata": {"is_greeting": True}
+            })
+        else:
+            logger.warning(f"⚠️ WebSocket {connection_id} disconnected before greeting could be sent")
     
     def disconnect(self, connection_id: str):
         """Remove a WebSocket connection"""

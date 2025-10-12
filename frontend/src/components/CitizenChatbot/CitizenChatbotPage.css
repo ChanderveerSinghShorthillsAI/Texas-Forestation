@@ -1,84 +1,252 @@
 /*
- * Simplified Citizen Chatbot Page Styles
- * Just handles background and back button - uses original chatbot component
+ * ✨ Beautiful Modern Citizen Chatbot Page Styles ✨
+ * Stunning glassmorphism design with elegant animations
  */
+
+/* Animated gradient background */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes floatAnimation {
+  0%, 100% {
+    transform: translateY(0px) scale(1);
+  }
+  50% {
+    transform: translateY(-10px) scale(1.02);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
 
 .chatbot-page {
   width: 100%;
   height: 100vh;
   overflow: hidden;
+  position: relative;
 }
 
 .chatbot-background {
   width: 100%;
   height: 100%;
-  background-size: cover;
-  background-position: center center;
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(26, 60, 35, 0.95) 0%,
+      rgba(45, 80, 22, 0.9) 25%,
+      rgba(62, 107, 31, 0.85) 50%,
+      rgba(45, 80, 22, 0.9) 75%,
+      rgba(26, 60, 35, 0.95) 100%
+    );
+  background-size: 400% 400%;
+  background-position: 0% 50%;
   background-repeat: no-repeat;
   position: relative;
+  animation: gradientFlow 15s ease infinite;
 }
 
+/* Background image is set inline via style prop in the component */
+
+/* Elegant overlay with glassmorphism - lighter for background visibility */
 .chatbot-overlay {
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
+  background: 
+    radial-gradient(
+      circle at top right,
+      rgba(144, 198, 149, 0.08) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      circle at bottom left,
+      rgba(62, 107, 31, 0.08) 0%,
+      transparent 50%
+    ),
+    rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(3px) saturate(1.1);
+  -webkit-backdrop-filter: blur(3px) saturate(1.1);
   position: relative;
+  animation: fadeInScale 0.6s ease-out;
 }
 
-/* Floating Back Button */
+/* Decorative particles effect - lighter */
+.chatbot-overlay::before {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-image: 
+    radial-gradient(circle, rgba(144, 198, 149, 0.15) 1px, transparent 1px),
+    radial-gradient(circle, rgba(144, 198, 149, 0.1) 1px, transparent 1px);
+  background-size: 50px 50px, 80px 80px;
+  background-position: 0 0, 40px 40px;
+  opacity: 0.2;
+  animation: floatAnimation 20s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ✨ Stunning Floating Back Button ✨ */
 .back-button-floating {
   position: fixed;
-  top: 20px;
-  left: 20px;
+  top: 24px;
+  left: 24px;
   z-index: 1001;
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  gap: 10px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
   color: white;
-  padding: 12px 16px;
-  border-radius: 25px;
+  padding: 14px 24px;
+  border-radius: 50px;
   cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 0 rgba(144, 198, 149, 0.5);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Shimmer effect on hover */
+.back-button-floating::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.6s ease;
+  opacity: 0;
+}
+
+.back-button-floating:hover::before {
+  opacity: 1;
+  animation: shimmer 1.5s infinite;
 }
 
 .back-button-floating:hover {
-  background: rgba(0, 0, 0, 0.9);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(
+    135deg,
+    rgba(144, 198, 149, 0.3) 0%,
+    rgba(62, 107, 31, 0.2) 100%
+  );
+  transform: translateY(-3px) scale(1.05);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 4px rgba(144, 198, 149, 0.3);
+  border-color: rgba(144, 198, 149, 0.6);
 }
 
 .back-button-floating:active {
-  transform: translateY(0);
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 2px rgba(144, 198, 149, 0.4);
 }
 
-/* Responsive Design */
+.back-button-floating svg {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.back-button-floating:hover svg {
+  transform: translateX(-4px);
+}
+
+/* Add glow effect to text */
+.back-button-floating span {
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+/* Responsive Design with enhanced styles */
 @media (max-width: 768px) {
   .back-button-floating {
-    top: 15px;
-    left: 15px;
-    padding: 10px 14px;
-    font-size: 0.85rem;
+    top: 18px;
+    left: 18px;
+    padding: 12px 20px;
+    font-size: 0.9rem;
   }
 }
 
 @media (max-width: 480px) {
   .back-button-floating {
-    top: 10px;
-    left: 10px;
-    padding: 8px 12px;
-    font-size: 0.8rem;
+    top: 12px;
+    left: 12px;
+    padding: 10px 16px;
+    font-size: 0.85rem;
   }
   
   .back-button-floating span {
-    display: none; /* Hide text on very small screens */
+    display: none;
+  }
+  
+  .back-button-floating {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
+  }
+  
+  .back-button-floating svg {
+    margin: 0;
+  }
+}
+
+/* Additional polish for ultra-wide screens */
+@media (min-width: 1920px) {
+  .back-button-floating {
+    top: 32px;
+    left: 32px;
+    padding: 16px 28px;
+    font-size: 1rem;
   }
 } 
