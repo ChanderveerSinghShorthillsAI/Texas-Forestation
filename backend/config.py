@@ -33,8 +33,8 @@ class Config:
     )
     
     # Plan Generation Settings
-    PLAN_GENERATION_MODEL = os.getenv("PLAN_GENERATION_MODEL", "gemini-2.0-flash")
-    PLAN_GENERATION_MODEL_FALLBACK = os.getenv("PLAN_GENERATION_MODEL_FALLBACK", "gemini-1.5-flash")
+    PLAN_GENERATION_MODEL = os.getenv("PLAN_GENERATION_MODEL", "gemini-2.5-flash")
+    PLAN_GENERATION_MODEL_FALLBACK = os.getenv("PLAN_GENERATION_MODEL_FALLBACK", "gemini-2.0-flash-exp")
     MAX_PLAN_PAGES = int(os.getenv("MAX_PLAN_PAGES", "25"))
     # Using all-MiniLM-L6-v2 model (384 dimensions)
     EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "384"))

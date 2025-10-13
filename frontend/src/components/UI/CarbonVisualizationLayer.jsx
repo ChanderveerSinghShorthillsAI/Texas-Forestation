@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo, useCallback } from 'react';
-import { GeoJSON } from 'react-leaflet';
+import { GeoJSON, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { carbonEstimationService } from '../../services/carbonEstimationService';
 
 /**
@@ -14,6 +15,7 @@ const CarbonVisualizationLayer = ({
   mapBounds = null,
   isGridVisible = true
 }) => {
+  const map = useMap();
   const [carbonData, setCarbonData] = useState(new Map());
   const [loading, setLoading] = useState(false);
 
@@ -229,6 +231,9 @@ const CarbonVisualizationLayer = ({
 
     layer.on('click', handleCountyClick);
 
+    // Add hover label with carbon data (similar to GeoJsonLayer)
+    let hoverLabel = null;
+    
     // Throttled hover effects to reduce performance impact
     let hoverTimeout;
     layer.on('mouseover', function(e) {
@@ -238,15 +243,48 @@ const CarbonVisualizationLayer = ({
         weight: 2,
         fillOpacity: 0.6
       });
+      
+      // Add hover label with carbon data
+      if (layer.getBounds && countyName && carbonInfo) {
+        const bounds = layer.getBounds();
+        const center = bounds.getCenter();
+        
+        const hoverContent = `
+          <span class="county-name-hover">${countyName} County</span>
+          <div class="carbon-data">
+            <div class="carbon-item">🌲 ${carbonEstimationService.formatCarbonValue(carbonInfo.total_carbon_tons)}</div>
+            <div class="carbon-item">💨 ${carbonEstimationService.formatCO2Value(carbonInfo.total_co2_equivalent_tons)}</div>
+          </div>
+        `;
+        
+        hoverLabel = L.marker(center, {
+          icon: L.divIcon({
+            className: 'county-label county-label-hover county-label-with-carbon',
+            html: `<div class="county-hover-content">${hoverContent}</div>`,
+            iconSize: [220, 80],
+            iconAnchor: [110, 40]
+          }),
+          interactive: false,
+          zIndexOffset: 2000
+        });
+        
+        hoverLabel.addTo(map);
+      }
     });
 
     layer.on('mouseout', function(e) {
+      // Remove hover label
+      if (hoverLabel) {
+        map.removeLayer(hoverLabel);
+        hoverLabel = null;
+      }
+      
       hoverTimeout = setTimeout(() => {
         const targetLayer = e.target;
         targetLayer.setStyle(getCountyStyle(feature));
       }, 50); // Small delay to prevent rapid style changes
     });
-  }, [carbonData, getCountyStyle, handleCountyClick]);
+  }, [carbonData, getCountyStyle, handleCountyClick, map]);
 
   // Memoize the GeoJSON component to prevent unnecessary re-renders
   const geoJsonComponent = useMemo(() => {

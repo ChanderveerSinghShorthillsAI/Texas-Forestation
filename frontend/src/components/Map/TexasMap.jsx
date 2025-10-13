@@ -413,7 +413,7 @@ const TexasMap = ({ onInitializationChange }) => {
   const [showCarbonPanel, setShowCarbonPanel] = useState(false);
   const [selectedCountyForCarbon, setSelectedCountyForCarbon] = useState(null);
   const [countyLayerData, setCountyLayerData] = useState(null);
-  const [isCountyColorVisible, setIsCountyColorVisible] = useState(false); // Start with default counties visible
+  const [isCountyColorVisible, setIsCountyColorVisible] = useState(true); // Start with default counties visible
   const [currentZoom, setCurrentZoom] = useState(5.8);
   const [mapBounds, setMapBounds] = useState(null);
   

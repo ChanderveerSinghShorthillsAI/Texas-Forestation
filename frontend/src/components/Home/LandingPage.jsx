@@ -178,8 +178,30 @@ const LandingPage = () => {
             <FaLeaf className="logo-icon" />
             <div style={{display: "flex", flexDirection: "column"}}>
             <span className="logo-text">Texas Vanrakshak</span>
-            <span style={{color: "white", fontSize: "12px", textAlign: "end"}}>Powered By Shorthills AI</span>
+            <span style={{color: "white", fontSize: "12px", textAlign: "end" , fontWeight: "400"}}>Powered By Shorthills AI</span>
             </div>
+          </div>
+          <div className="nav-links">
+            <button className="nav-link" onClick={() => navigate('/encroachment-tracking')}>
+              <FaShieldAlt />
+              <span>Encroachment</span>
+            </button>
+            <button className="nav-link" onClick={() => navigate('/usgs-wildfire-prediction')}>
+              <FaFire />
+              <span>USGS Wildfire</span>
+            </button>
+            <button className="nav-link" onClick={() => navigate('/fire-tracking')}>
+              <FaBurn />
+              <span>Fire Tracking</span>
+            </button>
+            <button className="nav-link" onClick={() => navigate('/satellite-comparison')}>
+              <FaSatellite />
+              <span>Satellite</span>
+            </button>
+            <button className="nav-link" onClick={() => navigate('/texas-forestation-planner')}>
+              <FaTree />
+              <span>Planner</span>
+            </button>
           </div>
           <div className="nav-user">
             <FaUser className="user-icon" />
@@ -398,7 +420,7 @@ const LandingPage = () => {
             <FaLeaf className="footer-logo-icon" />
             <div style={{display: "flex", flexDirection: "column"}}>
             <span className="logo-text">Texas Vanrakshak</span>
-            <span style={{color: "white", fontSize: "12px", textAlign: "end"}}>Powered By Shorthills AI</span>
+            <span style={{color: "white", fontSize: "12px", textAlign: "end" , fontWeight: "400"}}>Powered By Shorthills AI</span>
             </div>
           </div>
           <p className="footer-text">

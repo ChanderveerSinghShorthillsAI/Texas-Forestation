@@ -392,12 +392,12 @@ class PlantationPlanService:
             if hasattr(results, 'matches'):
                 for match in results.matches:
                     metadata = match.metadata if hasattr(match, 'metadata') else {}
-                chunk = {
+                    chunk = {
                         "content": metadata.get("content", ""),
                         "source": metadata.get("source", "Unknown"),
                         "page": metadata.get("page", -1)
-                }
-                knowledge_chunks.append(chunk)
+                    }
+                    knowledge_chunks.append(chunk)
             
             logger.info(f"✅ Retrieved {len(knowledge_chunks)} knowledge chunks from Pinecone")
             return knowledge_chunks
