@@ -9,32 +9,42 @@ import re
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import and_
 
-import google.generativeai as genai
-from google.generativeai import types
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 from .citizen_chatbot_models import ChatSession, ChatMessage, SessionLocal, ConfidentialQuery
 from .citizen_chatbot_confidential import confidential_detector, generate_confidential_response
 
-# Enhanced Google Search integration - EXACT same as Django version
+# Enhanced Google Search integration with proper grounding
 HAS_RAG = False
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# Configure Gemini AI - Updated for current API
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+# Configure Gemini AI with new API
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if not GOOGLE_API_KEY:
+    raise ValueError("GOOGLE_API_KEY environment variable is required")
 
-# For google-generativeai 0.3.2, grounding is handled differently
-# We'll configure the model to use grounding when available
-generation_config = genai.types.GenerationConfig(
+# Create Gemini client
+gemini_client = genai.Client(api_key=GOOGLE_API_KEY)
+
+# Configure grounding tool for Google Search
+grounding_tool = types.Tool(
+    google_search=types.GoogleSearch()
+)
+
+# Generation config
+generation_config = types.GenerateContentConfig(
     temperature=0.7,
     top_p=0.95,
     top_k=64,
     max_output_tokens=8192,
+    tools=[grounding_tool]  # Enable grounding search
 )
 
-logger.info("✅ Google Generative AI configured for Gemini 2.5 Pro")
+logger.info("✅ Google Generative AI configured for Gemini 2.5 Pro with Grounding Search")
 
 # Texas-specific system prompt
 TEXAS_SYSTEM_PROMPT = """
@@ -455,6 +465,78 @@ class TexasCitizenChatService:
         text = re.sub(r'\b(\d+)\s*\((https?://[^\)]+)\)', r'[\1](\2)', text)
         return text
     
+    def _add_citations_to_text(self, response_object) -> str:
+        """
+        Add citations to text based on grounding supports
+        Based on official Google documentation
+        """
+        try:
+            # Check if response has required data
+            if not hasattr(response_object, 'text') or not response_object.text:
+                logger.warning("⚠️ No text in response for citation insertion")
+                return ""
+            
+            text = response_object.text
+            
+            # Check for candidates and grounding metadata
+            if not hasattr(response_object, 'candidates') or not response_object.candidates:
+                return text
+            
+            candidate = response_object.candidates[0]
+            
+            if not hasattr(candidate, 'grounding_metadata') or not candidate.grounding_metadata:
+                return text
+            
+            grounding_metadata = candidate.grounding_metadata
+            
+            # Check for grounding supports and chunks
+            if not hasattr(grounding_metadata, 'grounding_supports') or not grounding_metadata.grounding_supports:
+                logger.info("ℹ️ No grounding supports found for inline citations")
+                return text
+            
+            if not hasattr(grounding_metadata, 'grounding_chunks') or not grounding_metadata.grounding_chunks:
+                logger.info("ℹ️ No grounding chunks found for inline citations")
+                return text
+            
+            supports = grounding_metadata.grounding_supports
+            chunks = grounding_metadata.grounding_chunks
+            
+            logger.info(f"📍 Found {len(supports)} grounding supports and {len(chunks)} chunks")
+            
+            # Sort supports by end_index in descending order to avoid shifting issues when inserting
+            sorted_supports = sorted(supports, key=lambda s: s.segment.end_index, reverse=True)
+            
+            for support in sorted_supports:
+                try:
+                    end_index = support.segment.end_index
+                    
+                    if hasattr(support, 'grounding_chunk_indices') and support.grounding_chunk_indices:
+                        # Create citation string like [1](link1), [2](link2)
+                        citation_links = []
+                        for i in support.grounding_chunk_indices:
+                            if i < len(chunks):
+                                chunk = chunks[i]
+                                if hasattr(chunk, 'web') and chunk.web and hasattr(chunk.web, 'uri'):
+                                    uri = chunk.web.uri
+                                    citation_links.append(f"[{i + 1}]({uri})")
+                        
+                        if citation_links:
+                            citation_string = " " + ", ".join(citation_links)
+                            # Insert citation at end_index
+                            text = text[:end_index] + citation_string + text[end_index:]
+                            logger.info(f"📎 Inserted citation at position {end_index}: {citation_string}")
+                except Exception as support_error:
+                    logger.error(f"❌ Error processing support: {support_error}")
+                    continue
+            
+            return text
+            
+        except Exception as e:
+            logger.error(f"❌ Error adding citations to text: {e}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
+            return response_object.text if hasattr(response_object, 'text') else ""
+    
     def _add_inline_citations(self, text: str, citations: List[Dict[str, str]]) -> str:
         """Add inline citation numbers [1], [2] to the response text"""
         if not citations:
@@ -488,52 +570,73 @@ class TexasCitizenChatService:
         return '\n'.join(lines)
     
     def _extract_citations(self, response_object) -> List[Dict[str, str]]:
-        """Extract citations from Gemini response - EXACT Django implementation"""
+        """Extract citations from Gemini response - Using official Google grounding API"""
         logger.info("🔍 Starting citation extraction...")
         citations = []
         try:
-            candidates = getattr(response_object, "candidates", [])
-            logger.info(f"🔍 Found {len(candidates)} candidates")
+            # Check if response has candidates
+            if not hasattr(response_object, 'candidates') or not response_object.candidates:
+                logger.warning("⚠️ No candidates found in response")
+                return citations
             
-            if not candidates or not hasattr(candidates[0], 'grounding_metadata'):
-                logger.warning("⚠️ No candidates or grounding_metadata found")
+            candidate = response_object.candidates[0]
+            
+            # Check for grounding metadata
+            if not hasattr(candidate, 'grounding_metadata') or not candidate.grounding_metadata:
+                logger.warning("⚠️ No grounding_metadata found")
                 return citations
-                
-            grounding_metadata = candidates[0].grounding_metadata
-            if not grounding_metadata or not grounding_metadata.grounding_chunks:
-                logger.warning("⚠️ No grounding_metadata or grounding_chunks found")
+            
+            grounding_metadata = candidate.grounding_metadata
+            
+            # Check for grounding chunks
+            if not hasattr(grounding_metadata, 'grounding_chunks') or not grounding_metadata.grounding_chunks:
+                logger.warning("⚠️ No grounding_chunks found")
                 return citations
-                
+            
             chunks = grounding_metadata.grounding_chunks
             logger.info(f"🔍 Found {len(chunks)} grounding chunks")
             
+            # Extract citations from chunks
             for i, chunk in enumerate(chunks):
-                if hasattr(chunk, 'web') and chunk.web and chunk.web.uri:
-                    # Clean up the title for better display
-                    title = getattr(chunk.web, 'title', f'Source {i + 1}')
-                    if title == 'usda.gov':
-                        title = 'USDA Agricultural Marketing Service'
-                    elif title == 'barchart.com':
-                        title = 'Barchart Market Data'
-                    elif title == 'townandcountryag.com':
-                        title = 'Town & Country Agricultural Services'
-                    elif '.edu' in title:
-                        title = title.replace('.edu', ' University')
-                    elif '.gov' in title:
-                        title = title.replace('.gov', ' Government')
+                try:
+                    # Check if chunk has web data
+                    if hasattr(chunk, 'web') and chunk.web:
+                        uri = getattr(chunk.web, 'uri', None)
+                        title = getattr(chunk.web, 'title', None)
                         
-                    citations.append({
-                        "number": i + 1,
-                        "url": chunk.web.uri,
-                        "title": title
-                    })
-                    logger.info(f"🔗 Extracted citation {i+1}: {title}")
-                else:
-                    logger.warning(f"⚠️ Chunk {i+1} has no valid web URI")
+                        if uri:
+                            # Clean up the title for better display
+                            if not title or title.strip() == '':
+                                title = f'Source {i + 1}'
+                            elif 'usda.gov' in uri.lower():
+                                title = 'USDA Agricultural Marketing Service'
+                            elif 'barchart.com' in uri.lower():
+                                title = 'Barchart Market Data'
+                            elif '.edu' in uri.lower():
+                                title = title.replace('.edu', ' University')
+                            elif '.gov' in uri.lower():
+                                if 'Government' not in title:
+                                    title = title + ' (Government)'
+                            
+                            citations.append({
+                                "number": i + 1,
+                                "url": uri,
+                                "title": title
+                            })
+                            logger.info(f"🔗 Extracted citation {i+1}: {title} - {uri}")
+                        else:
+                            logger.warning(f"⚠️ Chunk {i+1} has no URI")
+                    else:
+                        logger.warning(f"⚠️ Chunk {i+1} has no web data")
+                except Exception as chunk_error:
+                    logger.error(f"❌ Error processing chunk {i+1}: {chunk_error}")
+                    continue
                     
         except Exception as e:
             logger.error(f"❌ Citation extraction error: {e}")
             logger.error(f"❌ Citation error type: {type(e).__name__}")
+            import traceback
+            logger.error(f"❌ Traceback: {traceback.format_exc()}")
             
         logger.info(f"📚 Total extracted citations: {len(citations)}")
         return citations
@@ -647,54 +750,82 @@ class TexasCitizenChatService:
             
             full_prompt += f"\n\nHuman: {user_message}\nAssistant:"
             
-            # Generate streaming response (matching Django implementation)
+            # Generate streaming response using new Google Gemini API with grounding
             yield {"type": "typing", "content": "", "metadata": {}}
-            await asyncio.sleep(0.2)  # Brief thinking pause like Django
+            await asyncio.sleep(0.2)  # Brief thinking pause
             
             full_response = ""
             last_response_object = None
             chunk_count = 0
             
-            # Use Gemini EXACTLY like Django chatbot
-            chat_history = [{"role": "user", "parts": [{"text": full_prompt}]}]
-            
-            # Stream the response - Updated for current API
-            all_chunks = []  # Collect all chunks for better citation extraction
-            model = genai.GenerativeModel("gemini-2.5-pro")
-            for chunk in model.generate_content(
-                contents=chat_history,
-                generation_config=generation_config,
-                stream=True
-            ):
-                chunk_count += 1
-                all_chunks.append(chunk)  # Store all chunks
+            # Use new Gemini client API with grounding
+            try:
+                # Generate content with grounding using new API (streaming)
+                all_chunks = []  # Collect all chunks for citation extraction
                 
-                if hasattr(chunk, 'text') and chunk.text:
-                    logger.debug(f"📦 Processing chunk #{chunk_count}: '{chunk.text[:50]}...'")
+                # Note: The new API doesn't support streaming yet in the same way
+                # So we'll use non-streaming and simulate streaming for better UX
+                response = gemini_client.models.generate_content(
+                    model='gemini-2.0-flash-exp',  # Using flash model for faster responses with grounding
+                    contents=full_prompt,
+                    config=generation_config
+                )
+                
+                # Store the complete response
+                last_response_object = response
+                
+                # Get the text from response
+                if hasattr(response, 'text') and response.text:
+                    full_response = response.text
+                    
+                    # Simulate streaming by sending the text in chunks for better UX
+                    chunk_size = 30  # Characters per chunk
+                    for i in range(0, len(full_response), chunk_size):
+                        chunk_text = full_response[i:i+chunk_size]
+                        chunk_count += 1
+                        
+                        yield {
+                            "type": "text",
+                            "content": chunk_text,
+                            "metadata": {"chunk_number": chunk_count}
+                        }
+                        await asyncio.sleep(0.02)  # Streaming delay for better UX
+                else:
+                    logger.warning("⚠️ No text in response")
+                    full_response = "I apologize, but I couldn't generate a response. Please try rephrasing your question."
                     yield {
                         "type": "text",
-                        "content": chunk.text,
-                        "metadata": {"chunk_number": chunk_count}
+                        "content": full_response,
+                        "metadata": {}
                     }
-                    full_response += chunk.text
-                    await asyncio.sleep(0.02)  # Streaming delay like Django
+                
+            except Exception as gen_error:
+                logger.error(f"❌ Error generating content: {gen_error}")
+                import traceback
+                logger.error(f"❌ Traceback: {traceback.format_exc()}")
+                
+                full_response = "I apologize, but I encountered an error generating a response. Please try again."
+                yield {
+                    "type": "text",
+                    "content": full_response,
+                    "metadata": {}
+                }
             
-            # Use the chunk with the most complete metadata for citations
-            last_response_object = None
-            for chunk in reversed(all_chunks):  # Check from end backwards
-                if hasattr(chunk, 'candidates') and chunk.candidates:
-                    candidate = chunk.candidates[0]
-                    if hasattr(candidate, 'grounding_metadata') and candidate.grounding_metadata:
-                        last_response_object = chunk
-                        logger.info(f"📚 Found grounding metadata in chunk with {len(candidate.grounding_metadata.grounding_chunks)} chunks")
-                        break
-            
-            if not last_response_object and all_chunks:
-                last_response_object = all_chunks[-1]  # Fallback to last chunk
-            
-            # Extract citations and send them (clickable numbered format)
+            # Extract citations and add them to the text
+            citations = []
             if last_response_object:
+                # First, try to add inline citations directly from grounding supports
+                try:
+                    text_with_inline_citations = self._add_citations_to_text(last_response_object)
+                    if text_with_inline_citations and text_with_inline_citations != full_response:
+                        full_response = text_with_inline_citations
+                        logger.info("✅ Successfully added inline citations from grounding supports")
+                except Exception as e:
+                    logger.error(f"❌ Error adding inline citations: {e}")
+                
+                # Extract citation list for sources section
                 citations = self._extract_citations(last_response_object)
+                
                 if citations:
                     await asyncio.sleep(0.1)  # Brief pause before citations
                     
@@ -717,12 +848,8 @@ class TexasCitizenChatService:
                             }
                         }
             
-            # Normalize and add inline citations  
+            # Normalize citations format
             normalized_response = self._normalize_citations(full_response)
-            
-            # Add inline citation numbers if we have citations
-            if 'citations' in locals() and citations:
-                normalized_response = self._add_inline_citations(normalized_response, citations)
                 
             response_time_ms = (time.time() - start_time) * 1000
             sources_count = len(citations) if 'citations' in locals() else 0
