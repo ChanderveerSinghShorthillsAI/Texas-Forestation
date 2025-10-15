@@ -247,7 +247,9 @@ const GeoJsonLayer = ({ layerData }) => {
       layer.on({
         mouseover: (e) => {
           const targetLayer = e.target;
+          const currentStyle = getFeatureStyle(feature);
           targetLayer.setStyle({
+            ...currentStyle,
             weight: (weight || 2) + 2,
             fillOpacity: Math.min((fillOpacity || 0.2) + 0.2, 0.7),
             opacity: 1
@@ -256,6 +258,7 @@ const GeoJsonLayer = ({ layerData }) => {
         },
         mouseout: (e) => {
           const targetLayer = e.target;
+          // Restore complete original style
           targetLayer.setStyle(getFeatureStyle(feature));
         }
       });
@@ -284,10 +287,21 @@ const GeoJsonLayer = ({ layerData }) => {
       });
 
       // Add enhanced hover effects for points
+      // Store base style for restoration
+      const baseStyle = {
+        radius: responsiveRadius,
+        fillColor: fillColor || color || '#3b82f6',
+        color: color || '#ffffff',
+        weight: (weight || 2) + 1,
+        opacity: opacity || 1,
+        fillOpacity: fillOpacity || 0.9
+      };
+      
       marker.on({
         mouseover: (e) => {
           const targetMarker = e.target;
           targetMarker.setStyle({
+            ...baseStyle,
             radius: responsiveRadius * 1.5, // 50% larger on hover
             fillOpacity: 1,
             weight: (weight || 2) + 2,
@@ -297,14 +311,8 @@ const GeoJsonLayer = ({ layerData }) => {
         },
         mouseout: (e) => {
           const targetMarker = e.target;
-          targetMarker.setStyle({
-            radius: responsiveRadius,
-            fillColor: fillColor || color || '#3b82f6',
-            color: color || '#ffffff',
-            weight: (weight || 2) + 1,
-            opacity: opacity || 1,
-            fillOpacity: fillOpacity || 0.9
-          });
+          // Restore complete base style
+          targetMarker.setStyle(baseStyle);
         }
       });
 

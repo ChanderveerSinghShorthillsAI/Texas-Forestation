@@ -193,7 +193,7 @@ const CarbonEstimationPanel = ({
           {activeTab === 'county' && (
             <div className="county-tab">
               <div className="county-search-section">
-              <h1 style={{color: "#FFDA03", textAlign: "center"}}><FaSearch style={{color: "#91b8db"}}/> Search for a County</h1>
+              <h1 style={{color: "#2a7c2e", textAlign: "center"}}><FaSearch style={{color: "#91b8db" }} size={17}/> Search for a County</h1>
                 <form onSubmit={handleSearchCounty} className="search-form">
                   <div className="search-input-wrapper">
                     <span className="search-icon">🔍</span>

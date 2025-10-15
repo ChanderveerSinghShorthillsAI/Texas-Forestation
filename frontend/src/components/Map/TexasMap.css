@@ -636,6 +636,40 @@ path.leaflet-interactive:hover {
   cursor: pointer;
 }
 
+/* Fix for hover artifacts - ensure clean style restoration */
+.leaflet-overlay-pane svg path {
+  /* Reset any accumulated styles when not hovering */
+  transition: fill-opacity 0.15s ease, stroke-width 0.15s ease, stroke-opacity 0.15s ease;
+}
+
+/* Prevent hover effects from persisting during zoom */
+.leaflet-zoom-animated .leaflet-interactive {
+  transition: none !important;
+  pointer-events: none !important;
+}
+
+.leaflet-zoom-anim .leaflet-interactive {
+  transition: none !important;
+  pointer-events: none !important;
+}
+
+/* Disable all interactive features during zoom animation */
+.leaflet-zoom-anim .leaflet-overlay-pane {
+  pointer-events: none !important;
+}
+
+/* Force clean state after zoom completes */
+.leaflet-overlay-pane svg path {
+  will-change: auto;
+}
+
+.leaflet-overlay-pane svg path:not(:hover) {
+  /* Ensure non-hovered paths maintain their base styles */
+  stroke-width: inherit;
+  fill-opacity: inherit;
+  stroke-opacity: inherit;
+}
+
 /* Pulse animation for point markers */
 @keyframes pulse {
   0% {

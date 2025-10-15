@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { GeoJSON, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { carbonEstimationService } from '../../services/carbonEstimationService';
@@ -16,6 +16,7 @@ const CarbonVisualizationLayer = ({
   isGridVisible = true
 }) => {
   const map = useMap();
+  const geoJsonLayerRef = useRef(null);
   const [carbonData, setCarbonData] = useState(new Map());
   const [loading, setLoading] = useState(false);
 
@@ -38,6 +39,56 @@ const CarbonVisualizationLayer = ({
       loadCarbonDataForCounties();
     }
   }, [isVisible, countyGeoJsonData, carbonData.size]);
+
+  // Force style reset on zoom change to prevent hover artifacts
+  useEffect(() => {
+    if (geoJsonLayerRef.current && currentZoom) {
+      // Reset all styles when zoom changes
+      const layer = geoJsonLayerRef.current;
+      if (layer.eachLayer) {
+        layer.eachLayer((sublayer) => {
+          if (sublayer.feature) {
+            layer.resetStyle(sublayer);
+          }
+        });
+      }
+    }
+  }, [currentZoom]);
+
+  // Add map event listeners to force cleanup during zoom
+  useEffect(() => {
+    if (!map) return;
+
+    const handleZoomStart = () => {
+      // Clear all hover states when zoom starts
+      if (geoJsonLayerRef.current && geoJsonLayerRef.current.eachLayer) {
+        geoJsonLayerRef.current.eachLayer((sublayer) => {
+          if (sublayer.feature) {
+            geoJsonLayerRef.current.resetStyle(sublayer);
+          }
+        });
+      }
+    };
+
+    const handleZoomEnd = () => {
+      // Force a final cleanup when zoom ends
+      if (geoJsonLayerRef.current && geoJsonLayerRef.current.eachLayer) {
+        geoJsonLayerRef.current.eachLayer((sublayer) => {
+          if (sublayer.feature) {
+            geoJsonLayerRef.current.resetStyle(sublayer);
+          }
+        });
+      }
+    };
+
+    map.on('zoomstart', handleZoomStart);
+    map.on('zoomend', handleZoomEnd);
+
+    return () => {
+      map.off('zoomstart', handleZoomStart);
+      map.off('zoomend', handleZoomEnd);
+    };
+  }, [map]);
 
   const loadCarbonDataForCounties = async () => {
     if (!countyGeoJsonData || !countyGeoJsonData.features) return;
@@ -180,13 +231,15 @@ const CarbonVisualizationLayer = ({
     }
 
     // Transparent/hidden style for counties in grid zones or without data
+    // Make them completely transparent and non-interactive so clicks pass through
     return {
       color: 'transparent',
       weight: 0,
       fillColor: 'transparent',
       fillOpacity: 0,
       opacity: 0,
-      dashArray: null
+      dashArray: null,
+      interactive: false  // Don't intercept mouse events - let them pass to the map
     };
   }, [carbonData, isCountyInGridZone]);
 
@@ -194,6 +247,7 @@ const CarbonVisualizationLayer = ({
     const feature = e.target.feature;
     const countyName = carbonEstimationService.extractCountyName(feature);
     
+    // Only visible counties are interactive, so if this fires, handle the county selection
     if (countyName && onCountyClick) {
       onCountyClick(countyName);
     }
@@ -233,18 +287,33 @@ const CarbonVisualizationLayer = ({
 
     // Add hover label with carbon data (similar to GeoJsonLayer)
     let hoverLabel = null;
+    let originalStyle = null;
     
-    // Throttled hover effects to reduce performance impact
-    let hoverTimeout;
+    // Store original style on layer creation
+    originalStyle = getCountyStyle(feature);
+    
     layer.on('mouseover', function(e) {
-      clearTimeout(hoverTimeout);
-      const targetLayer = e.target;
-      targetLayer.setStyle({
-        weight: 2,
-        fillOpacity: 0.6
-      });
+      // Don't apply hover effects during zoom animation
+      if (map._animatingZoom) {
+        return;
+      }
       
-      // Add hover label with carbon data
+      const targetLayer = e.target;
+      
+      // Get current style as base for hover
+      const currentStyle = getCountyStyle(feature);
+      
+      // Apply visual hover effect ONLY if county has visible styling
+      // (fillOpacity > 0.1 to exclude the transparent counties with 0.01 opacity)
+      if (currentStyle.fillOpacity > 0.1) {
+        targetLayer.setStyle({
+          ...currentStyle,
+          weight: 2,
+          fillOpacity: 0.6
+        });
+      }
+      
+      // ALWAYS show hover label with carbon data (regardless of visibility)
       if (layer.getBounds && countyName && carbonInfo) {
         const bounds = layer.getBounds();
         const center = bounds.getCenter();
@@ -273,18 +342,41 @@ const CarbonVisualizationLayer = ({
     });
 
     layer.on('mouseout', function(e) {
-      // Remove hover label
+      // Remove hover label immediately (always, regardless of county visibility)
+      if (hoverLabel) {
+        try {
+          if (map.hasLayer(hoverLabel)) {
+            map.removeLayer(hoverLabel);
+          }
+        } catch (err) {
+          console.warn('Error removing hover label:', err);
+        }
+        hoverLabel = null;
+      }
+      
+      // Reset visual style (important to prevent artifacts)
+      try {
+        if (geoJsonLayerRef.current) {
+          geoJsonLayerRef.current.resetStyle(e.target);
+        } else {
+          // Fallback to manual style setting
+          const targetLayer = e.target;
+          const originalStyle = getCountyStyle(feature);
+          targetLayer.setStyle(originalStyle);
+        }
+      } catch (err) {
+        console.warn('Error resetting style:', err);
+      }
+    });
+    
+    // Clean up on layer removal or zoom change
+    layer.on('remove', function() {
       if (hoverLabel) {
         map.removeLayer(hoverLabel);
         hoverLabel = null;
       }
-      
-      hoverTimeout = setTimeout(() => {
-        const targetLayer = e.target;
-        targetLayer.setStyle(getCountyStyle(feature));
-      }, 50); // Small delay to prevent rapid style changes
     });
-  }, [carbonData, getCountyStyle, handleCountyClick, map]);
+  }, [carbonData, getCountyStyle, handleCountyClick, map, normalizeCounty]);
 
   // Memoize the GeoJSON component to prevent unnecessary re-renders
   const geoJsonComponent = useMemo(() => {
@@ -294,14 +386,15 @@ const CarbonVisualizationLayer = ({
     
     return (
       <GeoJSON
-        key={`carbon-visualization-${carbonData.size}`}
+        ref={geoJsonLayerRef}
+        key={`carbon-visualization-${carbonData.size}-${currentZoom}-${isGridVisible}`}
         data={countyGeoJsonData}
         style={getCountyStyle}
         onEachFeature={onEachFeature}
         pane="overlayPane" // Use specific pane for better rendering performance
       />
     );
-  }, [isVisible, countyGeoJsonData, carbonData.size, getCountyStyle, onEachFeature, currentZoom, mapBounds]);
+  }, [isVisible, countyGeoJsonData, carbonData.size, getCountyStyle, onEachFeature, currentZoom, mapBounds, isGridVisible]);
 
   return geoJsonComponent;
 };
