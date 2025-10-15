@@ -738,7 +738,7 @@ const TexasMap = ({ onInitializationChange }) => {
     const newState = !showCarbonPanel;
     setShowCarbonPanel(newState);
     // Toggle carbon visualization layer when panel opens/closes
-    setIsCountyColorVisible(newState);
+    // setIsCountyColorVisible(newState);
   };
 
   /**
@@ -1487,7 +1487,7 @@ const TexasMap = ({ onInitializationChange }) => {
         isVisible={showCarbonPanel}
         onClose={() => {
           setShowCarbonPanel(false);
-          setIsCountyColorVisible(false); // Hide carbon layer when panel closes
+          // setIsCountyColorVisible(false); // Hide carbon layer when panel closes
         }}
         onCountySelect={handleCountySelection}
       />
