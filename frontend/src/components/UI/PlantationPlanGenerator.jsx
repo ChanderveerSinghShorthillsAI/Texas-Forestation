@@ -131,7 +131,7 @@ const PlantationPlanGenerator = ({
   return (
     <>
     <div className="plantation-plan-overlay">
-      <div className="plantation-plan-modal">
+      <div className="plantation-plan-modal" style={{background: '#111827'}}>
         {/* Header */}
         <div className="plan-header">
           <h2>🌱 Generate 10-Year Plantation Plan</h2>
@@ -144,23 +144,23 @@ const PlantationPlanGenerator = ({
         <div className="plan-content">
           {/* Location Summary */}
           {spatialSummary && (
-            <div className="location-summary">
-              <h3>📍 Location Information</h3>
+            <div className="location-summary" style={{background: '#1f2937'}}>
+              <h3 style={{color: 'white'}}>📍 Location Information</h3>
               <div className="summary-grid">
                 <div className="summary-item">
-                  <span className="label">Coordinates:</span>
-                  <span className="value">{spatialSummary.location}</span>
+                  <span className="label" style={{color: '#87a7d5'}}>Coordinates:</span>
+                  <span className="value" style={{color: 'white'}}>{spatialSummary.location}</span>
                 </div>
                 <div className="summary-item">
-                  <span className="label">Coverage Layers:</span>
-                  <span className="value">{spatialSummary.coverageLayers}</span>
+                  <span className="label" style={{color: '#87a7d5'}}>Coverage Layers:</span>
+                  <span className="value" style={{color: 'white'}}>{spatialSummary.coverageLayers}</span>
                 </div>
                 <div className="summary-item">
-                  <span className="label">Nearby Features:</span>
-                  <span className="value">{spatialSummary.nearbyFeatures}</span>
+                  <span className="label" style={{color: '#87a7d5'}}>Nearby Features:</span>
+                  <span className="value" style={{color: 'white'}}>{spatialSummary.nearbyFeatures}</span>
                 </div>
                 <div className="summary-item">
-                  <span className="label">Data Quality:</span>
+                  <span className="label" style={{color: '#87a7d5'}}>Data Quality:</span>
                   <span className={`value quality-${spatialSummary.dataQuality}`}>
                     {spatialSummary.dataQuality.charAt(0).toUpperCase() + spatialSummary.dataQuality.slice(1)}
                   </span>
@@ -197,47 +197,47 @@ const PlantationPlanGenerator = ({
           )}
 
           {/* Plan Features */}
-          <div className="plan-features">
-            <h3>📋 What Your Plan Will Include:</h3>
+          <div className="plan-features" style={{background: '#1f2937'}}>
+            <h3 style={{color: 'white'}}>📋 What Your Plan Will Include:</h3>
             <div className="features-grid">
-              <div className="feature-item">
+              <div className="feature-item"  style={{background: '#1f2937'}}>
                 <span className="icon">🌳</span>
-                <span>Species-specific plantation recommendations</span>
+                <span style={{color: 'white'}}>Species-specific plantation recommendations</span>
               </div>
-              <div className="feature-item">
+              <div className="feature-item" style={{background: '#1f2937'}}>
                 <span className="icon">📅</span>
-                <span>Year-by-year implementation timeline</span>
+                <span style={{color: 'white'}}>Year-by-year implementation timeline</span>
               </div>
-              <div className="feature-item">
+              <div className="feature-item" style={{background: '#1f2937'}}>
                 <span className="icon">💰</span>
-                <span>Economic analysis and ROI projections</span>
+                <span style={{color: 'white'}}>Economic analysis and ROI projections</span>
               </div>
-              <div className="feature-item">
+              <div className="feature-item" style={{background: '#1f2937'}}>
                 <span className="icon">👥</span>
-                <span>Employment generation estimates</span>
+                <span style={{color: 'white'}}>Employment generation estimates</span>
               </div>
-              <div className="feature-item">
+              <div className="feature-item" style={{background: '#1f2937'}}>
                 <span className="icon">🦅</span>
-                <span>Wildlife and ecosystem impact assessment</span>
+                <span style={{color: 'white'}}>Wildlife and ecosystem impact assessment</span>
               </div>
-              <div className="feature-item">
+              <div className="feature-item" style={{background: '#1f2937'}}>
                 <span className="icon">📊</span>
-                <span>Visual charts and projections</span>
+                <span style={{color: 'white'}}>Visual charts and projections</span>
               </div>
-              <div className="feature-item">
+              <div className="feature-item" style={{background: '#1f2937'}}>
                 <span className="icon">📄</span>
-                <span>Professional PDF report (25+ pages)</span>
+                <span style={{color: 'white'}}>Professional PDF report (25+ pages)</span>
               </div>
-              <div className="feature-item">
+              <div className="feature-item" style={{background: '#1f2937'}}>
                 <span className="icon">🎯</span>
-                <span>Risk management strategies</span>
+                <span style={{color: 'white'}}>Risk management strategies</span>
               </div>
             </div>
           </div>
 
           {/* Progress Section */}
           {progress && (
-            <div className={`progress-section ${progress.error ? 'error' : ''}`}>
+            <div className={`progress-section ${progress.error ? 'error' : ''}`} style={{background: '#1f2937'}}>
               <div className="progress-content">
                 <div className="progress-icon">
                   {progress.stage === 'initializing' && '🔄'}
@@ -250,7 +250,7 @@ const PlantationPlanGenerator = ({
                   <div className="progress-stage">
                     {progress.stage.charAt(0).toUpperCase() + progress.stage.slice(1)}
                   </div>
-                  <div className="progress-message">{progress.message}</div>
+                  <div className="progress-message" style={{color: '#87a7d5'}}>{progress.message}</div>
                 </div>
               </div>
               
@@ -264,10 +264,10 @@ const PlantationPlanGenerator = ({
 
           {/* Error Display */}
           {error && generationState === 'error' && (
-            <div className="error-section">
+            <div className="error-section" style={{background: '#1f2937'}}>
               <h4>❌ Generation Failed</h4>
               <p>{error}</p>
-              <p className="error-suggestion">
+              <p className="error-suggestion" style={{color: '#87a7d5'}}>
                 Please try clicking on a different location with more available data layers.
               </p>
             </div>
@@ -275,37 +275,37 @@ const PlantationPlanGenerator = ({
 
           {/* Generated Plan Summary */}
           {generatedPlan && generationState === 'completed' && (
-            <div className="generated-plan-summary">
-              <h3>✅ Plan Generated Successfully!</h3>
+            <div className="generated-plan-summary" style={{background: '#1f2937'}}>
+              <h3 style={{color: '#7ddbc0'}}>✅ Plan Generated Successfully!</h3>
               <div className="plan-details">
                 <div className="plan-detail">
-                  <span className="label">Title:</span>
-                  <span className="value">{generatedPlan.title}</span>
+                  <span className="label" style={{color: '#7ddbc0'}}>Title:</span>
+                  <span className="value" style={{color: '#7ddbc0'}}>{generatedPlan.title}</span>
                 </div>
                 <div className="plan-detail">
-                  <span className="label">Content Length:</span>
-                  <span className="value">{(generatedPlan.content?.length || 0).toLocaleString()} characters</span>
+                  <span className="label" style={{color: '#7ddbc0'}}>Content Length:</span>
+                  <span className="value" style={{color: '#7ddbc0'}}>{(generatedPlan.content?.length || 0).toLocaleString()} characters</span>
                 </div>
                 <div className="plan-detail">
-                  <span className="label">Generated:</span>
-                  <span className="value">
+                  <span className="label" style={{color: '#7ddbc0'}}>Generated:</span>
+                  <span className="value" style={{color: '#7ddbc0'}}>
                     {new Date(generatedPlan.generated_at).toLocaleString()}
                   </span>
                 </div>
                 <div className="plan-detail">
-                  <span className="label">Plan ID:</span>
-                  <span className="value plan-id">{generatedPlan.plan_id}</span>
+                  <span className="label" style={{color: '#7ddbc0'}}>Plan ID:</span>
+                  <span className="value plan-id" style={{color: "rgb(125, 219, 192)", background: '#1f2937'}}>{generatedPlan.plan_id}</span>
                 </div>
               </div>
-              <div className="preview-hint">
-                <p>📋 Your plan is ready! Click "View Plan Preview" to review the content before downloading the PDF.</p>
+              <div className="preview-hint" style={{background: '#1f2937'}}>
+                <p style={{color: 'white'}}>📋 Your plan is ready! Click "View Plan Preview" to review the content before downloading the PDF.</p>
               </div>
             </div>
           )}
         </div>
 
         {/* Actions */}
-        <div className="plan-actions">
+        <div className="plan-actions" style={{background: '#1f2937'}}>
           {generationState === 'idle' && validationResult?.isValid && (
             <button 
               className="generate-button primary"
@@ -369,9 +369,9 @@ const PlantationPlanGenerator = ({
         </div>
 
         {/* Disclaimer */}
-        <div className="plan-disclaimer">
+        <div className="plan-disclaimer" style={{background: '#1f2937'}}>
           <p>
-            <small>
+            <small style={{color: 'white'}}>
               ℹ️ This AI-generated plan is based on available spatial data and Texas agricultural knowledge. 
               Please consult with local agricultural experts before implementation.
             </small>

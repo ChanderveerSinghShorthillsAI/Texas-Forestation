@@ -699,22 +699,15 @@
 }
 
 .chat-link {
-  color: #2d5016 !important;
-  text-decoration: none;
-  font-weight: 600;
-  border-bottom: 2px solid rgba(144, 198, 149, 0.4);
-  transition: all 0.3s ease;
-  padding-bottom: 1px;
+  color: #abed80 !important;
+  text-decoration: underline;
+  font-weight: 500;
+  transition: color 0.2s ease;
 }
 
 .chat-link:hover {
-  color: #3e6b1f !important;
-  border-bottom-color: #90c695;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(144, 198, 149, 0.1) 100%
-  );
+  color: #75b54b !important;
+  text-decoration: none;
 }
 
 /* ✨ Beautiful Typing Indicator ✨ */

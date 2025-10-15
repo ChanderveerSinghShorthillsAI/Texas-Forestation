@@ -732,6 +732,7 @@ function ChatBubble({ msg }) {
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="chat-link"
+                style={{color: "#abed80"}}
               >
                 {props.children}
               </a>
