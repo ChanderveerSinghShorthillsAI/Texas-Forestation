@@ -241,7 +241,7 @@ const PlantationPlanGenerator = ({
               <div className="progress-content">
                 <div className="progress-icon">
                   {progress.stage === 'initializing' && '🔄'}
-                  {progress.stage === 'processing' && '🤖'}
+                  {(progress.stage === 'processing' || progress.stage === 'generating') && '🤖'}
                   {progress.stage === 'completed' && '✅'}
                   {progress.stage === 'downloaded' && '📄'}
                   {progress.stage === 'error' && '❌'}
@@ -250,13 +250,28 @@ const PlantationPlanGenerator = ({
                   <div className="progress-stage">
                     {progress.stage.charAt(0).toUpperCase() + progress.stage.slice(1)}
                   </div>
-                  <div className="progress-message" style={{color: '#87a7d5'}}>{progress.message}</div>
+                  <div className="progress-message" style={{color: '#87a7d5'}}>
+                    {progress.message}
+                    {progress.section_number && progress.total_sections && (
+                      <span style={{color: '#93c5fd', marginLeft: '8px'}}>
+                        (Section {progress.section_number}/{progress.total_sections})
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
               
               {generationState === 'generating' && progress.stage !== 'error' && (
-                <div className="progress-bar">
-                  <div className="progress-bar-fill"></div>
+                <div className="progress-bar-container">
+                  <div className="progress-bar">
+                    <div 
+                      className="progress-bar-fill" 
+                      style={{width: `${progress.percentage || 0}%`}}
+                    ></div>
+                  </div>
+                  <div className="progress-percentage" style={{color: '#10b981', fontWeight: 'bold'}}>
+                    {progress.percentage || 0}%
+                  </div>
                 </div>
               )}
             </div>

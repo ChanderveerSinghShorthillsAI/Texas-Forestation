@@ -45,7 +45,11 @@ class PlanGenerationService {
 
       // Notify progress
       if (onProgress) {
-        onProgress({ stage: 'initializing', message: 'Preparing plan generation request...' });
+        onProgress({ 
+          stage: 'initializing', 
+          message: 'Preparing plan generation request...',
+          percentage: 0 
+        });
       }
 
       // Prepare request payload
@@ -57,9 +61,42 @@ class PlanGenerationService {
 
       console.log('📤 Sending plan generation request:', requestPayload);
 
+      // Start listening to progress updates via SSE
+      let eventSource = null;
+      if (onProgress && this.currentRequestId) {
+        eventSource = new EventSource(`${API_BASE}/api/plantation-plan-progress/${this.currentRequestId}`);
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const progressData = JSON.parse(event.data);
+            console.log('📊 Progress update:', progressData);
+            
+            onProgress({
+              stage: progressData.stage || 'generating',
+              message: progressData.section || 'Generating plan...',
+              percentage: progressData.percentage || 0,
+              section: progressData.section,
+              section_number: progressData.section_number,
+              total_sections: progressData.total_sections
+            });
+          } catch (err) {
+            console.error('Failed to parse progress data:', err);
+          }
+        };
+        
+        eventSource.onerror = (error) => {
+          console.warn('⚠️ SSE connection error:', error);
+          eventSource?.close();
+        };
+      }
+
       // Make API request
       if (onProgress) {
-        onProgress({ stage: 'processing', message: 'Analyzing spatial data and generating plan...' });
+        onProgress({ 
+          stage: 'processing', 
+          message: 'Analyzing spatial data and generating plan...',
+          percentage: 5
+        });
       }
 
       const response = await fetch(`${API_BASE}/api/generate-plantation-plan`, {
@@ -71,6 +108,9 @@ class PlanGenerationService {
         signal: this.abortController.signal
       });
 
+      // Close SSE connection
+      eventSource?.close();
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
         throw new Error(`Plan generation failed: ${errorData.detail || response.statusText}`);
@@ -79,7 +119,11 @@ class PlanGenerationService {
       const planData = await response.json();
 
       if (onProgress) {
-        onProgress({ stage: 'completed', message: 'Plan generation completed successfully!' });
+        onProgress({ 
+          stage: 'completed', 
+          message: 'Plan generation completed successfully!',
+          percentage: 100
+        });
       }
 
       console.log('✅ Plan generated successfully:', {
@@ -112,7 +156,8 @@ class PlanGenerationService {
         onProgress({ 
           stage: 'error', 
           message: `Generation failed: ${error.message}`,
-          error: true
+          error: true,
+          percentage: 0
         });
       }
 

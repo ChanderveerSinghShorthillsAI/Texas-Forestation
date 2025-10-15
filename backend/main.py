@@ -415,6 +415,72 @@ async def cancel_plantation_plan(request_id: str):
         logger.error(f"❌ Failed to cancel plan: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Cancel failed: {str(e)}")
 
+@app.get("/api/plantation-plan-progress/{request_id}")
+async def get_plantation_plan_progress(request_id: str):
+    """
+    Server-Sent Events endpoint for streaming plan generation progress
+    """
+    from fastapi.responses import StreamingResponse
+    
+    async def event_generator():
+        """Generate SSE events with progress updates"""
+        try:
+            # Poll for progress updates
+            last_percentage = -1
+            max_polls = 600  # 10 minutes max (600 * 1 second)
+            poll_count = 0
+            
+            while poll_count < max_polls:
+                progress = await plantation_service.get_progress(request_id)
+                
+                if progress:
+                    current_percentage = progress.get('percentage', 0)
+                    
+                    # Only send update if percentage changed
+                    if current_percentage != last_percentage:
+                        last_percentage = current_percentage
+                        
+                        # Format SSE message
+                        data = json.dumps(progress)
+                        yield f"data: {data}\n\n"
+                        
+                        # If we reached 100%, we're done
+                        if current_percentage >= 100:
+                            break
+                
+                await asyncio.sleep(1)  # Poll every second
+                poll_count += 1
+            
+            # Send final completion message if we haven't already
+            if last_percentage < 100:
+                completion_data = json.dumps({
+                    'stage': 'completed',
+                    'percentage': 100,
+                    'section': 'Plan generation complete',
+                    'section_number': 10,
+                    'total_sections': 10
+                })
+                yield f"data: {completion_data}\n\n"
+            
+        except Exception as e:
+            logger.error(f"❌ Progress streaming error: {str(e)}")
+            error_data = json.dumps({
+                'stage': 'error',
+                'percentage': 0,
+                'section': f'Error: {str(e)}'
+            })
+            yield f"data: {error_data}\n\n"
+    
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Connection": "keep-alive",
+        }
+    )
+
 @app.get("/api/download-plan/{plan_id}")
 async def download_plantation_plan(plan_id: str):
     """

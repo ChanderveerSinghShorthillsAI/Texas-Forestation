@@ -54,6 +54,8 @@ class PlantationPlanService:
         self._cancellations: Dict[str, asyncio.Event] = {}
         # Plan storage: plan_id -> plan_data for preview functionality
         self._stored_plans: Dict[str, Dict[str, Any]] = {}
+        # Progress tracking: request_id -> progress_data
+        self._progress_store: Dict[str, Dict[str, Any]] = {}
         
         # Configure Gemini
         genai.configure(api_key=config.GOOGLE_API_KEY)
@@ -239,6 +241,18 @@ class PlantationPlanService:
     async def get_stored_plan(self, plan_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve stored plan data by ID"""
         return self._stored_plans.get(plan_id)
+    
+    async def update_progress(self, request_id: str, progress_data: Dict[str, Any]):
+        """Update progress for a request"""
+        if request_id:
+            self._progress_store[request_id] = {
+                **progress_data,
+                'timestamp': datetime.now().isoformat()
+            }
+    
+    async def get_progress(self, request_id: str) -> Optional[Dict[str, Any]]:
+        """Get progress data for a request"""
+        return self._progress_store.get(request_id)
 
 
     def _format_spatial_data(self, spatial_data: Dict[str, Any]) -> Dict[str, str]:
@@ -534,8 +548,10 @@ class PlantationPlanService:
             pass
 
     # NEW: Generate per-section content using the model for more consistent long outputs
-    async def _generate_sections(self, section_prompts: List[tuple], request_id: Optional[str] = None, http_request: Optional[Any] = None) -> str:
+    async def _generate_sections(self, section_prompts: List[tuple], request_id: Optional[str] = None, http_request: Optional[Any] = None, progress_callback=None) -> str:
         contents: List[str] = []
+        total_sections = len(section_prompts)
+        
         def _gemini_response_to_text(resp) -> str:
             try:
                 texts: List[str] = []
@@ -562,10 +578,23 @@ class PlantationPlanService:
             except Exception:
                 pass
             return ""
-        for title, prompt in section_prompts:
+        
+        for idx, (title, prompt) in enumerate(section_prompts):
             await self._maybe_raise_cancel_or_disconnect(request_id, http_request)
             try:
-                logger.info(f"🤖 Generating section: {title}")
+                logger.info(f"🤖 Generating section {idx+1}/{total_sections}: {title}")
+                
+                # Calculate progress percentage
+                progress_percentage = int((idx / total_sections) * 100)
+                if progress_callback:
+                    await progress_callback({
+                        'stage': 'generating',
+                        'section': title,
+                        'section_number': idx + 1,
+                        'total_sections': total_sections,
+                        'percentage': progress_percentage
+                    })
+                
                 attempt = 0
                 last_exc = None
                 while attempt < config.GEN_MAX_RETRIES:
@@ -604,6 +633,17 @@ class PlantationPlanService:
                 logger.error(f"Section generation failed for {title}: {section_exc}")
                 contents.append(f"# {title}\n\nContent unavailable due to generation error.\n")
             await self._maybe_raise_cancel_or_disconnect(request_id, http_request)
+        
+        # Final progress update
+        if progress_callback:
+            await progress_callback({
+                'stage': 'generating',
+                'section': 'Finalizing plan',
+                'section_number': total_sections,
+                'total_sections': total_sections,
+                'percentage': 100
+            })
+        
         return "\n\n".join(contents)
 
     def _sanitize_model_output(self, text: str) -> str:
@@ -926,8 +966,17 @@ class PlantationPlanService:
                     self.section_templates[key].format(facts_md=facts_md, target_pages=pages),
                 ))
 
-            # Generate all sections
-            plan_content = await self._generate_sections(section_prompts, request_id=request_id, http_request=http_request)
+            # Create progress callback
+            async def progress_callback(progress_data):
+                await self.update_progress(request_id, progress_data)
+            
+            # Generate all sections with progress tracking
+            plan_content = await self._generate_sections(
+                section_prompts, 
+                request_id=request_id, 
+                http_request=http_request,
+                progress_callback=progress_callback if request_id else None
+            )
             await self._maybe_raise_cancel_or_disconnect(request_id, http_request)
 
             # Generate timestamp for unique identification
