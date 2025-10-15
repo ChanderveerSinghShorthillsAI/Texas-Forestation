@@ -29,8 +29,8 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
-  const [useWebSocket, setUseWebSocket] = useState(true);
-  const [connectionState, setConnectionState] = useState('connecting'); // 'connecting', 'connected', 'http_fallback', 'error'
+  const [useWebSocket, setUseWebSocket] = useState(false); // Changed to false - HTTP is now primary
+  const [connectionState, setConnectionState] = useState('http_fallback'); // Changed to 'http_fallback' - HTTP is now primary
   const [messagesRendered, setMessagesRendered] = useState(false);
   const ws = useRef(null);
   const wsOpenedAtRef = useRef(null);
@@ -306,6 +306,13 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
   useEffect(() => {
     if (!isOpen) {
       log("❌ Component not open, skipping WebSocket");
+      return;
+    }
+    
+    // Skip WebSocket entirely when HTTP is primary
+    if (!useWebSocket) {
+      log("✅ HTTP mode is primary - WebSocket disabled");
+      setConnectionState('http_fallback');
       return;
     }
     
