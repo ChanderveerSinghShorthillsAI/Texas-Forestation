@@ -284,7 +284,7 @@ async def health_check():
     }
 
 @app.post("/api/spatial-query", response_model=SpatialQueryResponse)
-async def spatial_query(request: SpatialQueryRequest):
+async def spatial_query(query_request: SpatialQueryRequest, request: Request):
     """
     Perform spatial query for a given point
     Returns polygons containing the point and nearest point features
@@ -295,20 +295,24 @@ async def spatial_query(request: SpatialQueryRequest):
         raise HTTPException(status_code=503, detail="Spatial service not initialized")
     
     try:
-        logger.info(f"🔍 Spatial query for point: {request.longitude}, {request.latitude}")
+        logger.info(f"🔍 Spatial query for point: {query_request.longitude}, {query_request.latitude}")
         
-        # Perform the spatial query
+        # Perform the spatial query with cancellation support
         results = await spatial_service.query_point(
-            longitude=request.longitude,
-            latitude=request.latitude,
-            max_distance_km=request.max_distance_km,
-            max_nearest_points=request.max_nearest_points
+            longitude=query_request.longitude,
+            latitude=query_request.latitude,
+            max_distance_km=query_request.max_distance_km,
+            max_nearest_points=query_request.max_nearest_points,
+            fastapi_request=request
         )
         
         logger.info(f"✅ Query complete: {len(results.polygon_matches)} polygons, {len(results.nearest_points)} points")
         
         return results
         
+    except asyncio.CancelledError:
+        logger.info(f"🛑 Query cancelled by client for point: {query_request.longitude}, {query_request.latitude}")
+        raise HTTPException(status_code=499, detail="Request cancelled by client")
     except Exception as e:
         logger.error(f"❌ Spatial query failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Spatial query failed: {str(e)}")

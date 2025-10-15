@@ -8,6 +8,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 class BackendSpatialQueryService {
   constructor() {
     this.isBackendAvailable = false;
+    this.abortController = null;
     this.checkBackendHealth();
   }
 
@@ -46,6 +47,14 @@ class BackendSpatialQueryService {
       }
     }
 
+    // Cancel any existing request
+    if (this.abortController) {
+      this.abortController.abort();
+    }
+
+    // Create new AbortController for this request
+    this.abortController = new AbortController();
+
     const [longitude, latitude] = clickPoint;
 
     // Show initial progress
@@ -72,7 +81,8 @@ class BackendSpatialQueryService {
           latitude: latitude,
           max_distance_km: 10,
           max_nearest_points: 1000
-        })
+        }),
+        signal: this.abortController.signal
       });
 
       if (!response.ok) {
@@ -106,6 +116,11 @@ class BackendSpatialQueryService {
       return frontendResults;
 
     } catch (error) {
+      // Check if the error was due to abort
+      if (error.name === 'AbortError') {
+        console.log('🛑 Backend spatial query was cancelled');
+        throw new Error('Query cancelled by user');
+      }
       console.error('❌ Backend spatial query failed:', error);
       throw error;
     }
@@ -176,11 +191,15 @@ class BackendSpatialQueryService {
   }
 
   /**
-   * Cancel query (immediate for backend)
+   * Cancel query (abort the fetch request)
    */
   cancelQuery() {
     console.log('🛑 Backend query cancellation requested');
-    // Backend queries are fast, so cancellation is immediate
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+      console.log('✅ Backend query aborted successfully');
+    }
   }
 
   /**

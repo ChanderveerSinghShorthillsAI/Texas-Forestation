@@ -464,18 +464,29 @@ class SpatialQueryService:
     
     async def query_point(self, longitude: float, latitude: float, 
                          max_distance_km: float = 100, 
-                         max_nearest_points: int = 10) -> SpatialQueryResponse:
-        """Perform spatial query for a given point"""
+                         max_nearest_points: int = 10,
+                         fastapi_request = None) -> SpatialQueryResponse:
+        """Perform spatial query for a given point with cancellation support"""
         self._ensure_connection()  # Ensure connection before querying
         start_time = time.time()
         
         query_point = Point(longitude, latitude)
         
+        # Check if client disconnected before starting
+        if fastapi_request and await fastapi_request.is_disconnected():
+            logger.info("🛑 Client disconnected before query started")
+            raise asyncio.CancelledError("Client disconnected")
+        
         # Find polygon matches
-        polygon_matches = await self._find_polygon_matches(query_point)
+        polygon_matches = await self._find_polygon_matches(query_point, fastapi_request)
+        
+        # Check if client disconnected after polygon search
+        if fastapi_request and await fastapi_request.is_disconnected():
+            logger.info("🛑 Client disconnected during query processing")
+            raise asyncio.CancelledError("Client disconnected")
         
         # Find nearest points
-        nearest_points = await self._find_nearest_points(query_point, max_distance_km, max_nearest_points)
+        nearest_points = await self._find_nearest_points(query_point, max_distance_km, max_nearest_points, fastapi_request)
         
         # Get total layers searched
         cursor = self.conn.cursor()
@@ -497,7 +508,7 @@ class SpatialQueryService:
             total_layers_searched=total_layers
         )
     
-    async def _find_polygon_matches(self, query_point: Point) -> List[PolygonMatch]:
+    async def _find_polygon_matches(self, query_point: Point, fastapi_request = None) -> List[PolygonMatch]:
         """Find all polygons that contain the query point"""
         cursor = self.conn.cursor()
         
@@ -511,7 +522,12 @@ class SpatialQueryService:
         candidates = cursor.fetchall()
         matches = []
         
-        for layer_id, layer_name, properties_json, geometry_wkt in candidates:
+        for idx, (layer_id, layer_name, properties_json, geometry_wkt) in enumerate(candidates):
+            # Check for client disconnection periodically
+            if fastapi_request and idx % 10 == 0 and await fastapi_request.is_disconnected():
+                logger.info("🛑 Client disconnected during polygon matching")
+                raise asyncio.CancelledError("Client disconnected")
+            
             try:
                 # Parse the geometry and check if point is inside
                 from shapely import wkt
@@ -530,7 +546,7 @@ class SpatialQueryService:
         return matches
     
     async def _find_nearest_points(self, query_point: Point, max_distance_km: float, 
-                                 max_points: int) -> List[NearestPoint]:
+                                 max_points: int, fastapi_request = None) -> List[NearestPoint]:
         """Find nearest point features to the query point"""
         cursor = self.conn.cursor()
         
@@ -549,7 +565,12 @@ class SpatialQueryService:
         candidates = cursor.fetchall()
         distances = []
         
-        for layer_id, layer_name, properties_json, longitude, latitude in candidates:
+        for idx, (layer_id, layer_name, properties_json, longitude, latitude) in enumerate(candidates):
+            # Check for client disconnection periodically (every 50 points)
+            if fastapi_request and idx % 50 == 0 and await fastapi_request.is_disconnected():
+                logger.info("🛑 Client disconnected during nearest points search")
+                raise asyncio.CancelledError("Client disconnected")
+            
             try:
                 point = Point(longitude, latitude)
                 # Calculate distance in kilometers
