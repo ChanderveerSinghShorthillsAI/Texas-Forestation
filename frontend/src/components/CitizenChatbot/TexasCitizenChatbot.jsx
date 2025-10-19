@@ -1,15 +1,19 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import "./TexasCitizenChatbot.css";
 import { FaPaperPlane, FaUserShield, FaTimes, FaLeaf } from "react-icons/fa";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import ReactMarkdown from "react-markdown"; 
+import remarkGfm from "remark-gfm"; 
 
-const REACT_APP_BASE_URL = process.env.REACT_APP_BASE_URL || "http://localhost:8000";
-const WS_BASE_URL = process.env.REACT_APP_WS_BASE_URL || "ws://localhost:8000";
-const WS_URL = `${WS_BASE_URL}/ws/citizen_chatbot/`;
-const HISTORY_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/history/`;
-const CLEAR_CHAT_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/clear/`;
-const HTTP_CHAT_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/chat/stream/`;
+const REACT_APP_BASE_URL = process.env.REACT_APP_BASE_URL || "http://localhost:8000"; 
+const WS_BASE_URL = process.env.REACT_APP_WS_BASE_URL || "ws://localhost:8000"; 
+const WS_URL = `${WS_BASE_URL}/ws/citizen_chatbot/`; 
+const HISTORY_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/history/`; 
+const CLEAR_CHAT_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/clear/`; 
+const HTTP_CHAT_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/chat/stream/`; 
+const ASYNC_START_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/chat/async/start/`;
+const ASYNC_STATUS_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/chat/async/status/`;
+const ASYNC_RESULT_URL = `${REACT_APP_BASE_URL}/api/citizen_chatbot/chat/async/result/`;
+const GREETING_TEXT = "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?";
 
 // Utility: Log and also display as needed
 function log(msg, ...args) {
@@ -29,6 +33,8 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [pendingRequestId, setPendingRequestId] = useState(null);
   const [useWebSocket, setUseWebSocket] = useState(false); // Changed to false - HTTP is now primary
   const [connectionState, setConnectionState] = useState('http_fallback'); // Changed to 'http_fallback' - HTTP is now primary
   const [messagesRendered, setMessagesRendered] = useState(false);
@@ -40,6 +46,72 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
   const connectionTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const maxReconnectAttempts = 3;
+  const pollIntervalRef = useRef(null);
+  const activeRequestIdRef = useRef(null);
+
+  // Polling helpers for async status (defined early to avoid TDZ in effects)
+  const stopPolling = useCallback(() => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+  }, []);
+
+  const startPollingStatus = useCallback((requestId) => {
+    stopPolling();
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        // Ignore if another request has become active
+        if (activeRequestIdRef.current && activeRequestIdRef.current !== requestId) {
+          return;
+        }
+        const res = await fetch(ASYNC_STATUS_URL + requestId, { headers: { 'Cache-Control': 'no-cache' } });
+        if (!res.ok) {
+          throw new Error('Status check failed');
+        }
+        const status = await res.json();
+        if (status.status === 'completed') {
+          stopPolling();
+          // Fetch final result
+          const rr = await fetch(ASYNC_RESULT_URL + requestId, { headers: { 'Cache-Control': 'no-cache' } });
+          if (rr.ok) {
+            const rj = await rr.json();
+            const text = rj.result || '';
+            streamingBuffer.current = '';
+            setMessages((msgs) => {
+              const last = msgs[msgs.length - 1];
+              if (last?.role === 'assistant') {
+                return [...msgs.slice(0, -1), { ...last, text }];
+              }
+              return [...msgs, { role: 'assistant', text }];
+            });
+          }
+          setLoading(false);
+          setIsTyping(false);
+          setPendingRequestId(null);
+          activeRequestIdRef.current = null;
+          localStorage.removeItem('tx_citizen_chat_pending');
+        } else if (status.status === 'error') {
+          stopPolling();
+          setMessages((msgs) => [...msgs, { role: 'assistant', text: '❌ Error: request failed.' }]);
+          setLoading(false);
+          setIsTyping(false);
+          setPendingRequestId(null);
+          activeRequestIdRef.current = null;
+          localStorage.removeItem('tx_citizen_chat_pending');
+        } else {
+          // still in progress → keep loader visible
+          if (activeRequestIdRef.current === requestId) {
+            setLoading(true);
+            setIsTyping(true);
+          }
+        }
+      } catch(e) {
+        // transient error, keep polling a bit longer
+        log('Status poll error:', e);
+      }
+    }, 1200);
+  }, [stopPolling]);
 
   // For autoscroll
   const messagesEndRef = useRef(null);
@@ -59,11 +131,12 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
     });
   }, []);
 
-  // Fetch chat history on mount
+  // Restore pending request from localStorage and fetch chat history on mount
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return; 
     
-    log("Fetching chat history...");
+    log("Fetching chat history..."); 
+    setHistoryLoading(true);
     
     // Set a timeout to ensure welcome message appears even if history fetch hangs
     const historyTimeout = setTimeout(() => {
@@ -79,7 +152,21 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
       });
     }, 3000); // 3 second timeout for history
     
-    fetch(HISTORY_URL, {
+    // Restore any pending async request
+    try {
+      const stored = localStorage.getItem("tx_citizen_chat_pending");
+      if (stored) {
+        const obj = JSON.parse(stored);
+        if (obj && obj.request_id) {
+          setPendingRequestId(obj.request_id);
+          setLoading(true);
+          setIsTyping(true);
+          activeRequestIdRef.current = obj.request_id;
+        }
+      }
+    } catch(e) { /* ignore */ }
+
+    const historyFetch = fetch(HISTORY_URL, {
       method: "GET",
       headers: {
         "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -92,25 +179,72 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
         clearTimeout(historyTimeout);
         log("Fetched chat history:", data);
         if (data.messages && data.messages.length > 0) {
-          setMessages(data.messages);
+          // Ensure greeting is first if history starts with user message
+          if (data.messages[0]?.role === 'user') {
+            setMessages([{ role: 'assistant', text: GREETING_TEXT }, ...data.messages]);
+          } else {
+            setMessages(data.messages);
+          }
         } else {
-          setMessages([{ 
-            role: "assistant", 
-            text: "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?" 
-          }]);
+          setMessages([{ role: "assistant", text: GREETING_TEXT }]);
+        }
+        setHistoryLoading(false);
+        // If there is a pending request, check status immediately once after history is in place
+        const currentPending = activeRequestIdRef.current || pendingRequestId;
+        if (currentPending) {
+          (async () => {
+            try {
+              const res = await fetch(ASYNC_STATUS_URL + currentPending, { headers: { 'Cache-Control': 'no-cache' } });
+              if (res.ok) {
+                const status = await res.json();
+                if (status.status === 'completed') {
+                  const rr = await fetch(ASYNC_RESULT_URL + currentPending, { headers: { 'Cache-Control': 'no-cache' } });
+                  if (rr.ok) {
+                    const rj = await rr.json();
+                    const text = rj.result || '';
+                    streamingBuffer.current = '';
+                    setMessages((msgs) => {
+                      const last = msgs[msgs.length - 1];
+                      if (last?.role === 'assistant') {
+                        return [...msgs.slice(0, -1), { ...last, text }];
+                      }
+                      return [...msgs, { role: 'assistant', text }];
+                    });
+                  }
+                  setLoading(false);
+                  setIsTyping(false);
+                  setPendingRequestId(null);
+                  localStorage.removeItem('tx_citizen_chat_pending');
+                  return;
+                }
+              }
+              // If not completed yet, begin polling
+              setIsTyping(true);
+              startPollingStatus(currentPending);
+            } catch(e) {
+              // If status check fails, still start polling as fallback
+              setIsTyping(true);
+              startPollingStatus(currentPending);
+            }
+          })();
         }
       })
       .catch((err) => {
         clearTimeout(historyTimeout);
         log("Failed to fetch chat history:", err);
-        setMessages([{ 
-          role: "assistant", 
-          text: "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?" 
-        }]);
+        setMessages([{ role: "assistant", text: GREETING_TEXT }]);
+        setHistoryLoading(false);
       });
     
     return () => clearTimeout(historyTimeout);
   }, [isOpen]);
+
+  // Stop polling when component is hidden to avoid leaks
+  useEffect(() => {
+    return () => {
+      if (!isOpen) stopPolling();
+    };
+  }, [isOpen, stopPolling]);
 
   // WebSocket connection with automatic reconnection
   const connectWebSocket = useCallback(() => {
@@ -468,7 +602,7 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
     return () => el.removeEventListener("scroll", onScroll);
   }, []);
 
-  // HTTP Streaming fallback
+  // HTTP Streaming fallback (kept for live UX if user stays on page)
   async function streamChatbotResponse(input, history, onChunk) {
     log("Sending HTTP fallback chat request...", input);
     try {
@@ -516,43 +650,39 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
     }
   }
 
-  // Sending Messages (auto fallback)
+  // Sending Messages (now uses async start + polling so backend keeps working across page switches)
   const handleSend = useCallback(async () => {
     if (!input.trim()) return;
     setAutoScroll(true);
     setLoading(true);
-    setIsTyping(false);
+    setIsTyping(true);
     streamingBuffer.current = "";
     setMessages((msgs) => [...msgs, { role: "user", text: input }]);
 
-    if (useWebSocket && ws.current && ws.current.readyState === WebSocket.OPEN) {
-      log("Sending via WebSocket:", input);
-      ws.current.send(JSON.stringify({ message: input }));
-      setInput("");
-      return;
-    }
-
-    // HTTP fallback (auto streaming)
-    log("Using HTTP fallback...");
-    let firstChunk = true;
     try {
-      await streamChatbotResponse(input, messages, (chunk) => {
-        updateStreamingMessage(chunk);
-        if (firstChunk) {
-          setLoading(false);
-          firstChunk = false;
-        }
+      // Start async request on backend
+      const res = await fetch(ASYNC_START_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input, history: messages })
       });
+      if (!res.ok) throw new Error('Failed to start chat');
+      const { request_id } = await res.json();
+      setPendingRequestId(request_id);
+      activeRequestIdRef.current = request_id;
+      localStorage.setItem('tx_citizen_chat_pending', JSON.stringify({ request_id }));
+      setInput("");
+      // Optionally render streaming locally while user stays; otherwise polling covers return case
+      startPollingStatus(request_id);
     } catch (err) {
       setMessages((msgs) => [
         ...msgs,
-        { role: "assistant", text: "❌ Error: Could not connect to the server." },
+        { role: 'assistant', text: '❌ Error: Could not connect to the server.' },
       ]);
       setLoading(false);
+      setIsTyping(false);
     }
-    setInput("");
-    setLoading(false);
-  }, [input, useWebSocket, messages, updateStreamingMessage]);
+  }, [input, messages, startPollingStatus]);
 
   // Clear chat history (start new chat)
   const clearChatHistory = useCallback(() => {
@@ -573,6 +703,9 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
         log("Chat history cleared successfully:", data);
         streamingBuffer.current = "";
         setIsTyping(false);
+        setPendingRequestId(null);
+        stopPolling();
+        localStorage.removeItem('tx_citizen_chat_pending');
         setMessages([{ 
           role: "assistant", 
           text: "Hello! I'm TexasForestGuide, your assistant for forestry, agriculture, and environmental topics in Texas. How can I help you today?" 
@@ -593,6 +726,8 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
 
   // Don't render if not open
   if (!isOpen) {
+    // stop polling when hidden to avoid leaks
+    stopPolling();
     return null;
   }
 
@@ -602,17 +737,14 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
   // 3. Connection established (WebSocket or HTTP fallback)
   const hasMessages = messages.length > 0;
   const isConnectionReady = connectionState === 'connected' || connectionState === 'http_fallback';
-  const isFullyReady = hasMessages && messagesRendered && isConnectionReady;
+  const isFullyReady = !historyLoading && hasMessages && messagesRendered && isConnectionReady;
 
   // Determine loader message based on what's pending
   const getLoaderMessage = () => {
-    if (!hasMessages) {
-      return "Loading chat history...";
-    } else if (!messagesRendered) {
-      return "Rendering messages...";
-    } else if (!isConnectionReady) {
-      return "Establishing secure connection...";
-    }
+    if (historyLoading) return "Loading chat history...";
+    if (!hasMessages) return "Loading chat history...";
+    if (!messagesRendered) return "Rendering messages...";
+    if (!isConnectionReady) return "Establishing secure connection...";
     return "Preparing chatbot...";
   };
 
@@ -671,7 +803,7 @@ export default function TexasCitizenChatbot({ isOpen, onClose }) {
           {messages.map((m, idx) => (
             <ChatBubble key={idx} msg={m} />
           ))}
-          {(loading || isTyping) && (
+          {isTyping && (
             <div className="chat-bubble assistant-bubble">
               <div className="typing-indicator">
                 <span></span>
@@ -744,4 +876,4 @@ function ChatBubble({ msg }) {
       )}
     </div>
   );
-} 
+}

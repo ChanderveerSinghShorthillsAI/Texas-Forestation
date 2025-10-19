@@ -206,6 +206,55 @@ async def chat_stream_endpoint(
         logger.error(f"❌ Chat stream endpoint error: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
+@router.post("/chat/async/start/")
+async def chat_async_start(chat_request: ChatMessage, request: Request):
+    """Start a chat request asynchronously; returns a request_id for polling."""
+    try:
+        if not chat_service.is_initialized:
+            raise HTTPException(status_code=503, detail="Chat service not initialized")
+
+        user_message = chat_request.message.strip()
+        if not user_message:
+            raise HTTPException(status_code=400, detail="Message cannot be empty")
+
+        session_id = await get_chat_session(request)
+        client_ip, _ = get_client_info(request)
+        request_id = await chat_service.start_async_request(user_message, session_id, client_ip)
+        return {"request_id": request_id, "session_id": session_id, "status": "in_progress"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Async start error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to start async chat: {str(e)}")
+
+@router.get("/chat/async/status/{request_id}")
+async def chat_async_status(request_id: str):
+    """Get status for an async chat request."""
+    try:
+        status = await chat_service.get_request_status(request_id)
+        if status.get("status") == "not_found":
+            raise HTTPException(status_code=404, detail="Request not found")
+        return status
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Async status error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get async status: {str(e)}")
+
+@router.get("/chat/async/result/{request_id}")
+async def chat_async_result(request_id: str):
+    """Get result for an async chat request (when completed)."""
+    try:
+        result = await chat_service.get_request_result(request_id)
+        if result.get("status") == "not_found":
+            raise HTTPException(status_code=404, detail="Request not found")
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"❌ Async result error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to get async result: {str(e)}")
+
 @router.get("/history/", response_model=ChatHistoryResponse)
 async def get_chat_history(
     request: Request,

@@ -13,6 +13,7 @@ import GridFireMap from './components/GridFire/GridFireMap';
 import EncroachmentTrackingPage from './components/Encroachment/EncroachmentTrackingPage';
 import TemporalComparisonPage from './components/SatelliteComparison/TemporalComparisonPage';
 import FireTrackingPage from './components/FireTracking/FireTrackingPage';
+import NotFound from './components/NotFound/NotFound';
 import './App.css';
 import { FaSpinner } from 'react-icons/fa';
 
@@ -341,8 +342,8 @@ const AppRouter = () => {
       {/* Root Route - Redirect based on authentication */}
       <Route path="/" element={<RootRedirect />} />
       
-      {/* Catch all other routes and redirect to login */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* Catch all other routes and show 404 page */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

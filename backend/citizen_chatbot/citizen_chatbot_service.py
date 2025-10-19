@@ -137,6 +137,9 @@ class TexasCitizenChatService:
         self.is_initialized = False
         self._session_locks: Dict[str, asyncio.Lock] = {}  # per-session creation locks
         self._cleanup_task = None  # Background cleanup task
+        # In-memory tracking of async chat requests so responses continue even if client disconnects
+        # request_id -> { status: 'in_progress'|'completed'|'error', session_id, user_message, result?, error?, created_at, completed_at? }
+        self._pending_requests: Dict[str, Dict[str, Any]] = {}
         
     async def initialize(self):
         """Initialize the chat service"""
@@ -170,6 +173,73 @@ class TexasCitizenChatService:
         if self._cleanup_task is None:
             self._cleanup_task = asyncio.create_task(self._periodic_cleanup())
             logger.info("🧹 Started session cleanup task")
+
+    # ===== Async chat request management =====
+    async def start_async_request(self, user_message: str, session_id: str, user_ip: Optional[str] = None) -> str:
+        """Start processing a chat request in the background and return a request_id."""
+        import uuid, time as _time
+        request_id = str(uuid.uuid4())
+        self._pending_requests[request_id] = {
+            "status": "in_progress",
+            "session_id": session_id,
+            "user_message": user_message,
+            "created_at": _time.time(),
+        }
+
+        async def _run():
+            try:
+                # Consume the async generator and build full response
+                full_chunks: list[str] = []
+                async for chunk in self.process_user_message(user_message, session_id, user_ip):
+                    chunk_type = chunk.get("type")
+                    if chunk_type in ("text", "message", "citation", "source", "sources_header"):
+                        content = chunk.get("content", "")
+                        if content:
+                            full_chunks.append(content)
+                full_text = "".join(full_chunks)
+                self._pending_requests[request_id].update({
+                    "status": "completed",
+                    "result": full_text,
+                    "completed_at": _time.time(),
+                })
+            except Exception as e:
+                logger.error(f"❌ Async chat request failed: {e}")
+                self._pending_requests[request_id].update({
+                    "status": "error",
+                    "error": str(e),
+                    "completed_at": _time.time(),
+                })
+
+        # schedule background processing without awaiting
+        asyncio.create_task(_run())
+        return request_id
+
+    async def get_request_status(self, request_id: str) -> Dict[str, Any]:
+        """Return status for a previously started async request."""
+        req = self._pending_requests.get(request_id)
+        if not req:
+            return {"status": "not_found"}
+        # Do not return the full result body here by default
+        return {
+            "status": req.get("status"),
+            "session_id": req.get("session_id"),
+            "created_at": req.get("created_at"),
+            "completed_at": req.get("completed_at"),
+            "has_result": "result" in req,
+            "error": req.get("error"),
+        }
+
+    async def get_request_result(self, request_id: str) -> Dict[str, Any]:
+        """Return the final result if available for an async request."""
+        req = self._pending_requests.get(request_id)
+        if not req:
+            return {"status": "not_found"}
+        resp: Dict[str, Any] = {"status": req.get("status")}
+        if req.get("status") == "completed":
+            resp["result"] = req.get("result", "")
+        elif req.get("status") == "error":
+            resp["error"] = req.get("error")
+        return resp
     
     async def stop_cleanup_task(self):
         """Stop background cleanup task"""
