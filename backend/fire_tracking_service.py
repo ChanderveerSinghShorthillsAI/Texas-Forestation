@@ -24,7 +24,7 @@ class FireTrackingService:
     
     def __init__(self):
         # NASA FIRMS API configuration
-        self.MAP_KEY = os.getenv("NASA_FIRMS_MAP_KEY", "38b1aa410c517a0d17f0180ea5b75d9e")
+        self.MAP_KEY = os.getenv("NASA_FIRMS_MAP_KEY", "")
         self.BASE_URL = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
         
         # Texas bounding box (West, South, East, North)

@@ -125,18 +125,23 @@ async def lifespan(app: FastAPI):
             logger.info("✅ User database connection successful")
             
             # Check if default user exists, create if not
-            default_username = os.getenv("DEFAULT_USERNAME", "user1234")
-            default_password = os.getenv("DEFAULT_PASSWORD", "pass123456")
-            default_user = user_db_service.get_user_by_username(default_username)
-            if not default_user:
-                logger.info("🔧 Creating default user...")
-                default_user = user_db_service.create_user(default_username, default_password)
-                if default_user:
-                    logger.info("✅ Default user created successfully")
+            default_username = os.getenv("DEFAULT_USERNAME")
+            default_password = os.getenv("DEFAULT_PASSWORD")
+            
+            if default_username and default_password:
+                default_user = user_db_service.get_user_by_username(default_username)
+                if not default_user:
+                    logger.info("🔧 Creating default user...")
+                    default_user = user_db_service.create_user(default_username, default_password)
+                    if default_user:
+                        logger.info("✅ Default user created successfully")
+                    else:
+                        logger.error("❌ Failed to create default user")
                 else:
-                    logger.error("❌ Failed to create default user")
+                    logger.info("✅ Default user already exists in database")
             else:
-                logger.info("✅ Default user already exists in database")
+                logger.warning("⚠️ DEFAULT_USERNAME or DEFAULT_PASSWORD not set in .env - skipping default user creation")
+                logger.info("💡 Set DEFAULT_USERNAME and DEFAULT_PASSWORD in backend/.env to enable default user")
         else:
             logger.error("❌ User database health check failed")
     except Exception as e:

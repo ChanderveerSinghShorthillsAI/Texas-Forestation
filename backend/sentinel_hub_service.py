@@ -36,11 +36,11 @@ class SentinelHubService:
         
         # You'll need to sign up at: https://www.sentinel-hub.com/
         # Get your credentials from the dashboard
-        self.config.sh_client_id = os.getenv("SENTINEL_HUB_CLIENT_ID", "0535ebc2-3a8c-4688-8965-9981d5feca1a")
-        self.config.sh_client_secret = os.getenv("SENTINEL_HUB_CLIENT_SECRET", "0mhoVVpH7sGWn5CZGnZgd3Kw4ESecZbl")
+        self.config.sh_client_id = os.getenv("SENTINEL_HUB_CLIENT_ID", "")
+        self.config.sh_client_secret = os.getenv("SENTINEL_HUB_CLIENT_SECRET", "")
         
         # Instance ID (optional for some endpoints)
-        self.config.instance_id = os.getenv("SENTINEL_HUB_INSTANCE_ID", "ba9ce6a9-b382-41c6-8892-482c9ebf4042")
+        self.config.instance_id = os.getenv("SENTINEL_HUB_INSTANCE_ID", "")
         
         # Image resolution in meters per pixel
         self.resolution = 10  # 10m resolution for Sentinel-2

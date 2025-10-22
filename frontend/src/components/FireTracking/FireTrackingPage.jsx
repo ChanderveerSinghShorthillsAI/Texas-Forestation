@@ -582,7 +582,7 @@ const FireTrackingPage = () => {
                     for Resource Management System (FIRMS).
                   </p>
                   
-                  <div className="legend">
+                  <div className="legend" style={{display:'contents'}}>
                     <div className="legend-title">Fire Marker Legend:</div>
                     <div className="legend-items">
                       <div className="legend-item">
@@ -629,7 +629,6 @@ const FireTrackingPage = () => {
               <div className="loading-content">
                 <FaFire className="loading-fire-icon flickering" />
                 <h3>Loading Fire Data...</h3>
-                <p>Fetching real-time detections from NASA FIRMS</p>
                 <div className="loading-spinner"></div>
               </div>
             </div>
@@ -659,19 +658,18 @@ const FireTrackingPage = () => {
               {/* Texas Boundary - Darkened style */}
               <TexasBoundary texasBoundaryData={texasBoundaryData} />
               
-              <Pane name="fire-markers" style={{ zIndex: 650 }}>
-                <FireLayer
-                  isVisible={true}
-                  dataset={selectedDataset}
-                  days={selectedDays}
-                  onFireDataUpdate={(data) => {
-                    if (data.totalDetections !== undefined) {
-                      console.log(`Fire data updated: ${data.totalDetections} detections`);
-                    }
-                  }}
-                  showPopups={true}
-                />
-              </Pane>
+              {/* Fire markers - removed Pane wrapper to fix click events */}
+              <FireLayer
+                isVisible={true}
+                dataset={selectedDataset}
+                days={selectedDays}
+                onFireDataUpdate={(data) => {
+                  if (data.totalDetections !== undefined) {
+                    console.log(`Fire data updated: ${data.totalDetections} detections`);
+                  }
+                }}
+                showPopups={true}
+              />
             </MapContainer>
           )}
 

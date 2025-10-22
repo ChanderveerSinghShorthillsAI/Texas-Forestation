@@ -9,8 +9,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-api_key = os.getenv("PINECONE_API_KEY", "pcsk_45dUYY_ShcerydwjW3afP668vKmVNELU4pDT54cJWt7h9xB8diqhrsnxEEzp7MGRsHtwMk")
+api_key = os.getenv("PINECONE_API_KEY")
 index_name = os.getenv("PINECONE_INDEX_NAME", "texas-plantation-kb")
+
+if not api_key:
+    print("❌ Error: PINECONE_API_KEY not found in environment variables!")
+    print("💡 Please set PINECONE_API_KEY in your backend/.env file")
+    exit(1)
 
 print(f"🔗 Connecting to Pinecone...")
 pc = Pinecone(api_key=api_key)

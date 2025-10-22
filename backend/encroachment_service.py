@@ -20,7 +20,7 @@ class EncroachmentService:
     
     def __init__(self):
         self.api_url = os.getenv("GLOBAL_FOREST_WATCH_API_URL", "https://data-api.globalforestwatch.org/dataset/umd_glad_dist_alerts/latest/query/json")
-        self.api_key = os.getenv("GLOBAL_FOREST_WATCH_API_KEY", "782a188f-e7b1-4b3f-bc10-afad443b66e4")
+        self.api_key = os.getenv("GLOBAL_FOREST_WATCH_API_KEY", "")
         self.headers = {
             "origin": "http://localhost",
             "x-api-key": self.api_key,

@@ -21,8 +21,8 @@ class LoginRequest(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "user1234",
-                "password": "pass123456"
+                "username": "your_username",
+                "password": "your_secure_password"
             }
         }
 
@@ -36,7 +36,7 @@ class UserInfo(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "username": "user1234",
+                "username": "your_username",
                 "is_authenticated": True,
                 "login_time": "2024-01-15T10:30:00"
             }
@@ -57,7 +57,7 @@ class LoginResponse(BaseModel):
                 "token_type": "bearer",
                 "expires_in": 1800,
                 "user": {
-                    "username": "user1234",
+                    "username": "your_username",
                     "is_authenticated": True,
                     "login_time": "2024-01-15T10:30:00"
                 }
@@ -96,7 +96,7 @@ class TokenValidationResponse(BaseModel):
             "example": {
                 "is_valid": True,
                 "user": {
-                    "username": "user1234",
+                    "username": "your_username",
                     "is_authenticated": True,
                     "login_time": "2024-01-15T10:30:00"
                 },

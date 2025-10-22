@@ -146,8 +146,13 @@ def main():
     logger.info("🚀 Texas Forestation User Account Unlock Tool")
     logger.info("=" * 60)
     
-    # Default username (from environment variable or default)
-    DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME", "user1234")
+    # Default username - MUST be set in .env file
+    DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME")
+    
+    if not DEFAULT_USERNAME:
+        logger.error("❌ Missing DEFAULT_USERNAME in environment variables!")
+        logger.error("💡 Please set DEFAULT_USERNAME in your backend/.env file")
+        sys.exit(1)
     
     # Step 1: Check current status
     user = check_user_status(DEFAULT_USERNAME)

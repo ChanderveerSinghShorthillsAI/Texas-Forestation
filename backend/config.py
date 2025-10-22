@@ -15,10 +15,7 @@ class Config:
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
     
     # Pinecone Configuration
-    PINECONE_API_KEY = os.getenv(
-        "PINECONE_API_KEY",
-        "pcsk_45dUYY_ShcerydwjW3afP668vKmVNELU4pDT54cJWt7h9xB8diqhrsnxEEzp7MGRsHtwMk"
-    )
+    PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
     PINECONE_ENVIRONMENT = os.getenv(
         "PINECONE_ENVIRONMENT",
         "us-east-1"  # AWS region

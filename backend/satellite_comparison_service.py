@@ -24,7 +24,7 @@ class SatelliteComparisonService:
     
     def __init__(self):
         # Planet Labs API configuration
-        self.api_key = os.getenv("PLANET_API_KEY", "PLAK3a0009aaa3ba45489482fd9c62a8df54")
+        self.api_key = os.getenv("PLANET_API_KEY", "")
         self.base_url = "https://api.planet.com/data/v1"
         self.search_url = f"{self.base_url}/quick-search"
         

@@ -27,9 +27,15 @@ from .user_database import user_db_service
 logger = logging.getLogger(__name__)
 
 # JWT settings - Use environment variables for production security
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "texas_forestation_secret_key_2024_super_secure")
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRE_MINUTES", "30"))
+
+# Validate JWT secret key
+if not SECRET_KEY:
+    logger.error("❌ JWT_SECRET_KEY not found in environment variables!")
+    logger.error("💡 Please set JWT_SECRET_KEY in your backend/.env file")
+    raise ValueError("JWT_SECRET_KEY is required but not set in environment variables")
 
 
 class AuthenticationService:

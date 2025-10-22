@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { CircleMarker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { fireTrackingService } from '../../services/fireTrackingService';
 
 /**
@@ -114,124 +115,267 @@ const FireLayer = ({
   }, [map]);
 
   /**
-   * Create popup content for fire detection
+   * Create popup content for fire detection with inline styles only
    */
   const createFirePopupContent = (feature) => {
     const fireInfo = fireTrackingService.formatFireDetection(feature);
     const props = feature.properties;
     
+    // Get confidence color
+    const getConfidenceColor = (level) => {
+      const colors = {
+        'High': '#22c55e',
+        'Medium': '#f59e0b',
+        'Low': '#ef4444',
+        'Very Low': '#dc2626'
+      };
+      return colors[level] || '#6b7280';
+    };
+    
+    // Get intensity color
+    const getIntensityColor = (level) => {
+      const colors = {
+        'Very High': '#dc2626',
+        'High': '#ef4444',
+        'Medium': '#f59e0b',
+        'Low': '#22c55e',
+        'Very Low': '#16a34a'
+      };
+      return colors[level] || '#6b7280';
+    };
+    
     return (
-      <div className="fire-popup">
-        <div className="fire-popup-header">
-          <div className="fire-popup-icon">🔥</div>
-          <div className="fire-popup-title">Fire Detection</div>
-          <div className="fire-popup-dataset">{fireInfo.dataset}</div>
+      <div style={{
+        fontFamily: 'Inter, system-ui, -apple-system, sans-serif',
+        fontSize: '13px',
+        lineHeight: '1.5',
+        color: '#1e293b',
+        minWidth: '300px',
+        maxWidth: '350px'
+      }}>
+        {/* Header */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '12px',
+          background: 'linear-gradient(135deg, #dc2626 0%, #ea580c 100%)',
+          color: 'white',
+          borderRadius: '8px 8px 0 0',
+          marginBottom: '12px',
+          boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)'
+        }}>
+          <div style={{ fontSize: '24px' }}>🔥</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ 
+              fontSize: '16px', 
+              fontWeight: '700',
+              marginBottom: '2px',
+              textShadow: '0 1px 2px rgba(0, 0, 0, 0.2)'
+            }}>
+              Fire Detection
+            </div>
+            <div style={{ 
+              fontSize: '11px', 
+              opacity: 0.95,
+              fontWeight: '500'
+            }}>
+              {fireInfo.dataset}
+            </div>
+          </div>
         </div>
         
-        <div className="fire-popup-content">
+        <div style={{ padding: '0 8px 8px 8px' }}>
           {/* Primary Detection Info */}
-          <div className="fire-popup-section">
-            <div className="fire-popup-section-title">🕒 Detection Details</div>
-            
-            <div className="fire-popup-row">
-              <span className="fire-popup-label">Time:</span>
-              <span className="fire-popup-value">{fireInfo.detectionTime}</span>
+          <div style={{
+            marginBottom: '16px',
+            padding: '12px',
+            backgroundColor: '#f8fafc',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0'
+          }}>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#475569',
+              marginBottom: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>🕒</span> Detection Details
             </div>
             
-            <div className="fire-popup-row">
-              <span className="fire-popup-label">Satellite:</span>
-              <span className="fire-popup-value">{fireInfo.satellite}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b', fontWeight: '500' }}>Time:</span>
+              <span style={{ color: '#0f172a', fontWeight: '600' }}>{fireInfo.detectionTime}</span>
             </div>
             
-            <div className="fire-popup-row">
-              <span className="fire-popup-label">Instrument:</span>
-              <span className="fire-popup-value">{props.instrument || 'Unknown'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b', fontWeight: '500' }}>Satellite:</span>
+              <span style={{ color: '#0f172a', fontWeight: '600' }}>{fireInfo.satellite}</span>
             </div>
             
-            <div className="fire-popup-row">
-              <span className="fire-popup-label">Day/Night:</span>
-              <span className="fire-popup-value">
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b', fontWeight: '500' }}>Instrument:</span>
+              <span style={{ color: '#0f172a', fontWeight: '600' }}>{props.instrument || 'Unknown'}</span>
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ color: '#64748b', fontWeight: '500' }}>Day/Night:</span>
+              <span style={{ color: '#0f172a', fontWeight: '600' }}>
                 {props.daynight === 'D' ? '☀️ Day' : props.daynight === 'N' ? '🌙 Night' : 'Unknown'}
               </span>
             </div>
           </div>
 
           {/* Fire Characteristics */}
-          <div className="fire-popup-section">
-            <div className="fire-popup-section-title">🔥 Fire Characteristics</div>
+          <div style={{
+            marginBottom: '16px',
+            padding: '12px',
+            backgroundColor: '#fef2f2',
+            borderRadius: '8px',
+            border: '1px solid #fecaca'
+          }}>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#dc2626',
+              marginBottom: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>🔥</span> Fire Characteristics
+            </div>
             
-            <div className="fire-popup-row">
-              <span className="fire-popup-label">Confidence:</span>
-              <span className={`fire-popup-value confidence-${fireInfo.confidenceLevel.toLowerCase().replace(' ', '-')}`}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b', fontWeight: '500' }}>Confidence:</span>
+              <span style={{ 
+                color: getConfidenceColor(fireInfo.confidenceLevel),
+                fontWeight: '700',
+                fontSize: '14px'
+              }}>
                 {fireInfo.confidence}% ({fireInfo.confidenceLevel})
               </span>
             </div>
             
-            <div className="fire-popup-row">
-              <span className="fire-popup-label">Intensity:</span>
-              <span className={`fire-popup-value intensity-${fireInfo.fireIntensity.toLowerCase().replace(' ', '-')}`}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b', fontWeight: '500' }}>Intensity:</span>
+              <span style={{ 
+                color: getIntensityColor(fireInfo.fireIntensity),
+                fontWeight: '700',
+                fontSize: '14px'
+              }}>
                 {fireInfo.fireIntensity}
               </span>
             </div>
             
             {fireInfo.fireRadiativePower > 0 && (
-              <div className="fire-popup-row">
-                <span className="fire-popup-label">FRP:</span>
-                <span className="fire-popup-value">{fireInfo.fireRadiativePower.toFixed(2)} MW</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#64748b', fontWeight: '500' }}>FRP:</span>
+                <span style={{ color: '#dc2626', fontWeight: '700' }}>
+                  {fireInfo.fireRadiativePower.toFixed(2)} MW
+                </span>
               </div>
             )}
             
             {fireInfo.brightness > 0 && (
-              <div className="fire-popup-row">
-                <span className="fire-popup-label">Brightness:</span>
-                <span className="fire-popup-value">{fireInfo.brightness.toFixed(1)} K</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b', fontWeight: '500' }}>Brightness:</span>
+                <span style={{ color: '#ea580c', fontWeight: '700' }}>
+                  {fireInfo.brightness.toFixed(1)} K
+                </span>
               </div>
             )}
           </div>
 
           {/* Technical Details */}
-          <div className="fire-popup-section">
-            <div className="fire-popup-section-title">📡 Technical Data</div>
+          <div style={{
+            marginBottom: '12px',
+            padding: '12px',
+            backgroundColor: '#f1f5f9',
+            borderRadius: '8px',
+            border: '1px solid #cbd5e1'
+          }}>
+            <div style={{
+              fontSize: '12px',
+              fontWeight: '700',
+              color: '#475569',
+              marginBottom: '10px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span>📡</span> Technical Data
+            </div>
             
             {fireInfo.scan > 0 && (
-              <div className="fire-popup-row">
-                <span className="fire-popup-label">Scan Angle:</span>
-                <span className="fire-popup-value">{fireInfo.scan.toFixed(2)}°</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#64748b', fontWeight: '500' }}>Scan Angle:</span>
+                <span style={{ color: '#0f172a', fontWeight: '600' }}>{fireInfo.scan.toFixed(2)}°</span>
               </div>
             )}
             
             {fireInfo.track > 0 && (
-              <div className="fire-popup-row">
-                <span className="fire-popup-label">Track Angle:</span>
-                <span className="fire-popup-value">{fireInfo.track.toFixed(2)}°</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#64748b', fontWeight: '500' }}>Track Angle:</span>
+                <span style={{ color: '#0f172a', fontWeight: '600' }}>{fireInfo.track.toFixed(2)}°</span>
               </div>
             )}
             
-            <div className="fire-popup-row">
-              <span className="fire-popup-label">Version:</span>
-              <span className="fire-popup-value">{props.version || 'Unknown'}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span style={{ color: '#64748b', fontWeight: '500' }}>Version:</span>
+              <span style={{ color: '#0f172a', fontWeight: '600' }}>{props.version || 'Unknown'}</span>
             </div>
             
             {/* Additional brightness temperatures for VIIRS */}
             {props.bright_ti5 && (
-              <div className="fire-popup-row">
-                <span className="fire-popup-label">Brightness (I5):</span>
-                <span className="fire-popup-value">{parseFloat(props.bright_ti5).toFixed(1)} K</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                <span style={{ color: '#64748b', fontWeight: '500' }}>Brightness (I5):</span>
+                <span style={{ color: '#0f172a', fontWeight: '600' }}>
+                  {parseFloat(props.bright_ti5).toFixed(1)} K
+                </span>
               </div>
             )}
             
             {props.bright_t31 && (
-              <div className="fire-popup-row">
-                <span className="fire-popup-label">Brightness (T31):</span>
-                <span className="fire-popup-value">{parseFloat(props.bright_t31).toFixed(1)} K</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b', fontWeight: '500' }}>Brightness (T31):</span>
+                <span style={{ color: '#0f172a', fontWeight: '600' }}>
+                  {parseFloat(props.bright_t31).toFixed(1)} K
+                </span>
               </div>
             )}
           </div>
           
           {/* Location */}
-          <div className="fire-popup-coordinates">
-            📍 {fireInfo.coordinates[1].toFixed(6)}°N, {Math.abs(fireInfo.coordinates[0]).toFixed(6)}°W
-            <div className="fire-popup-coordinates-detail">
+          <div style={{
+            padding: '10px 12px',
+            backgroundColor: '#eff6ff',
+            borderRadius: '8px',
+            border: '1px solid #bfdbfe',
+            textAlign: 'center'
+          }}>
+            <div style={{
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#1e40af',
+              marginBottom: '4px'
+            }}>
+              📍 {fireInfo.coordinates[1].toFixed(6)}°N, {Math.abs(fireInfo.coordinates[0]).toFixed(6)}°W
+            </div>
+            <div style={{
+              fontSize: '11px',
+              color: '#64748b',
+              fontFamily: 'monospace'
+            }}>
               Lat: {fireInfo.coordinates[1].toFixed(8)}, Lon: {fireInfo.coordinates[0].toFixed(8)}
             </div>
           </div>
@@ -239,6 +383,43 @@ const FireLayer = ({
       </div>
     );
   };
+
+  // Add CSS to ensure fire markers are clickable
+  useEffect(() => {
+    const styleId = 'fire-marker-styles';
+    
+    // Remove existing style if present
+    const existingStyle = document.getElementById(styleId);
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+    
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.innerHTML = `
+      /* Critical fix: Allow pointer events on interactive elements within SVG */
+      .leaflet-overlay-pane {
+        pointer-events: none;
+      }
+      
+      .leaflet-overlay-pane svg {
+        pointer-events: none;
+      }
+      
+      .leaflet-overlay-pane svg .leaflet-interactive {
+        pointer-events: all !important;
+        cursor: pointer !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      const styleToRemove = document.getElementById(styleId);
+      if (styleToRemove) {
+        styleToRemove.remove();
+      }
+    };
+  }, [map]);
 
   // Don't render anything if not visible or no data
   if (!isVisible || !fireData || !fireData.features) {
@@ -253,27 +434,56 @@ const FireLayer = ({
         const style = fireTrackingService.getFireMarkerStyle(feature);
         const fireInfo = fireTrackingService.formatFireDetection(feature);
 
+        // Create event handlers - working logic
+        const markerEventHandlers = {
+          click: (e) => {
+            handleFireClick(feature, latlng);
+          },
+          mouseover: (e) => {
+            const target = e.target;
+            target.setStyle({
+              radius: style.radius * 1.2,
+              weight: style.weight + 1,
+              fillOpacity: 0.9
+            });
+          },
+          mouseout: (e) => {
+            const target = e.target;
+            target.setStyle({
+              radius: style.radius,
+              weight: style.weight,
+              fillOpacity: style.fillOpacity
+            });
+          },
+          add: (e) => {
+            const target = e.target;
+            if (target._path) {
+              target._path.style.pointerEvents = 'auto';
+              target._path.style.cursor = 'pointer';
+            }
+          }
+        };
+
         return (
           <CircleMarker
             key={fireInfo.id}
             center={latlng}
-            radius={style.radius}
+            radius={style.radius} // Original size from service
             pathOptions={{
               fillColor: style.fillColor,
               color: style.color,
-              weight: style.weight,
+              weight: style.weight, // Original weight
               opacity: style.opacity,
-              fillOpacity: style.fillOpacity
+              fillOpacity: style.fillOpacity,
+              className: 'fire-circle-marker',
+              interactive: true
             }}
-            eventHandlers={{
-              click: () => handleFireClick(feature, latlng)
-            }}
+            eventHandlers={markerEventHandlers}
           >
             {showPopups && (
               <Popup 
-                // maxHeight={400}
                 minWidth={330}
-                className="fire-popup-container"
+                maxWidth={380}
                 closeButton={true}
                 autoClose={false}
                 closeOnClick={false}

@@ -12,12 +12,20 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# S3 Configuration
+# S3 Configuration - All credentials must be set in .env file
 BUCKET_NAME = os.getenv("AWS_BUCKET_NAME", "partsgenie-data")
-AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY", "AKIA3XDPSWJQVL3IWCWY")
-AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY", "")
+AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY")
+AWS_SECRET_KEY = os.getenv("AWS_SECRET_KEY")
 AWS_REGION = os.getenv("AWS_REGION", "us-west-2")
 S3_FOLDER_PREFIX = os.getenv("S3_FOLDER_PREFIX", "texas_geojsons")
+
+# Validate required AWS credentials
+if not all([AWS_ACCESS_KEY, AWS_SECRET_KEY]):
+    print("❌ Error: Missing required AWS credentials!")
+    print("💡 Please set the following in your backend/.env file:")
+    if not AWS_ACCESS_KEY: print("   - AWS_ACCESS_KEY")
+    if not AWS_SECRET_KEY: print("   - AWS_SECRET_KEY")
+    exit(1)
 
 def get_s3_client():
     """Initialize and return S3 client"""

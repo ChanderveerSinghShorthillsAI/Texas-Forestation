@@ -20,13 +20,25 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-# Database connection details
-DB_HOST = os.getenv("DB_HOST", "vanarakshakdb.postgres.database.azure.com")
-DB_NAME = os.getenv("DB_NAME", "postgres")
-DB_USER = os.getenv("DB_USER", "shsysadmin")
-DB_PASS = os.getenv("DB_PASS", "sjCQS40C8b49")
+# Database connection details - All credentials must be set in .env file
+DB_HOST = os.getenv("DB_HOST")
+DB_NAME = os.getenv("DB_NAME")
+DB_USER = os.getenv("DB_USER")
+DB_PASS = os.getenv("DB_PASS")
 DB_PORT = int(os.getenv("DB_PORT", "5432"))
 DB_SSLMODE = os.getenv("DB_SSLMODE", "require")
+
+# Validate required credentials
+if not all([DB_HOST, DB_NAME, DB_USER, DB_PASS]):
+    missing = []
+    if not DB_HOST: missing.append("DB_HOST")
+    if not DB_NAME: missing.append("DB_NAME")
+    if not DB_USER: missing.append("DB_USER")
+    if not DB_PASS: missing.append("DB_PASS")
+    
+    logger.error(f"❌ Missing required database credentials: {', '.join(missing)}")
+    logger.error("💡 Please set these variables in your backend/.env file")
+    raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
 # Connection string for psycopg2
 def get_connection_params():

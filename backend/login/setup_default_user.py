@@ -35,13 +35,24 @@ def setup_default_user():
     """
     Create the default user account in the database
     
-    This creates user1234 with password pass123456 (as requested)
-    but stores it securely with proper hashing.
+    Credentials must be set in backend/.env:
+    - DEFAULT_USERNAME
+    - DEFAULT_PASSWORD
+    
+    The password is stored securely with proper hashing.
     """
     
-    # Default user credentials (from environment variables or defaults)
-    DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME", "user1234")
-    DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD", "pass123456")
+    # Default user credentials - MUST be set in .env file
+    DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME")
+    DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD")
+    
+    # Validate required credentials
+    if not all([DEFAULT_USERNAME, DEFAULT_PASSWORD]):
+        logger.error("❌ Missing default user credentials!")
+        logger.error("💡 Please set the following in your backend/.env file:")
+        if not DEFAULT_USERNAME: logger.error("   - DEFAULT_USERNAME")
+        if not DEFAULT_PASSWORD: logger.error("   - DEFAULT_PASSWORD")
+        return False
     
     try:
         logger.info("🔧 Setting up default user for Texas Forestation System...")
@@ -125,8 +136,12 @@ def test_authentication():
     try:
         logger.info("🧪 Testing authentication flow...")
         
-        DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME", "user1234")
-        DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD", "pass123456")
+        DEFAULT_USERNAME = os.getenv("DEFAULT_USERNAME")
+        DEFAULT_PASSWORD = os.getenv("DEFAULT_PASSWORD")
+        
+        if not all([DEFAULT_USERNAME, DEFAULT_PASSWORD]):
+            logger.error("❌ Missing default user credentials for testing!")
+            return False
         
         # Test successful authentication
         user = user_db_service.authenticate_user(DEFAULT_USERNAME, DEFAULT_PASSWORD)
@@ -167,8 +182,8 @@ def main():
     logger.info("🎉 User setup completed successfully!")
     logger.info("")
     logger.info("📝 Summary:")
-    logger.info("   - Default user created/verified: user1234")
-    logger.info("   - Password: pass123456 (securely hashed)")
+    logger.info(f"   - Default user created/verified: {os.getenv('DEFAULT_USERNAME', 'from .env')}")
+    logger.info(f"   - Password: {os.getenv('DEFAULT_PASSWORD', 'from .env')} (securely hashed)")
     logger.info("   - Database: spatial_data.db")
     logger.info("   - Authentication: Production-ready")
     logger.info("")
