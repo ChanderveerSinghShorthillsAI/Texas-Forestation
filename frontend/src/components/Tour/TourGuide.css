@@ -1,0 +1,402 @@
+/**
+ * Custom Tour Guide Styling for Texas Vanrakshak
+ * Beautiful, modern, and professional tour guide appearance
+ */
+
+/* ==================== Tour Dialog Customization ==================== */
+
+/* Main dialog container */
+.texas-vanrakshak-dialog {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  background: linear-gradient(135deg, #1a2332 0%, #0f1419 100%) !important;
+  border: 2px solid rgba(16, 185, 129, 0.3) !important;
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  animation: dialogSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes dialogSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Dialog header */
+.texas-vanrakshak-dialog .tg-dialog-header {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  padding: 20px 24px !important;
+  border-bottom: 2px solid rgba(16, 185, 129, 0.3) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.texas-vanrakshak-dialog .tg-dialog-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, transparent 0%, rgba(255, 255, 255, 0.1) 100%);
+  pointer-events: none;
+}
+
+/* Dialog title */
+.texas-vanrakshak-dialog .tg-dialog-title {
+  color: #ffffff !important;
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.3px !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin: 0 !important;
+  padding-right: 30px !important;
+}
+
+/* Close button */
+.texas-vanrakshak-dialog .tg-dialog-close-btn {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  border-radius: 8px !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  backdrop-filter: blur(10px);
+}
+
+.texas-vanrakshak-dialog .tg-dialog-close-btn:hover {
+  background: rgba(239, 68, 68, 0.8) !important;
+  border-color: rgba(239, 68, 68, 1) !important;
+  transform: scale(1.1) rotate(90deg) !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Progress bar */
+.texas-vanrakshak-dialog .tg-progress-bar {
+  height: 4px !important;
+  background: rgba(16, 185, 129, 0.3) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.texas-vanrakshak-dialog .tg-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #10B981, #34D399, #10B981);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* Dialog body */
+.texas-vanrakshak-dialog .tg-dialog-body {
+  padding: 28px 24px !important;
+  color: #e5e7eb !important;
+  font-size: 15px !important;
+  line-height: 1.7 !important;
+  background: rgba(15, 20, 25, 0.6) !important;
+}
+
+/* Dialog footer */
+.texas-vanrakshak-dialog .tg-dialog-footer {
+  padding: 20px 24px !important;
+  background: rgba(10, 15, 20, 0.8) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+/* Navigation buttons */
+.texas-vanrakshak-dialog .tg-dialog-btn {
+  padding: 10px 20px !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  cursor: pointer !important;
+  border: 2px solid transparent !important;
+  letter-spacing: 0.3px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.texas-vanrakshak-dialog .tg-dialog-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.texas-vanrakshak-dialog .tg-dialog-btn:hover::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Previous button */
+.texas-vanrakshak-dialog .tg-dialog-btn-prev {
+  background: rgba(100, 116, 139, 0.2) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(100, 116, 139, 0.3) !important;
+}
+
+.texas-vanrakshak-dialog .tg-dialog-btn-prev:hover {
+  background: rgba(100, 116, 139, 0.4) !important;
+  border-color: rgba(100, 116, 139, 0.5) !important;
+  transform: translateX(-3px) !important;
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3) !important;
+}
+
+/* Next button */
+.texas-vanrakshak-dialog .tg-dialog-btn-next {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.texas-vanrakshak-dialog .tg-dialog-btn-next:hover {
+  transform: translateX(3px) scale(1.05) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5) !important;
+  border-color: rgba(16, 185, 129, 0.8) !important;
+}
+
+/* Finish button */
+.texas-vanrakshak-dialog .tg-dialog-btn-finish {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%) !important;
+  color: #ffffff !important;
+  border-color: rgba(139, 92, 246, 0.5) !important;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3) !important;
+}
+
+.texas-vanrakshak-dialog .tg-dialog-btn-finish:hover {
+  transform: scale(1.08) !important;
+  box-shadow: 0 6px 24px rgba(139, 92, 246, 0.5) !important;
+  border-color: rgba(139, 92, 246, 0.8) !important;
+}
+
+/* Step dots */
+.texas-vanrakshak-dialog .tg-step-dots {
+  display: flex !important;
+  gap: 8px !important;
+  align-items: center !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+}
+
+.texas-vanrakshak-dialog .tg-step-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: rgba(100, 116, 139, 0.4) !important;
+  transition: all 0.3s ease !important;
+  cursor: pointer !important;
+  border: 2px solid transparent !important;
+}
+
+.texas-vanrakshak-dialog .tg-step-dot:hover {
+  background: rgba(100, 116, 139, 0.6) !important;
+  transform: scale(1.2) !important;
+}
+
+.texas-vanrakshak-dialog .tg-step-dot.tg-step-dot-active {
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%) !important;
+  width: 12px !important;
+  height: 12px !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.6) !important;
+  animation: dotPulse 2s infinite;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.6);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.8);
+  }
+}
+
+/* Step progress text */
+.texas-vanrakshak-dialog .tg-step-progress {
+  color: #94a3b8 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.5px !important;
+  background: rgba(100, 116, 139, 0.15) !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(100, 116, 139, 0.3) !important;
+}
+
+/* ==================== Backdrop Customization ==================== */
+
+.texas-vanrakshak-backdrop {
+  background: rgba(10, 20, 30, 0.35) !important;
+  backdrop-filter: none !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Highlighted element border effect */
+.texas-vanrakshak-backdrop::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 4px solid #10B981;
+  border-radius: 12px;
+  box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.25),
+              0 0 40px rgba(16, 185, 129, 0.5),
+              inset 0 0 0 2px rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+  animation: borderGlow 2s infinite;
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 5px rgba(16, 185, 129, 0.25),
+                0 0 40px rgba(16, 185, 129, 0.5),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(16, 185, 129, 0.4),
+                0 0 60px rgba(16, 185, 129, 0.7),
+                inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* ==================== Responsive Design ==================== */
+
+@media (max-width: 768px) {
+  .texas-vanrakshak-dialog {
+    max-width: 92% !important;
+    margin: 0 auto !important;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-header {
+    padding: 16px 18px !important;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-title {
+    font-size: 17px !important;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-body {
+    padding: 20px 18px !important;
+    font-size: 14px !important;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-footer {
+    padding: 16px 18px !important;
+    flex-wrap: wrap;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-btn {
+    padding: 9px 16px !important;
+    font-size: 13px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .texas-vanrakshak-dialog {
+    max-width: 96% !important;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-footer {
+    flex-direction: column;
+    gap: 8px !important;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .texas-vanrakshak-dialog .tg-step-dots {
+    order: -1;
+    margin-bottom: 12px;
+  }
+}
+
+/* ==================== Accessibility ==================== */
+
+.texas-vanrakshak-dialog *:focus {
+  outline: 2px solid #10B981 !important;
+  outline-offset: 2px !important;
+}
+
+.texas-vanrakshak-dialog .tg-dialog-btn:focus-visible {
+  outline: 3px solid #10B981 !important;
+  outline-offset: 3px !important;
+}
+
+/* ==================== Dark Mode Optimization ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .texas-vanrakshak-dialog {
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+  }
+}
+
+/* ==================== High Contrast Mode ==================== */
+
+@media (prefers-contrast: high) {
+  .texas-vanrakshak-dialog {
+    border: 3px solid #10B981 !important;
+  }
+
+  .texas-vanrakshak-dialog .tg-dialog-btn {
+    border-width: 3px !important;
+  }
+}
+
+/* ==================== Reduced Motion ==================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .texas-vanrakshak-dialog,
+  .texas-vanrakshak-dialog *,
+  .texas-vanrakshak-backdrop {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

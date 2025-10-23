@@ -20,6 +20,9 @@ import {
   IoEarthSharp 
 } from 'react-icons/io5';
 import './LandingPage.css';
+import { useTourGuide } from '../Tour/TourGuideWrapper';
+import TourGuideButton from '../Tour/TourGuideButton';
+import { landingPageTourSteps, defaultTourOptions } from '../Tour/TourGuideConfig';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -27,6 +30,14 @@ const LandingPage = () => {
   
   // Refs for scroll animations
   const sectionsRef = useRef([]);
+  
+  // Initialize tour guide
+  const { startTour } = useTourGuide(
+    landingPageTourSteps,
+    defaultTourOptions,
+    'landing-tour',
+    false // Don't auto-start
+  );
 
   const handleLogout = async () => {
     await logout();
@@ -154,6 +165,13 @@ const LandingPage = () => {
 
   return (
     <div className="landing-page">
+      {/* Tour Guide Button */}
+      <TourGuideButton 
+        onClick={startTour}
+        position="bottom-right"
+        tooltip="Start Guided Tour 🎯"
+      />
+      
       {/* Video Background */}
       <div className="video-background">
         <video
