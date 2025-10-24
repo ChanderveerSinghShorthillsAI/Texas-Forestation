@@ -131,13 +131,13 @@ const LoginPage = ({ onLoginSuccess }) => {
         <div className="login-overlay">
           <div className="login-container">
             <div className="login-header">
-              <h1>Texas Forestation</h1>
-              <p>Spatial Analysis & Plantation Planning System</p>
+              <h1 style={{ color: "#1E2D24", textShadow: 'none' }}>Texas Forestation</h1>
+              <p style={{ color: "#4E6352", textShadow: 'none' }}>Spatial Analysis & Plantation Planning System</p>
             </div>
 
             <form className="login-form" onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="username" className="form-label">
+                <label htmlFor="username" className="form-label" style={{ color: "#758D77", textShadow: 'none'}}>
                   Username
                 </label>
                 <input
@@ -151,6 +151,11 @@ const LoginPage = ({ onLoginSuccess }) => {
                   placeholder="Enter your username"
                   disabled={isLoading}
                   autoComplete="username"
+                  style={{
+                    color: "#2E2E2E",
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                  }}
                 />
                 {errors.username && (
                   <span className="error-message">{errors.username}</span>
@@ -158,7 +163,7 @@ const LoginPage = ({ onLoginSuccess }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="password" className="form-label">
+                <label htmlFor="password" className="form-label" style={{ color: "#758D77", textShadow: 'none'  }}>
                   Password
                 </label>
                 <input
@@ -172,6 +177,11 @@ const LoginPage = ({ onLoginSuccess }) => {
                   placeholder="Enter your password"
                   disabled={isLoading}
                   autoComplete="current-password"
+                  style={{
+                    color: "#2E2E2E",
+                    background: "rgba(255,255,255,0.1)",
+                    border: "1px solid rgba(255,255,255,0.3)",
+                  }}
                 />
                 {errors.password && (
                   <span className="error-message">{errors.password}</span>
@@ -189,6 +199,7 @@ const LoginPage = ({ onLoginSuccess }) => {
                 type="submit"
                 className={`login-button ${isLoading ? 'loading' : ''}`}
                 disabled={isLoading}
+                style={{color: '#FFF6E5'}}
               >
                 {isLoading ? (
                   <div className="button-content">
