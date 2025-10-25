@@ -43,6 +43,7 @@ from encroachment_api_routes import router as encroachment_router
 
 # Import satellite comparison components
 from satellite_comparison_api_routes import router as satellite_comparison_router
+from assistant_api_routes import router as assistant_router
 from sentinel_hub_api_routes import router as sentinel_hub_router
 
 # Import GeoJSON S3 service
@@ -203,6 +204,7 @@ app.include_router(grid_fire_router)
 app.include_router(encroachment_router)
 app.include_router(satellite_comparison_router)
 app.include_router(sentinel_hub_router)
+app.include_router(assistant_router)
 
 @app.get("/")
 async def root():
