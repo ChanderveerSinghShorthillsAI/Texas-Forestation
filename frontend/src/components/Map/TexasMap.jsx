@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, GeoJSON, useMapEvents, useMap, Pane } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -33,6 +33,8 @@ import WildfireControlPanel from '../UI/WildfireControlPanel';
 import USGSWildfireButton from '../UI/USGSWildfireButton';
 import HistoricalDataButton from '../UI/HistoricalDataButton';
 import HistoricalDataModal from '../UI/HistoricalDataModal';
+import AssistantPanel from '../UI/AssistantPanel';
+import { useAuth } from '../../contexts/AuthContext.jsx';
 
 // Fix for default markers in react-leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -393,6 +395,7 @@ const OutsideTexasMask = ({ texasGeojson, opacity = 0.6 }) => {
  * Main Texas Map Component with Grid Cells
  */
 const TexasMap = ({ onInitializationChange }) => {
+  const { user } = useAuth();
   const mapRef = useRef();
   const [texasBoundaryData, setTexasBoundaryData] = useState(null);
   const [gridData, setGridData] = useState(null);
@@ -437,6 +440,10 @@ const TexasMap = ({ onInitializationChange }) => {
   
   // Layer selector state
   const [isLayerSelectorOpen, setIsLayerSelectorOpen] = useState(false);
+  // Assistant
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantCounty, setAssistantCounty] = useState(null);
+  const [assistantCoords, setAssistantCoords] = useState(null); // [lng, lat]
   
   // Loading optimization states
   const [isInitializing, setIsInitializing] = useState(true);
@@ -684,6 +691,8 @@ const TexasMap = ({ onInitializationChange }) => {
     setQueryResults(null);
     setShowQueryResults(true); // Show results panel immediately
     setQueriedCoordinates(clickCoordinates); // Store the clicked coordinates
+    setAssistantCoords(clickCoordinates); // keep latest coords for assistant
+    // acknowledge coordinates selection in assistant panel via a one-line note in console (panel watches state via footer hint)
     
     try {
       // Perform backend spatial query
@@ -698,6 +707,18 @@ const TexasMap = ({ onInitializationChange }) => {
           setQueryResults(results);
           // Also check for county information for carbon analysis
           extractCountyFromQuery(results);
+          // If user moved to a different county than previously selected via assistant, update assistant county
+          const countyMatches = results?.polygon_matches?.filter(m => m.layer_name && (m.layer_name.toLowerCase().includes('county')));
+          if (countyMatches && countyMatches.length > 0) {
+            const detected = carbonEstimationService.extractCountyName(countyMatches[0]);
+            if (detected) {
+              const normalized = normalizeCounty(detected);
+              if (!assistantCounty || normalizeCounty(assistantCounty) !== normalized) {
+                setAssistantCounty(normalized);
+                setSelectedCountyForCarbon(normalized);
+              }
+            }
+          }
         }
       );
       
@@ -710,6 +731,92 @@ const TexasMap = ({ onInitializationChange }) => {
       setQueryProgress(null);
     }
   };
+
+  function normalizeCounty(name) {
+    if (!name) return null;
+    const cleaned = String(name)
+      .replace(/\s+County$/i, '')
+      .replace(/\s+Co\.?$/i, '')
+      .trim();
+    return cleaned
+      .toLowerCase()
+      .split(/\s+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  }
+
+  // When user picks a county via assistant, ensure county layer is loaded and visible
+  useEffect(() => {
+    if (!assistantCounty) return;
+    if (!countyLayerData) return; // will highlight once data loads
+    // Optionally ensure the carbon visualization is visible for context
+    // setIsCountyColorVisible(true);
+  }, [assistantCounty, countyLayerData]);
+
+  // === Persist and restore assistant county/coords per user for session continuity ===
+  const countyStorageKey = useMemo(() => user?.username ? `assistant:lastCounty:${user.username}` : null, [user?.username]);
+  const coordsStorageKey = useMemo(() => user?.username ? `assistant:lastCoords:${user.username}` : null, [user?.username]);
+
+  // Restore on user login/refresh
+  useEffect(() => {
+    if (!user?.username) return;
+    try {
+      if (countyStorageKey) {
+        const savedCounty = localStorage.getItem(countyStorageKey);
+        if (savedCounty) {
+          const normalized = normalizeCounty(savedCounty);
+          setAssistantCounty(normalized);
+          setSelectedCountyForCarbon(normalized);
+        }
+      }
+      if (coordsStorageKey) {
+        const savedCoords = localStorage.getItem(coordsStorageKey);
+        if (savedCoords) {
+          const arr = JSON.parse(savedCoords);
+          if (Array.isArray(arr) && arr.length === 2 && typeof arr[0] === 'number' && typeof arr[1] === 'number') {
+            setAssistantCoords(arr);
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [user?.username, countyStorageKey, coordsStorageKey]);
+
+  // Persist when county changes
+  useEffect(() => {
+    if (!countyStorageKey) return;
+    try {
+      if (assistantCounty) {
+        localStorage.setItem(countyStorageKey, assistantCounty);
+      }
+    } catch (e) {}
+  }, [assistantCounty, countyStorageKey]);
+
+  // Persist when coordinates change
+  useEffect(() => {
+    if (!coordsStorageKey) return;
+    try {
+      if (assistantCoords && Array.isArray(assistantCoords) && assistantCoords.length === 2) {
+        localStorage.setItem(coordsStorageKey, JSON.stringify(assistantCoords));
+      }
+    } catch (e) {}
+  }, [assistantCoords, coordsStorageKey]);
+
+  const selectedCountyFeature = useMemo(() => {
+    if (!assistantCounty || !countyLayerData) return null;
+    const target = normalizeCounty(assistantCounty);
+    try {
+      const features = countyLayerData.type === 'FeatureCollection' ? countyLayerData.features : [countyLayerData];
+      for (const f of features) {
+        const name = carbonEstimationService.extractCountyName(f);
+        if (normalizeCounty(name) === target) return f;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  }, [assistantCounty, countyLayerData]);
 
   /**
    * Close query results
@@ -767,12 +874,15 @@ const TexasMap = ({ onInitializationChange }) => {
       const countyName = carbonEstimationService.extractCountyName(countyMatches[0]);
       if (countyName) {
         setSelectedCountyForCarbon(countyName);
+        setAssistantCounty(countyName);
         if (showCarbonPanel) {
           // Panel is already open, county will update automatically
         }
       }
     }
   };
+
+  
 
   /**
    * Note: Fire button now navigates to separate Fire Tracking page
@@ -1051,7 +1161,7 @@ const TexasMap = ({ onInitializationChange }) => {
     : TEXAS_BOUNDS.maxBounds; // Use predefined bounds as fallback
 
   return (
-    <div className="texas-map-container">
+    <div className={`texas-map-container ${assistantOpen ? 'map-shifted-left' : ''}`}>
       <MapContainer
         center={texasCenter}
         zoom={5.6}
@@ -1169,6 +1279,16 @@ const TexasMap = ({ onInitializationChange }) => {
           />
         )}
 
+        {/* Highlight selected county for assistant (render on a higher pane) */}
+        {selectedCountyFeature && (
+          <Pane name="assistant-county-highlight" style={{ zIndex: 650 }}>
+            <GeoJSON
+              data={selectedCountyFeature}
+              style={{ color: '#10b981', weight: 3, fillColor: '#10b981', fillOpacity: 0.18, dashArray: '4,3' }}
+            />
+          </Pane>
+        )}
+
         {/* Render all active GeoJSON layers */}
         {activeLayersData.map((layerData) => (
           <GeoJsonLayer
@@ -1212,6 +1332,30 @@ const TexasMap = ({ onInitializationChange }) => {
           setOutsideTexasAlert={setOutsideTexasAlert}
         />
       </MapContainer>
+      {/* Ask Assistant floating button */}
+      {!assistantOpen && (
+        <button className="ask-assistant-button" onClick={() => setAssistantOpen(true)}>
+          Ask Assistant
+        </button>
+      )}
+
+      {/* Assistant Panel */}
+      <AssistantPanel
+        isOpen={assistantOpen}
+        onClose={() => setAssistantOpen(false)}
+        username={user?.username}
+        countyName={assistantCounty}
+        coordinates={assistantCoords}
+        onChooseCounty={(c) => {
+          // highlight via carbon layer selection and set state
+          setAssistantCounty(normalizeCounty(c));
+          setSelectedCountyForCarbon(normalizeCounty(c));
+        }}
+        onClearSelection={() => {
+          setAssistantCounty(null);
+          setAssistantCoords(null);
+        }}
+      />
 
       {/* Layer control panel - Only show when map is fully initialized */}
       {!isInitializing && !showHistoricalData && !showCarbonPanel && !showQueryResults && (
