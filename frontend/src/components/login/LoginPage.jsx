@@ -132,12 +132,12 @@ const LoginPage = ({ onLoginSuccess }) => {
           <div className="login-container">
             <div className="login-header">
               <h1 style={{ color: "#1E2D24", textShadow: 'none' }}>Texas Forestation</h1>
-              <p style={{ color: "#4E6352", textShadow: 'none' }}>Spatial Analysis & Plantation Planning System</p>
+              <p style={{ color: "#4E6352", textShadow: 'none' , fontWeight: '900'}}>Spatial Analysis & Plantation Planning System</p>
             </div>
 
             <form className="login-form" onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="username" className="form-label" style={{ color: "#758D77", textShadow: 'none'}}>
+                <label htmlFor="username" className="form-label" style={{ color: "#758D77", textShadow: 'none', fontWeight: '900'}}>
                   Username
                 </label>
                 <input
@@ -163,7 +163,7 @@ const LoginPage = ({ onLoginSuccess }) => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="password" className="form-label" style={{ color: "#758D77", textShadow: 'none'  }}>
+                <label htmlFor="password" className="form-label" style={{ color: "#758D77", textShadow: 'none' , fontWeight: '900' }}>
                   Password
                 </label>
                 <input
