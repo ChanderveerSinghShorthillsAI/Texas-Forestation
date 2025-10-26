@@ -33,7 +33,6 @@ export default function AssistantPanel({
   const streamingRef = useRef('');
   const [phase, setPhase] = useState('init'); // init -> awaiting_county -> awaiting_coords -> ready
   const announcedCoordsRef = useRef(null);
-  const savedCoordsRef = useRef(null);
 
   useEffect(() => {
     if (!isOpen || !username) return;
@@ -43,25 +42,15 @@ export default function AssistantPanel({
         const res = await assistantService.getHistory(username);
         if (!mounted) return;
         const msgs = (res.interactions || []).flatMap(i => ([{ role: 'user', text: i.q }, { role: 'assistant', text: i.a }]));
-        setHistory(msgs.length ? msgs : [{ role: 'assistant', text: 'Please type a county name.' }]);
-        // also read last saved coords as a fallback for continuity
-        try {
-          const key = `assistant:lastCoords:${username}`;
-          const saved = localStorage.getItem(key);
-          if (saved) {
-            const arr = JSON.parse(saved);
-            if (Array.isArray(arr) && arr.length === 2) savedCoordsRef.current = arr;
-          }
-        } catch (_) {}
-        // derive phase: if user has prior history, do not prompt for coords; otherwise use props
-        if (msgs.length > 0) {
-          setPhase('ready');
-        } else if (countyName && coordinates) {
-          setPhase('ready');
-        } else if (countyName && !coordinates) {
-          setPhase('awaiting_coords');
-        } else {
+        if (msgs.length === 0) {
+          setHistory([{ role: 'assistant', text: 'Please type a county name.' }]);
           setPhase('awaiting_county');
+        } else {
+          setHistory(msgs);
+          // infer phase from state
+          if (!countyName) setPhase('awaiting_county');
+          else if (!coordinates) setPhase('awaiting_coords');
+          else setPhase('ready');
         }
       } catch {
         setHistory([{ role: 'assistant', text: 'Please type a county name.' }]);
@@ -69,7 +58,7 @@ export default function AssistantPanel({
       }
     })();
     return () => { mounted = false; };
-  }, [isOpen, username, countyName, coordinates]);
+  }, [isOpen, username]);
 
   useEffect(() => {
     if (listRef.current) {
@@ -124,14 +113,13 @@ export default function AssistantPanel({
       return;
     }
 
-    // If county exists but no coordinates yet, try fallback from saved coords
-    const coordsToUse = (coordinates && Array.isArray(coordinates)) ? coordinates : savedCoordsRef.current;
-    if (countyName && !coordsToUse) {
+    // If county exists but no coordinates yet
+    if (countyName && !coordinates) {
       setHistory(h => [...h, { role: 'assistant', text: 'Please click on the map to select coordinates, then ask your question.' }]);
       return;
     }
 
-    const [lng, lat] = coordsToUse;
+    const [lng, lat] = coordinates;
     setLoading(true);
     try {
       const res = await assistantService.sendQuery({

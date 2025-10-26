@@ -753,56 +753,6 @@ const TexasMap = ({ onInitializationChange }) => {
     // setIsCountyColorVisible(true);
   }, [assistantCounty, countyLayerData]);
 
-  // === Persist and restore assistant county/coords per user for session continuity ===
-  const countyStorageKey = useMemo(() => user?.username ? `assistant:lastCounty:${user.username}` : null, [user?.username]);
-  const coordsStorageKey = useMemo(() => user?.username ? `assistant:lastCoords:${user.username}` : null, [user?.username]);
-
-  // Restore on user login/refresh
-  useEffect(() => {
-    if (!user?.username) return;
-    try {
-      if (countyStorageKey) {
-        const savedCounty = localStorage.getItem(countyStorageKey);
-        if (savedCounty) {
-          const normalized = normalizeCounty(savedCounty);
-          setAssistantCounty(normalized);
-          setSelectedCountyForCarbon(normalized);
-        }
-      }
-      if (coordsStorageKey) {
-        const savedCoords = localStorage.getItem(coordsStorageKey);
-        if (savedCoords) {
-          const arr = JSON.parse(savedCoords);
-          if (Array.isArray(arr) && arr.length === 2 && typeof arr[0] === 'number' && typeof arr[1] === 'number') {
-            setAssistantCoords(arr);
-          }
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, [user?.username, countyStorageKey, coordsStorageKey]);
-
-  // Persist when county changes
-  useEffect(() => {
-    if (!countyStorageKey) return;
-    try {
-      if (assistantCounty) {
-        localStorage.setItem(countyStorageKey, assistantCounty);
-      }
-    } catch (e) {}
-  }, [assistantCounty, countyStorageKey]);
-
-  // Persist when coordinates change
-  useEffect(() => {
-    if (!coordsStorageKey) return;
-    try {
-      if (assistantCoords && Array.isArray(assistantCoords) && assistantCoords.length === 2) {
-        localStorage.setItem(coordsStorageKey, JSON.stringify(assistantCoords));
-      }
-    } catch (e) {}
-  }, [assistantCoords, coordsStorageKey]);
-
   const selectedCountyFeature = useMemo(() => {
     if (!assistantCounty || !countyLayerData) return null;
     const target = normalizeCounty(assistantCounty);
