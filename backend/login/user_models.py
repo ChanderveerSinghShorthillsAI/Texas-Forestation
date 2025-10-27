@@ -100,7 +100,7 @@ class User(Base):
         self.failed_login_attempts += 1
         self.last_failed_login = datetime.utcnow()
     
-    def is_account_locked(self, max_attempts: int = 5) -> bool:
+    def is_account_locked(self, max_attempts: int = 50) -> bool:
         """
         Check if account is locked due to failed attempts
         

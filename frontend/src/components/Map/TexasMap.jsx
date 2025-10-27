@@ -177,6 +177,60 @@ const MapClickHandler = ({
 };
 
 /**
+ * Component to zoom to a county when selected via assistant
+ */
+const CountyZoomHandler = ({ countyFeature, zoomTrigger }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (!countyFeature || !map) return;
+    
+    try {
+      // Calculate bounds from the county feature
+      const bounds = L.geoJSON(countyFeature).getBounds();
+      
+      if (bounds.isValid()) {
+        console.log(`🔍 Zooming to county:`, countyFeature.properties);
+        map.fitBounds(bounds, {
+          padding: [50, 50],
+          maxZoom: 9,
+          animate: true,
+          duration: 1
+        });
+      }
+    } catch (error) {
+      console.error('Error zooming to county:', error);
+    }
+  }, [countyFeature, map, zoomTrigger]); // Added zoomTrigger to force re-zoom
+  
+  return null;
+};
+
+/**
+ * Component to reset map to original view
+ */
+const MapResetHandler = ({ shouldReset, onResetComplete }) => {
+  const map = useMap();
+  
+  useEffect(() => {
+    if (!shouldReset || !map) return;
+    
+    console.log('🔄 Resetting map to original view');
+    map.setView(texasCenter, 5.6, {
+      animate: true,
+      duration: 1
+    });
+    
+    // Notify parent that reset is complete
+    if (onResetComplete) {
+      setTimeout(() => onResetComplete(), 100);
+    }
+  }, [shouldReset, map, onResetComplete]);
+  
+  return null;
+};
+
+/**
  * Helper function to find which grid contains the given coordinates
  */
 const findGridAtCoordinates = (gridData, lng, lat) => {
@@ -444,6 +498,8 @@ const TexasMap = ({ onInitializationChange }) => {
   const [assistantOpen, setAssistantOpen] = useState(false);
   const [assistantCounty, setAssistantCounty] = useState(null);
   const [assistantCoords, setAssistantCoords] = useState(null); // [lng, lat]
+  const [shouldResetMap, setShouldResetMap] = useState(false); // Trigger map reset
+  const [countyZoomTrigger, setCountyZoomTrigger] = useState(0); // Counter to force re-zoom
   
   // Loading optimization states
   const [isInitializing, setIsInitializing] = useState(true);
@@ -1281,6 +1337,18 @@ const TexasMap = ({ onInitializationChange }) => {
           texasBoundaryData={texasBoundaryData}
           setOutsideTexasAlert={setOutsideTexasAlert}
         />
+        
+        {/* County zoom handler for assistant */}
+        <CountyZoomHandler 
+          countyFeature={selectedCountyFeature} 
+          zoomTrigger={countyZoomTrigger} 
+        />
+        
+        {/* Map reset handler for assistant clear/close */}
+        <MapResetHandler 
+          shouldReset={shouldResetMap} 
+          onResetComplete={() => setShouldResetMap(false)} 
+        />
       </MapContainer>
       {/* Ask Assistant floating button */}
       {!assistantOpen && (
@@ -1292,7 +1360,11 @@ const TexasMap = ({ onInitializationChange }) => {
       {/* Assistant Panel */}
       <AssistantPanel
         isOpen={assistantOpen}
-        onClose={() => setAssistantOpen(false)}
+        onClose={() => {
+          setAssistantOpen(false);
+          // Reset map to original zoom when closing
+          setShouldResetMap(true);
+        }}
         username={user?.username}
         countyName={assistantCounty}
         coordinates={assistantCoords}
@@ -1304,6 +1376,18 @@ const TexasMap = ({ onInitializationChange }) => {
         onClearSelection={() => {
           setAssistantCounty(null);
           setAssistantCoords(null);
+          // Reset map to original zoom when clearing
+          setShouldResetMap(true);
+        }}
+        onRestoreContext={(county, coords) => {
+          // Restore county and coordinates from saved history or when reopening
+          console.log('🔄 Restoring context from history:', county, coords);
+          const normalized = normalizeCounty(county);
+          setAssistantCounty(normalized);
+          setSelectedCountyForCarbon(normalized);
+          setAssistantCoords(coords);
+          // Increment trigger to force zoom even if county hasn't changed
+          setCountyZoomTrigger(prev => prev + 1);
         }}
       />
 

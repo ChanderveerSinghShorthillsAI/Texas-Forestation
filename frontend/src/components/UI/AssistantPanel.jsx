@@ -25,6 +25,7 @@ export default function AssistantPanel({
   coordinates,
   onChooseCounty,
   onClearSelection,
+  onRestoreContext, // New callback to restore county and coordinates from history
 }) {
   const [history, setHistory] = useState([]);
   const [input, setInput] = useState('');
@@ -41,18 +42,44 @@ export default function AssistantPanel({
       try {
         const res = await assistantService.getHistory(username);
         if (!mounted) return;
-        const msgs = (res.interactions || []).flatMap(i => ([{ role: 'user', text: i.q }, { role: 'assistant', text: i.a }]));
+        
+        // Use correct property name: res.history (not res.interactions)
+        const historyData = res.history || [];
+        const msgs = historyData.flatMap(i => ([
+          { role: 'user', text: i.q }, 
+          { role: 'assistant', text: i.a }
+        ]));
+        
+        // Restore county name and coordinates from saved context
+        const hasContext = res.county_name && res.longitude != null && res.latitude != null;
+        
+        if (hasContext && onRestoreContext) {
+          // Restore the saved county and coordinates (this will trigger zoom)
+          onRestoreContext(res.county_name, [res.longitude, res.latitude]);
+        } else if (countyName && coordinates && onRestoreContext) {
+          // If county already exists from previous session (before close), zoom to it again
+          console.log('🔄 Re-zooming to existing county on panel reopen:', countyName);
+          onRestoreContext(countyName, coordinates);
+        }
+        
         if (msgs.length === 0) {
           setHistory([{ role: 'assistant', text: 'Please type a county name.' }]);
           setPhase('awaiting_county');
         } else {
           setHistory(msgs);
-          // infer phase from state
-          if (!countyName) setPhase('awaiting_county');
-          else if (!coordinates) setPhase('awaiting_coords');
-          else setPhase('ready');
+          // Determine phase based on restored or current context
+          if (hasContext) {
+            setPhase('ready');
+          } else if (!countyName) {
+            setPhase('awaiting_county');
+          } else if (!coordinates) {
+            setPhase('awaiting_coords');
+          } else {
+            setPhase('ready');
+          }
         }
-      } catch {
+      } catch (error) {
+        console.error('Failed to load history:', error);
         setHistory([{ role: 'assistant', text: 'Please type a county name.' }]);
         setPhase('awaiting_county');
       }
@@ -121,18 +148,57 @@ export default function AssistantPanel({
 
     const [lng, lat] = coordinates;
     setLoading(true);
+    
+    // Add placeholder for streaming response
+    const placeholderIndex = history.length + 1; // +1 because we already added user message
+    setHistory(h => [...h, { role: 'assistant', text: '', streaming: true }]);
+    
     try {
-      const res = await assistantService.sendQuery({
+      let streamedText = '';
+      
+      // Use streaming API
+      await assistantService.sendQueryStream({
         countyName,
         longitude: lng,
         latitude: lat,
         userQuery: question,
         username
+      }, (token) => {
+        // Append each token to the streamed text
+        streamedText += token;
+        
+        // Update the last message in history (the streaming one)
+        setHistory(h => {
+          const newHistory = [...h];
+          const lastIndex = newHistory.length - 1;
+          if (lastIndex >= 0 && newHistory[lastIndex].streaming) {
+            newHistory[lastIndex] = { role: 'assistant', text: streamedText, streaming: true };
+          }
+          return newHistory;
+        });
       });
-      const ans = res.natural_response || res.naturalResponse || JSON.stringify(res);
-      setHistory(h => [...h, { role: 'assistant', text: ans }]);
+      
+      // Mark streaming as complete
+      setHistory(h => {
+        const newHistory = [...h];
+        const lastIndex = newHistory.length - 1;
+        if (lastIndex >= 0 && newHistory[lastIndex].streaming) {
+          newHistory[lastIndex] = { role: 'assistant', text: streamedText };
+        }
+        return newHistory;
+      });
+      
     } catch (e) {
-      setHistory(h => [...h, { role: 'assistant', text: 'Error: ' + e.message }]);
+      setHistory(h => {
+        const newHistory = [...h];
+        const lastIndex = newHistory.length - 1;
+        if (lastIndex >= 0 && newHistory[lastIndex].streaming) {
+          newHistory[lastIndex] = { role: 'assistant', text: 'Error: ' + e.message };
+        } else {
+          newHistory.push({ role: 'assistant', text: 'Error: ' + e.message });
+        }
+        return newHistory;
+      });
     } finally {
       setLoading(false);
     }
@@ -215,6 +281,20 @@ export default function AssistantPanel({
                 >
                   {m.text}
                 </ReactMarkdown>
+                {/* Streaming indicator - animated dots */}
+                {m.streaming && (
+                  <span style={{
+                    display: 'inline-block',
+                    marginLeft: '4px',
+                    fontSize: '14px',
+                    color: '#93c5fd',
+                    letterSpacing: '2px'
+                  }}>
+                    <span style={{ animation: 'dot1 1.4s infinite' }}>.</span>
+                    <span style={{ animation: 'dot2 1.4s infinite' }}>.</span>
+                    <span style={{ animation: 'dot3 1.4s infinite' }}>.</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
@@ -238,6 +318,36 @@ export default function AssistantPanel({
         {phase === 'awaiting_coords' && 'Great! Now click anywhere on the map to select coordinates.'}
         {phase === 'ready' && 'Ask a question about this location.'}
       </div>
+      
+      {/* CSS animation for streaming dots */}
+      <style>{`
+        @keyframes dot1 {
+          0%, 20% {
+            opacity: 0;
+          }
+          40%, 100% {
+            opacity: 1;
+          }
+        }
+        
+        @keyframes dot2 {
+          0%, 40% {
+            opacity: 0;
+          }
+          60%, 100% {
+            opacity: 1;
+          }
+        }
+        
+        @keyframes dot3 {
+          0%, 60% {
+            opacity: 0;
+          }
+          80%, 100% {
+            opacity: 1;
+          }
+        }
+      `}</style>
     </div>
   );
 }

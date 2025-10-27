@@ -217,7 +217,10 @@ Provide the modified response:"""
         port=port,
         )
         
-        sql, df, fig = vn.ask(final_question, print_results=False)
+        # Execute query - disable visualization to avoid errors with complex data types
+        sql = vn.generate_sql(final_question)
+        df = vn.run_sql(sql)
+        fig = None  # Skip visualization for complex data types (JSONB, geometry, etc.)
         
         # Parse all 'properties' JSON strings
         results = []
@@ -290,7 +293,14 @@ Generate a single, cohesive human-readable answer that integrates **all availabl
     
     # Step 6: Append current interaction to JSON history
     if username and final_answer:
-        append_interaction(username=username, question=user_query, answer=final_answer)
+        append_interaction(
+            username=username,
+            question=user_query,
+            answer=final_answer,
+            county_name=county_name,
+            longitude=longitude,
+            latitude=latitude,
+        )
     
     return {
         "success": True,
@@ -300,6 +310,175 @@ Generate a single, cohesive human-readable answer that integrates **all availabl
         "natural_response": final_answer,
         "point_location": [longitude, latitude]
     }
+
+
+async def process_user_query_stream(county_name: str, longitude: float, latitude: float, user_query: str, username: Optional[str] = None):
+    """
+    Streaming version of process_user_query that yields response chunks token by token.
+    
+    Yields:
+        Dictionary chunks containing 'token' key with text fragments
+    """
+    import asyncio
+    
+    # Initialize client
+    client = genai.Client(api_key=GEMINI_API_KEY)
+    
+    county_clean = county_name.replace(" County", "").replace(" Co.", "").strip()
+    
+    # Step 1: Check for follow-up patterns
+    followup_pattern = r"(how|what|why|when|where|who|which|can|could|would|is|are|does|tell me more|elaborate|explain)"
+    prior_qas = []
+    if username:
+        prior_qas = get_last_interactions(username, n=5)
+    
+    is_likely_followup = (
+        len(user_query.split()) < 15 and 
+        re.search(followup_pattern, user_query.lower()) is not None and
+        len(prior_qas) > 0
+    )
+    
+    # Step 2: Handle follow-up
+    if is_likely_followup:
+        conversation_context = "\n\n".join([f"Q: {qa['q']}\nA: {qa['a']}" for qa in prior_qas])
+        followup_prompt = f"""Based on this recent conversation:
+
+{conversation_context}
+
+The user now asks: "{user_query}"
+
+Location context: {county_clean} County, Texas (Longitude: {longitude:.6f}, Latitude: {latitude:.6f})
+
+Please provide a contextual follow-up answer that builds on the previous conversation."""
+        
+        # Stream the follow-up response
+        response_stream = client.models.generate_content_stream(
+            model="gemini-2.5-flash",
+            config=types.GenerateContentConfig(
+                system_instruction="You are a helpful GIS assistant. Provide clear, contextual follow-up answers.",
+                temperature=0.2
+            ),
+            contents=followup_prompt
+        )
+        
+        full_answer = ""
+        for chunk in response_stream:
+            if chunk.text:
+                full_answer += chunk.text
+                # Yield each chunk token by token
+                for char in chunk.text:
+                    yield {"token": char}
+                    await asyncio.sleep(0.02)  # Smooth streaming
+        
+        # Save to history
+        if username:
+            append_interaction(username=username, question=user_query, answer=full_answer.strip())
+        
+        return
+    
+    # Step 3: Build context-aware question
+    qa_context_str = ""
+    if prior_qas:
+        qa_lines = [f"- Q: {qa.get('q', '').strip()}\n  A: {qa.get('a', '').strip()}" 
+                   for qa in prior_qas if qa.get('q') and qa.get('a')]
+        if qa_lines:
+            qa_context_str = "\n\nRecent conversation:\n" + "\n\n".join(qa_lines)
+    
+    final_question = f"""{user_query}
+
+Location: {county_clean} County, Texas (Longitude: {longitude:.6f}, Latitude: {latitude:.6f})
+
+{qa_context_str}
+
+Please provide a comprehensive answer using the spatial database at this location."""
+    
+    # Step 4: Use Vanna to generate and execute SQL
+    try:
+        vn = MyVanna(config={'api_key': GEMINI_API_KEY, 'model_name': GEMINI_MODEL})
+        host = os.getenv("DB_HOST")
+        dbname = os.getenv("DB_NAME")
+        user = os.getenv("DB_USER")
+        password = os.getenv("DB_PASS")
+        port = os.getenv("DB_PORT")
+        
+        vn.connect_to_postgres(host=host, dbname=dbname, user=user, password=password, port=port)
+        
+        sql = vn.generate_sql(final_question)
+        df = vn.run_sql(sql)
+        
+        results = []
+        if df is not None and not df.empty:
+            for record in df[:10].to_dict(orient='records'):
+                props_str = record.get("properties", "{}")
+                try:
+                    record["properties"] = json.loads(props_str)
+                except json.JSONDecodeError:
+                    record["properties"] = {}
+                results.append(record)
+        
+    except Exception as e:
+        error_msg = f"Error executing query: {str(e)}"
+        for char in error_msg:
+            yield {"token": char}
+            await asyncio.sleep(0.02)
+        return
+    
+    # Step 5: Stream final answer using Gemini
+    if results:
+        merged_properties = [r["properties"] for r in results]
+        
+        context_prompt = f"""The user asked: "{user_query}"
+
+Location: {county_clean} County, Texas (Longitude: {longitude:.6f}, Latitude: {latitude:.6f})
+
+SQL Query executed: {sql}
+
+Query results:
+{json.dumps(merged_properties, indent=2)}
+
+{qa_context_str}
+
+STRICT INSTRUCTIONS:
+1. Include relevant data from all properties in your response.
+2. Do not mention SQL or databases.
+3. Synthesize data into a coherent narrative about environmental conditions, soil types, and land use suitability.
+4. Address follow-up questions if the user references previous conversation.
+
+Generate a cohesive human-readable answer."""
+        
+        response_stream = client.models.generate_content_stream(
+            model="gemini-2.5-flash",
+            config=types.GenerateContentConfig(
+                system_instruction="You are a helpful GIS assistant. Provide clear, concise answers based on spatial database results.",
+                temperature=0.2
+            ),
+            contents=context_prompt
+        )
+        
+        full_answer = ""
+        for chunk in response_stream:
+            if chunk.text:
+                full_answer += chunk.text
+                # Yield each chunk token by token
+                for char in chunk.text:
+                    yield {"token": char}
+                    await asyncio.sleep(0.02)
+        
+        # Save to history
+        if username and full_answer:
+            append_interaction(
+                username=username,
+                question=user_query,
+                answer=full_answer.strip(),
+                county_name=county_name,
+                longitude=longitude,
+                latitude=latitude,
+            )
+    else:
+        no_data_msg = f"No data was found for this location in {county_clean} County."
+        for char in no_data_msg:
+            yield {"token": char}
+            await asyncio.sleep(0.02)
 
 
 # Main execution
